@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/app_colors.dart';
 import '../../mitra/pages/register/mitra_register_screen.dart';
+import 'onboarding_screen.dart';
 
 // ---------- HALAMAN WELCOME ----------
 class WelcomeScreen extends StatelessWidget {
@@ -76,7 +77,12 @@ class WelcomeScreen extends StatelessWidget {
                 label: 'Mulai Selamatkan',
                 icon: Icons.arrow_forward_rounded,
                 onPressed: () {
-                  // TODO: pindah ke halaman beranda
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OnboardingScreen(),
+                    ),
+                  );
                   debugPrint('Mulai Selamatkan ditekan');
                 },
               ),
