@@ -1,14 +1,12 @@
-// ============================================================
-// LastBite - Daftar Mitra, Langkah 4 dari 7 (Nama & Kategori Usaha)
-// Simpan sebagai: lib/features/mitra/pages/register/mitra_business_screen.dart
-// ============================================================
+
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'mitra_address_screen.dart';
+
 const _bg = Color(0xFFEAFDE1);
 const _primary = Color(0xFF006B1E);
-const _fieldBg = Color(0xFFF5FAF2);
 const _fieldBorder = Color(0xFFE1EBDD);
 const _cardBg = Color(0xFFF3FAF0);
 const _selectedBg = Color(0xFFA9EE9E);
@@ -17,7 +15,7 @@ const _textDark = Color(0xFF10260F);
 const _textSoft = Color(0xFF3F4A3C);
 const _grey = Color(0xFF8C978A);
 
-// Model sederhana untuk satu pilihan kategori usaha.
+
 class _BusinessCategory {
   final String title;
   final String description;
@@ -73,15 +71,14 @@ class _MitraBusinessScreenState extends State<MitraBusinessScreen> {
   }
 
   void _lanjutkan() {
-    if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Isi nama usaha atau toko dulu ya.')),
-      );
-      return;
-    }
-    // TODO: simpan nama usaha & kategori terpilih, lanjut ke langkah 5.
     final kategori = _categories[_selectedIndex].title;
-    debugPrint('Nama: ${_nameController.text}, Kategori: $kategori');
+    debugPrint('Kategori terpilih: $kategori');
+
+    // Pindah ke langkah berikutnya (MitraAddressScreen)
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MitraAddressScreen()),
+    );
   }
 
   @override
@@ -104,7 +101,7 @@ class _MitraBusinessScreenState extends State<MitraBusinessScreen> {
                     const _ProgressBar(step: 4, label: 'Nama & Kategori'),
                     const SizedBox(height: 24),
                     Text(
-                      'Tentang Usahamu',
+                      'Kategori Usahamu',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
@@ -114,7 +111,7 @@ class _MitraBusinessScreenState extends State<MitraBusinessScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Beri tahu kami nama toko dan jenis surplus makanan yang akan diselamatkan.',
+                      'Pilih jenis surplus yang paling dominan di tokomu.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         height: 1.6,
@@ -122,76 +119,9 @@ class _MitraBusinessScreenState extends State<MitraBusinessScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // ---- Input nama usaha ----
-                    Text(
-                      'Nama Usaha / Toko',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _textDark,
-                      ),
-                    ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _nameController,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16, color: _textDark),
-                      decoration: InputDecoration(
-                        hintText: 'Dapur Roti Manis Batam',
-                        hintStyle:
-                            GoogleFonts.plusJakartaSans(fontSize: 15, color: _grey),
-                        prefixIcon:
-                            const Icon(Icons.storefront_outlined, color: _grey),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: _fieldBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: _fieldBorder),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide:
-                              const BorderSide(color: _primary, width: 1.5),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Nama yang tertera jelas pada plang atau spanduk tokomu.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: _textSoft,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
 
-                    // ---- Kategori usaha ----
-                    Text(
-                      'Kategori Usaha',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pilih jenis surplus yang paling dominan di tokomu.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: _textSoft,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // List.generate membuat satu kartu untuk tiap kategori.
+                
                     ...List.generate(_categories.length, (i) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),

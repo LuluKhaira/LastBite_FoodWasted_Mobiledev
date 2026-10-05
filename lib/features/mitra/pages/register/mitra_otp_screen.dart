@@ -1,8 +1,3 @@
-// ============================================================
-// LastBite - Daftar Mitra, Langkah 2 dari 7 (Verifikasi OTP)
-// Simpan sebagai: lib/features/mitra/pages/register/mitra_otp_screen.dart
-// ============================================================
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,7 +13,7 @@ const _textDark = Color(0xFF10260F);
 const _textSoft = Color(0xFF3F4A3C);
 
 class MitraOtpScreen extends StatefulWidget {
-  // Nomor dikirim dari halaman langkah 1 (hanya digit, tanpa +62).
+  
   final String phoneNumber;
 
   const MitraOtpScreen({super.key, required this.phoneNumber});
@@ -37,12 +32,10 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
   Timer? _timer;
   int _secondsLeft = _resendSeconds;
 
-  // initState() dipanggil sekali saat halaman dibuat.
   @override
   void initState() {
     super.initState();
     _startTimer();
-    // Setiap isi input berubah, gambar ulang kotak-kotak OTP.
     _otpController.addListener(() => setState(() {}));
     _focusNode.addListener(() => setState(() {}));
   }
@@ -108,8 +101,12 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
       );
       return;
     }
-    // TODO: kirim ke server untuk dicek, kalau benar lanjut ke langkah 3.
-    debugPrint('Verifikasi OTP: ${_otpController.text}');
+    // TODO: kirim ke server untuk dicek kebenaran kodenya.
+    // Sementara langsung lanjut ke langkah 3 kalau 6 digit sudah terisi.
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MitraPasswordScreen()),
+    );
   }
 
   @override
