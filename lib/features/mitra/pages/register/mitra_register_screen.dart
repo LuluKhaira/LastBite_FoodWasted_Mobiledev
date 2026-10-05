@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'mitra_otp_screen.dart';
 
 // Warna khusus halaman ini (private, diawali _ supaya tidak bentrok dengan main.dart)
 const _bg = Color(0xFFEAFDE1);
@@ -47,8 +48,14 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
       return;
     }
 
-    // TODO: kirim kode OTP ke +62$nomor, lalu pindah ke halaman langkah 2.
-    debugPrint('Kirim kode ke +62$nomor');
+    // TODO: panggil API untuk kirim OTP ke +62$nomor.
+    // Sementara langsung pindah ke langkah 2 sambil membawa nomornya.
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MitraOtpScreen(phoneNumber: nomor),
+      ),
+    );
   }
 
   @override
