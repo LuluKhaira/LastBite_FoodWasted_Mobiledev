@@ -7,7 +7,6 @@ import 'mitra_address_screen.dart';
 
 const _bg = Color(0xFFEAFDE1);
 const _primary = Color(0xFF006B1E);
-const _fieldBorder = Color(0xFFE1EBDD);
 const _cardBg = Color(0xFFF3FAF0);
 const _selectedBg = Color(0xFFA9EE9E);
 const _iconBg = Color(0xFFE2F3DC);

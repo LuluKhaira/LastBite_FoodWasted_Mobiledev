@@ -1,15 +1,11 @@
-// ============================================================
-// LastBite - Mitra Pendaftaran Disetujui
-// Simpan sebagai: lib/features/mitra/pages/register/mitra_disetujui_screen.dart
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// Palet Warna Resmi Last Bite
-const _bg = Color(0xFFF8F6F2);       // Off White
-const _primary = Color(0xFFA7C957);  // Hijau Sage
-const _orange = Color(0xFFFFB07C);   // Oranye Peach
+import '../dashboard/mitra_dashboard_screen.dart';
+
+const _bg = Color(0xFFF8F6F2); // Off White
+const _primary = Color(0xFFA7C957); // Hijau Sage
+const _orange = Color(0xFFFFB07C); // Oranye Peach
 const _textDark = Color(0xFF2B3A28); // Dark Forest
 const _textSoft = Color(0xFF5A6856); // Muted Sage
 
@@ -51,7 +47,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
-      
+
       body: SafeArea(
         child: Column(
           children: [
@@ -71,16 +67,14 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: _primary.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: _primary.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.verified,
-                            color: _primary,
-                            size: 16,
-                          ),
+                          const Icon(Icons.verified, color: _primary, size: 16),
                           const SizedBox(width: 6),
                           Text(
                             'Toko Aktif & Terverifikasi',
@@ -186,26 +180,22 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                           const SizedBox(height: 16),
                           _buildStepItem(
                             number: '1',
-                            title:
-                                'Buat paket kejutan atau cantumkan sisa bahan berkualitas',
-                            desc:
-                                'Pilih stok berlebih atau bahan segar siap olah hari ini.',
+                            title: 'Buat paket kejutan atau cantumkan sisa bahan berkualitas',
+                            desc: 'Pilih stok berlebih atau bahan segar siap olah hari ini.',
                           ),
                           const SizedBox(height: 14),
                           _buildStepItem(
                             number: '2',
                             title:
                                 'Tentukan jam pengambilan mandiri oleh pembeli',
-                            desc:
-                                'Atur batas waktu pengambilan sebelum tokomu tutup.',
+                            desc: 'Atur batas waktu pengambilan sebelum tokomu tutup.',
                           ),
                           const SizedBox(height: 14),
                           _buildStepItem(
                             number: '3',
                             title:
                                 'Pantau pesanan langsung dari dashboard tokomu',
-                            desc:
-                                'Verifikasi kode QR saat pelanggan mengambil paket.',
+                            desc: 'Verifikasi kode QR saat pelanggan mengambil paket.',
                           ),
                         ],
                       ),
@@ -219,7 +209,9 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                       decoration: BoxDecoration(
                         color: _orange.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _orange.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: _orange.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -279,7 +271,13 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigasi ke Dashboard Utama Mitra
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MitraDashboardScreen(),
+                      ),
+                      (route) => false,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primary,

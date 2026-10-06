@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Ganti ke halaman Beranda Anda nanti jika sudah ada
-// import 'halaman_beranda.dart'; 
-
 class UserLoginScreen extends StatelessWidget {
   const UserLoginScreen({super.key});
 
@@ -124,7 +121,7 @@ class UserLoginScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
