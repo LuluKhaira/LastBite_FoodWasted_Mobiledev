@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'mitra_disetujui_screen.dart';
+
 const _bg = Color(0xFFEAFDE1);
 const _primary = Color(0xFF006B1E);
 const _cardBg = Color(0xFFF3FAF0);
 const _textDark = Color(0xFF10260F);
 const _textSoft = Color(0xFF3F4A3C);
 
-class MitraMenungguVerifikasiScreen extends StatelessWidget {
+class MitraMenungguVerifikasiScreen extends StatefulWidget {
   final String namaToko;
   final String kategori;
   final String regId;
@@ -22,6 +24,50 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
   });
 
   @override
+  State<MitraMenungguVerifikasiScreen> createState() =>
+      _MitraMenungguVerifikasiScreenState();
+}
+
+class _MitraMenungguVerifikasiScreenState
+    extends State<MitraMenungguVerifikasiScreen> {
+  int _secretTapCount = 0;
+  bool _isLoading = false;
+
+  void _simulasiDisetujuiAdmin() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Status: Pendaftaran Disetujui! Masuk ke Dashboard...'),
+        backgroundColor: _primary,
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    // Navigasi berpindah ke layar MitraDisetujuiScreen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const MitraDisetujuiScreen()),
+    );
+  }
+
+  void _cekStatusVerifikasi() {
+    setState(() => _isLoading = true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Memeriksa status verifikasi ke server...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _simulasiDisetujuiAdmin();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
@@ -33,7 +79,6 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Jarak dari batas atas layar
                     const SizedBox(height: 24),
 
                     // ---- Main White Card ----
@@ -46,36 +91,45 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          // Icon Jam Pasir
-                          Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              Container(
-                                width: 100,
-                                height: 100,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE2F5DD),
-                                  shape: BoxShape.circle,
+                          // Icon Jam Pasir (Ketuk 3x untuk bypass ACC admin)
+                          GestureDetector(
+                            onTap: () {
+                              _secretTapCount++;
+                              if (_secretTapCount >= 3) {
+                                _secretTapCount = 0;
+                                _simulasiDisetujuiAdmin();
+                              }
+                            },
+                            child: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFE2F5DD),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.hourglass_top_rounded,
+                                    size: 48,
+                                    color: Color(0xFF2E7D32),
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.hourglass_top_rounded,
-                                  size: 48,
-                                  color: Color(0xFF2E7D32),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: _primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.access_time_filled,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: _primary,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.access_time_filled,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 20),
 
@@ -127,7 +181,8 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Jaminan Keamanan Data',
@@ -162,7 +217,8 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'RINGKASAN PENDAFTARAN',
@@ -174,7 +230,7 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      'ID: $regId',
+                                      'ID: ${widget.regId}',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w800,
@@ -190,19 +246,20 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                                 _SummaryRow(
                                   icon: Icons.storefront_outlined,
                                   label: 'Nama Toko',
-                                  value: namaToko,
+                                  value: widget.namaToko,
                                   boldValue: true,
                                 ),
                                 const SizedBox(height: 12),
                                 _SummaryRow(
                                   icon: Icons.bakery_dining_outlined,
                                   label: 'Kategori',
-                                  value: kategori,
+                                  value: widget.kategori,
                                   boldValue: true,
                                 ),
                                 const SizedBox(height: 12),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
@@ -259,7 +316,7 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                                 _SummaryRow(
                                   icon: Icons.calendar_today_outlined,
                                   label: 'Diajukan pada',
-                                  value: waktuPengajuan,
+                                  value: widget.waktuPengajuan,
                                 ),
                               ],
                             ),
@@ -334,15 +391,7 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Memeriksa status verifikasi terbaru...',
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: _isLoading ? null : _cekStatusVerifikasi,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
@@ -350,20 +399,29 @@ class MitraMenungguVerifikasiScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.refresh, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Cek Status',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.refresh, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Cek Status',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
