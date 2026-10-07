@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart'; // Sesuaikan path import file AppColors kamu
 import 'user_login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -12,7 +13,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
-  // Data teks sesuai desain Figma
   final List<Map<String, String>> _onboardingData = [
     {
       'title': 'Jelajahi toko sekitar Batam',
@@ -39,20 +39,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _navigateToLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => UserLoginScreen()),
+      MaterialPageRoute(builder: (context) => const UserLoginScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             children: [
-              // Bagian Atas: Tombol "Lewati" (Hanya muncul jika bukan slide terakhir)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -62,19 +61,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: const Text(
                         'Lewati',
                         style: TextStyle(
-                          color: Color(0xFF555555),
+                          color: AppColors.textSoft,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     )
                   else
-                    const SizedBox(height: 40), // Penyeimbang tinggi jika 'Lewati' hilang
+                    const SizedBox(height: 40),
                 ],
               ),
               const SizedBox(height: 10),
-
-              // Bagian Slider Utama
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
@@ -88,12 +85,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Ilustrasi / Icon Emoji (bisa diganti Image.asset jika pakai gambar asli Figma)
                         Container(
                           width: 160,
                           height: 160,
                           decoration: const BoxDecoration(
-                            color: Color(0xFFEAF4EE),
+                            color: Colors.white,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -110,7 +106,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F3E2B),
+                            color: AppColors.textDark,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -121,7 +117,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF666666),
+                              color: AppColors.textSoft,
                               height: 1.5,
                             ),
                           ),
@@ -131,8 +127,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   },
                 ),
               ),
-
-              // Indikator Titik (Dots) di Tengah
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
@@ -142,21 +136,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: _currentIndex == index ? 20 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _currentIndex == index ? const Color(0xFF0F3E2B) : const Color(0xFFD4DED8),
+                      color: _currentIndex == index ? AppColors.primary : AppColors.textSoft.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Bagian Bawah: Tombol Navigasi (Dinamis sesuai Slide)
               SizedBox(
                 height: 52,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Jika di slide terakhir, tampilkan tombol "Kembali" di kiri
                     if (_currentIndex == _onboardingData.length - 1)
                       TextButton(
                         onPressed: () {
@@ -168,16 +159,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: const Text(
                           'Kembali',
                           style: TextStyle(
-                            color: Color(0xFF0F3E2B),
+                            color: AppColors.textDark,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       )
                     else
-                      const SizedBox(), // Kosongkan jika bukan slide terakhir
-
-                    // Tombol Kanan ("Lanjut" teks biasa atau tombol "Mengerti")
+                      const SizedBox(),
                     if (_currentIndex < _onboardingData.length - 1)
                       TextButton(
                         onPressed: () {
@@ -189,7 +178,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: const Text(
                           'Lanjut',
                           style: TextStyle(
-                            color: Color(0xFF0F3E2B),
+                            color: AppColors.textDark,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -198,7 +187,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     else
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F3E2B),
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(26),
                           ),
@@ -209,7 +198,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: const Text(
                           'Mengerti',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textDark,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
