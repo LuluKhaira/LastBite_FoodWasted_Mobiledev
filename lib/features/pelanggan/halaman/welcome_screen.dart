@@ -4,8 +4,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart'; // Sesuaikan path import AppColors kamu
-import 'user_login_screen.dart'; // Sesuaikan path import login screen kamu
+
+import '../../../core/theme/app_colors.dart';
+import 'user_login_screen.dart';
+
+import '../../mitra/pages/register/mitra_register_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -23,7 +26,10 @@ class WelcomeScreen extends StatelessWidget {
               // Badge Atas
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
@@ -134,13 +140,22 @@ class WelcomeScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const UserLoginScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const UserLoginScreen(),
+                          ),
                         );
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('→', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            '→',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Mulai Selamatkan',
@@ -162,14 +177,26 @@ class WelcomeScreen extends StatelessWidget {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        side: BorderSide(color: AppColors.textSoft.withValues(alpha: 0.25), width: 1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                        side: BorderSide(
+                          color: AppColors.textSoft.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
                       ),
                       onPressed: () {},
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                          const Text(
+                            'G',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             'Lanjutkan dengan Google',
@@ -199,13 +226,19 @@ class WelcomeScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const UserLoginScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const UserLoginScreen(),
+                          ),
                         );
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 18),
+                          const Icon(
+                            Icons.mail_outline_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Lanjutkan dengan HP / Email',
@@ -222,7 +255,14 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Teks Bawah
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MitraRegisterScreen(),
+                        ),
+                      );
+                    },
                     child: Text(
                       'Masuk sebagai Mitra Toko / Penjual →',
                       style: GoogleFonts.poppins(
