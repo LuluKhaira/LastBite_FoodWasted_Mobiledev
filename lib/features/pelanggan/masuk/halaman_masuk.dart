@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import 'otp_verification_screen.dart'; // Hubungkan ke halaman OTP
+import '../daftar/verifikasi_otp.dart'; // Hubungkan ke halaman OTP
 
 class UserLoginScreen extends StatelessWidget {
   const UserLoginScreen({super.key});

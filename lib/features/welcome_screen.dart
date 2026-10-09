@@ -5,10 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
-import 'user_login_screen.dart';
+import '../core/theme/app_colors.dart';
+import 'pelanggan/masuk/halaman_masuk.dart';
 
-import '../../mitra/pages/register/mitra_register_screen.dart';
+import 'mitra/pages/register/mitra_register_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});

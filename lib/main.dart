@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/theme/app_colors.dart';
-import 'features/pelanggan/halaman/welcome_screen.dart';
+import 'features/welcome_screen.dart';
 
 void main() {
   runApp(const LastBiteApp());

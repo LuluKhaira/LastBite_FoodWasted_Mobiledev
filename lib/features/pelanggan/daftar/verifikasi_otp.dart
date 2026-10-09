@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import 'beranda_screen.dart'; // Sesuaikan path file beranda kamu jika berbeda
+import '../beranda/halaman_beranda.dart'; // Sesuaikan path file beranda kamu jika berbeda
 
 class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({super.key});
