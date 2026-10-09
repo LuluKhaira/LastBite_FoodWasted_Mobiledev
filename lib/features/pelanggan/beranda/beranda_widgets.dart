@@ -327,7 +327,13 @@ class LbLocationRow extends StatelessWidget {
 // ============================================================
 class LbSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
-  const LbSearchBar({super.key, this.onChanged});
+  final bool isTernak;
+
+  const LbSearchBar({
+    super.key,
+    this.onChanged,
+    this.isTernak = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +364,9 @@ class LbSearchBar extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'Cari makanan, resto, atau pakan ternak...',
+                hintText: isTernak
+                    ? 'Cari pakan ternak, pupuk, atau bahan organik...'
+                    : 'Cari makanan, roti, atau resto...',
                 hintStyle: LbText.body(14, color: LbColors.textGrey),
               ),
             ),
@@ -1249,7 +1257,10 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     const SizedBox(height: 16),
                     const LbLocationRow(),
                     const SizedBox(height: 14),
-                    LbSearchBar(onChanged: widget.onSearch),
+                    LbSearchBar(
+                      onChanged: widget.onSearch,
+                      isTernak: widget.isTernak,
+                    ),
                     const SizedBox(height: 18),
                     const LbBanner(),
                     const SizedBox(height: 18),
