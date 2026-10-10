@@ -330,9 +330,16 @@ class LbLocationRow extends StatelessWidget {
 // ============================================================
 // SEARCH BAR
 // ============================================================
+
 class LbSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
-  const LbSearchBar({super.key, this.onChanged});
+  final VoidCallback? onFilterTap;
+
+  const LbSearchBar({
+    super.key,
+    this.onChanged,
+    this.onFilterTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -353,21 +360,34 @@ class LbSearchBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.search_rounded, color: LbColors.forest, size: 26),
+          const Icon(
+            Icons.search_rounded,
+            color: LbColors.forest,
+            size: 26,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
               onChanged: onChanged,
               cursorColor: LbColors.sageDeep,
-              style: LbText.body(14, color: LbColors.forest),
+              style: LbText.body(
+                14,
+                color: LbColors.forest,
+              ),
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'Cari makanan, resto, atau pakan ternak...',
-                hintStyle: LbText.body(14, color: LbColors.textGrey),
+                hintText:
+                    'Cari makanan, resto, atau pakan ternak...',
+                hintStyle: LbText.body(
+                  14,
+                  color: LbColors.textGrey,
+                ),
               ),
             ),
           ),
+
+          // TOMBOL FILTER YANG BISA DIKLIK
           Container(
             width: 42,
             height: 42,
@@ -375,10 +395,15 @@ class LbSearchBar extends StatelessWidget {
               color: LbColors.sageLight,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.tune_rounded,
-              size: 22,
-              color: LbColors.forest,
+            child: IconButton(
+              onPressed: onFilterTap,
+              tooltip: 'Filter preferensi',
+              padding: EdgeInsets.zero,
+              icon: const Icon(
+                Icons.tune_rounded,
+                size: 22,
+                color: LbColors.forest,
+              ),
             ),
           ),
         ],
@@ -386,6 +411,7 @@ class LbSearchBar extends StatelessWidget {
     );
   }
 }
+
 
 // ============================================================
 // BANNER MISI ZERO WASTE
@@ -1195,15 +1221,17 @@ class LbBottomNav extends StatelessWidget {
 // ============================================================
 // LAYOUT HALAMAN BERANDA (dipakai kedua mode)
 // ============================================================
+
 class BerandaLayout extends StatefulWidget {
   final bool isTernak;
-  final ValueChanged<bool> onSwitch; // true = pindah ke ternak
+  final ValueChanged<bool> onSwitch;
   final List<LbKategori> kategori;
   final int selectedKategori;
   final ValueChanged<int> onKategori;
   final String sectionTitle;
   final List<BahanItem> items;
   final ValueChanged<String>? onSearch;
+  final VoidCallback? onFilterTap;
   final VoidCallback? onLihatPeta;
   final ValueChanged<int>? onNavTap;
   final ValueChanged<BahanItem>? onItemTap;
@@ -1218,14 +1246,17 @@ class BerandaLayout extends StatefulWidget {
     required this.sectionTitle,
     required this.items,
     this.onSearch,
+    this.onFilterTap,
     this.onLihatPeta,
     this.onNavTap,
     this.onItemTap,
   });
 
   @override
-  State<BerandaLayout> createState() => _BerandaLayoutState();
+  State<BerandaLayout> createState() =>
+      _BerandaLayoutState();
 }
+
 
 class _BerandaLayoutState extends State<BerandaLayout> {
   int _nav = 0;
@@ -1256,7 +1287,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     const SizedBox(height: 16),
                     const LbLocationRow(),
                     const SizedBox(height: 14),
-                    LbSearchBar(onChanged: widget.onSearch),
+                    LbSearchBar(onChanged: widget.onSearch, onFilterTap: widget.onFilterTap,),
                     const SizedBox(height: 18),
                     const LbBanner(),
                     const SizedBox(height: 18),
