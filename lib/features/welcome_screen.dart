@@ -88,17 +88,19 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   // Ilustrasi / Logo Bumi & Apel Digigit
-                  Container(
-                    width: 170,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text('🌍🍏', style: TextStyle(fontSize: 75)),
-                    ),
-                  ),
+                  
+                Image.asset(
+                  'assets/images/lastbite_logo.png',
+                  width: 450,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Text(
+                      'Logo gagal dimuat',
+                      style: TextStyle(color: Colors.red),
+                    );
+                  },
+                ),
+
                   const SizedBox(height: 16),
                   Text(
                     'LastBite',
