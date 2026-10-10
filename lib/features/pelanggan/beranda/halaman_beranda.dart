@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'beranda_widgets.dart';
+import 'detail_paket.dart';
 import 'beranda_untukternak.dart';
 
 class BerandaScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
       nama: 'Paket Kejutan Roti Manis & Pastry',
       penjual: 'Holland Bakery - Batam Center',
       inisial: 'HB',
+      alamat: 'Jl. Engku Putri No. 8, Batam Center',
       waktu: '19:00 - 20:00 WIB',
       jarak: '1,2 km',
       kategori: 'Roti & Bakery',
@@ -96,6 +98,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
       onSearch: (v) => setState(() => _query = v),
       sectionTitle: 'Paket Kejutan di Sekitarmu',
       items: _items,
+      onItemTap: (item) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DetailPaketScreen(item: item)),
+      ),
       onSwitch: (keTernak) {
         if (keTernak) {
           Navigator.push(

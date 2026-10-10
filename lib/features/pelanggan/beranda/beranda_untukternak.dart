@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'beranda_widgets.dart';
+import 'detail_paket.dart';
 import 'halaman_beranda.dart';
 
 class BerandaUntukTernakScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _BerandaUntukTernakScreenState extends State<BerandaUntukTernakScreen> {
       nama: 'Sisa Roti untuk Pakan Ternak',
       penjual: 'Holland Bakery - Batam Center',
       inisial: 'HB',
+      alamat: 'Jl. Engku Putri No. 8, Batam Center',
       waktu: '08:00 - 10:00 WIB',
       jarak: '1,8 km',
       kategori: 'Pakan Ternak',
@@ -120,6 +122,10 @@ class _BerandaUntukTernakScreenState extends State<BerandaUntukTernakScreen> {
       onSearch: (v) => setState(() => _query = v),
       sectionTitle: 'Pasokan Bahan Organik Terdekat',
       items: _items,
+      onItemTap: (item) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DetailPaketScreen(item: item)),
+      ),
       onSwitch: (keTernak) {
         if (!keTernak) {
           // Balik ke "Untuk Dimakan"

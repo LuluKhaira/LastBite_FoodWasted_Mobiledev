@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'filter_preferensi.dart';
 
 // ============================================================
 // WARNA LASTBITE
@@ -80,6 +79,7 @@ class BahanItem {
   final String harga;
   final String satuan; // "Gratis" / "/paket" / "/karung"
   final String? hargaAsli; // harga coret (opsional)
+  final String alamat;
 
   const BahanItem({
     required this.nama,
@@ -96,9 +96,13 @@ class BahanItem {
     required this.satuan,
     this.tagIcon = Icons.eco_rounded,
     this.hargaAsli,
+    this.alamat = 'Batam Center, Kepulauan Riau',
   });
 
   bool get gratis => harga == 'Rp0';
+
+  bool get untukTernak =>
+      kategori == 'Pakan Ternak' || kategori == 'Bahan Pupuk';
 }
 
 class LbKategori {
@@ -328,8 +332,7 @@ class LbLocationRow extends StatelessWidget {
 // ============================================================
 class LbSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
-  final VoidCallback? onFilter;
-  const LbSearchBar({super.key, this.onChanged, this.onFilter});
+  const LbSearchBar({super.key, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -365,21 +368,17 @@ class LbSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          Material(
-            color: LbColors.sageLight,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onFilter,
-              child: const SizedBox(
-                width: 42,
-                height: 42,
-                child: Icon(
-                  Icons.tune_rounded,
-                  size: 22,
-                  color: LbColors.forest,
-                ),
-              ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              color: LbColors.sageLight,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.tune_rounded,
+              size: 22,
+              color: LbColors.forest,
             ),
           ),
         ],
@@ -1207,6 +1206,7 @@ class BerandaLayout extends StatefulWidget {
   final ValueChanged<String>? onSearch;
   final VoidCallback? onLihatPeta;
   final ValueChanged<int>? onNavTap;
+  final ValueChanged<BahanItem>? onItemTap;
 
   const BerandaLayout({
     super.key,
@@ -1220,6 +1220,7 @@ class BerandaLayout extends StatefulWidget {
     this.onSearch,
     this.onLihatPeta,
     this.onNavTap,
+    this.onItemTap,
   });
 
   @override
@@ -1228,53 +1229,6 @@ class BerandaLayout extends StatefulWidget {
 
 class _BerandaLayoutState extends State<BerandaLayout> {
   int _nav = 0;
-  Map<String, dynamic> _filter = {};
-
-  Future<void> _openFilter() async {
-    final result = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FilterPreferensiScreen(isTernak: widget.isTernak),
-      ),
-    );
-    if (result != null && mounted) {
-      setState(() => _filter = result);
-    }
-  }
-
-  List<BahanItem> get _filteredItems {
-    final selected = (_filter['kategori'] as List<String>?) ?? <String>[];
-    final maxKm = (_filter['jarak'] as double?) ?? 10.0;
-    final onlyAvailable = (_filter['tersedia'] as bool?) ?? false;
-    final price = (_filter['harga'] as String?) ?? 'Semua Harga';
-    final order = (_filter['urutan'] as String?) ?? 'Rekomendasi';
-    var result = widget.items.where((item) {
-      if (selected.isNotEmpty && !selected.contains(item.kategori)) return false;
-      final km = double.tryParse(item.jarak.replaceAll(' km', '').replaceAll(',', '.')) ?? 99;
-      if (km > maxKm) return false;
-      if (onlyAvailable && (item.badge.toLowerCase().contains('habis') || item.badge == '0')) return false;
-      final amount = int.tryParse(item.harga.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-      if (price == 'Di bawah Rp25.000' && amount >= 25000) return false;
-      if (price == 'Rp25.000–Rp50.000' && (amount < 25000 || amount > 50000)) return false;
-      if (price == 'Di atas Rp50.000' && amount <= 50000) return false;
-      return true;
-    }).toList();
-
-    if (order == 'Jarak Terdekat') {
-      result.sort((a, b) {
-        final ak = double.tryParse(a.jarak.replaceAll(' km', '').replaceAll(',', '.')) ?? 99;
-        final bk = double.tryParse(b.jarak.replaceAll(' km', '').replaceAll(',', '.')) ?? 99;
-        return ak.compareTo(bk);
-      });
-    } else if (order == 'Harga Terendah') {
-      result.sort((a, b) {
-        final ap = int.tryParse(a.harga.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        final bp = int.tryParse(b.harga.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        return ap.compareTo(bp);
-      });
-    }
-    return result;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1302,7 +1256,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     const SizedBox(height: 16),
                     const LbLocationRow(),
                     const SizedBox(height: 14),
-                    LbSearchBar(onChanged: widget.onSearch, onFilter: _openFilter),
+                    LbSearchBar(onChanged: widget.onSearch),
                     const SizedBox(height: 18),
                     const LbBanner(),
                     const SizedBox(height: 18),
@@ -1326,7 +1280,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                 ),
               ),
             ),
-            if (_filteredItems.isEmpty)
+            if (widget.items.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1367,10 +1321,16 @@ class _BerandaLayoutState extends State<BerandaLayout> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                 sliver: SliverList.separated(
-                  itemCount: _filteredItems.length,
+                  itemCount: widget.items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 14),
                   itemBuilder: (context, i) =>
-                      BahanCard(item: _filteredItems[i], index: i),
+                      BahanCard(
+                    item: widget.items[i],
+                    index: i,
+                    onTap: widget.onItemTap == null
+                        ? null
+                        : () => widget.onItemTap!(widget.items[i]),
+                  ),
                 ),
               ),
           ],
