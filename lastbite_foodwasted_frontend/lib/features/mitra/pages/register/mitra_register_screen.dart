@@ -6,9 +6,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_otp_screen.dart';
 
-// Warna khusus halaman ini (private, diawali _ supaya tidak bentrok dengan main.dart)
 const _bg = Color(0xFFEAFDE1);
 const _primary = Color(0xFF006B1E);
 const _fieldBg = Color(0xFFE6F6DE);
@@ -16,8 +17,6 @@ const _infoBg = Color(0xFFDFF0D8);
 const _textDark = Color(0xFF10260F);
 const _textSoft = Color(0xFF3F4A3C);
 
-// StatefulWidget = widget yang punya "state" (data yang bisa berubah).
-// Dipakai di sini karena kita butuh TextEditingController untuk membaca isi input.
 class MitraRegisterScreen extends StatefulWidget {
   const MitraRegisterScreen({super.key});
 
@@ -35,27 +34,57 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
     super.dispose();
   }
 
-  void _kirimKode() {
+  Future<void> _kirimKode() async {
     final nomor = _phoneController.text.trim();
 
     // Validasi sederhana: nomor Indonesia tanpa 0 di depan, minimal 9 digit.
     if (nomor.length < 9 || nomor.startsWith('0')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Masukkan nomor WhatsApp yang valid, tanpa angka 0 di depan.'),
+          content: Text(
+            'Masukkan nomor WhatsApp yang valid, tanpa angka 0 di depan.',
+          ),
         ),
       );
       return;
     }
 
-    // TODO: panggil API untuk kirim OTP ke +62$nomor.
-    // Sementara langsung pindah ke langkah 2 sambil membawa nomornya.
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MitraOtpScreen(phoneNumber: nomor),
+    // Tampilkan indikator loading saat menghubungi server Laravel
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: _primary),
       ),
     );
+
+    // Panggil API Laravel melalui ApiService
+    bool sukses = await ApiService.registerWhatsApp(nomor);
+
+    // Tutup loading dialog
+    if (mounted) Navigator.pop(context);
+
+    if (sukses) {
+      // Jika berhasil terhubung dan data tersimpan di backend, lanjut ke langkah 2 (OTP)
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MitraOtpScreen(phoneNumber: nomor),
+          ),
+        );
+      }
+    } else {
+      // Jika gagal terhubung atau server Laravel error/mati
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal terhubung ke server. Pastikan Laravel sudah aktif.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -161,7 +190,9 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                               // Kotak kode negara
                               Container(
                                 height: 56,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _fieldBg,
                                   borderRadius: BorderRadius.circular(16),
@@ -228,8 +259,11 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.chat_outlined,
-                                  size: 18, color: _primary),
+                              const Icon(
+                                Icons.chat_outlined,
+                                size: 18,
+                                color: _primary,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -262,13 +296,17 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                                     color: Color(0xFFA5EE9E),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.verified_outlined,
-                                      color: _primary, size: 24),
+                                  child: const Icon(
+                                    Icons.verified_outlined,
+                                    color: _primary,
+                                    size: 24,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Komunikasi Cepat & Aman',
@@ -315,8 +353,11 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.storefront_outlined,
-                                color: _primary, size: 30),
+                            child: const Icon(
+                              Icons.storefront_outlined,
+                              color: _primary,
+                              size: 30,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
