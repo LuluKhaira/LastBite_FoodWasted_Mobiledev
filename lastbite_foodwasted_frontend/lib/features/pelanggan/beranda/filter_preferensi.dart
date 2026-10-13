@@ -8,7 +8,16 @@ const _grey = Color(0xFF7B8374);
 
 class FilterPreferensiScreen extends StatefulWidget {
   final bool isTernak;
-  const FilterPreferensiScreen({super.key, required this.isTernak});
+
+  /// Filter yang sedang aktif (hasil pop sebelumnya) supaya pilihan tetap
+  /// tampil saat layar ini dibuka lagi.
+  final Map<String, dynamic>? initial;
+
+  const FilterPreferensiScreen({
+    super.key,
+    required this.isTernak,
+    this.initial,
+  });
 
   @override
   State<FilterPreferensiScreen> createState() => _FilterPreferensiScreenState();
@@ -29,6 +38,14 @@ class _FilterPreferensiScreenState extends State<FilterPreferensiScreen> {
   void initState() {
     super.initState();
     kategori = {};
+    final i = widget.initial;
+    if (i != null) {
+      urutan = (i['urutan'] ?? urutan).toString();
+      jarak = (i['jarak'] as num?)?.toDouble() ?? jarak;
+      tersedia = i['tersedia'] == true;
+      harga = (i['harga'] ?? harga).toString();
+      kategori = Set<String>.from((i['kategori'] as List?) ?? const []);
+    }
   }
 
   void reset() => setState(() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'pesanan_model.dart' show lbRp;
 
 // ============================================================
 // WARNA LASTBITE
@@ -65,6 +66,7 @@ class LbText {
 // MODEL DATA
 // ============================================================
 class BahanItem {
+  final int? id; // id produk di database (dari API)
   final String nama;
   final String penjual;
   final String inisial;
@@ -82,6 +84,7 @@ class BahanItem {
   final String alamat;
 
   const BahanItem({
+    this.id,
     required this.nama,
     required this.penjual,
     required this.inisial,
@@ -98,6 +101,45 @@ class BahanItem {
     this.hargaAsli,
     this.alamat = 'Batam Center, Kepulauan Riau',
   });
+
+  /// Bentuk data dari API Laravel (GET /api/produk).
+  factory BahanItem.fromJson(Map<String, dynamic> j) {
+    String fmt(double v) => v == v.roundToDouble()
+        ? v.toInt().toString()
+        : v.toStringAsFixed(1).replaceAll('.', ',');
+
+    final tipe = (j['tipe'] ?? 'dimakan').toString();
+    final harga = (j['harga'] as num?)?.toInt() ?? 0;
+    final asli = (j['harga_asli'] as num?)?.toInt();
+    final stok = (j['stok'] as num?)?.toInt() ?? 0;
+    final berat = (j['berat_kg'] as num?)?.toDouble() ?? 0;
+    final jarak = (j['jarak_km'] as num?)?.toDouble();
+    final penjual = (j['penjual'] ?? '').toString();
+    final inisial = (j['inisial'] ?? '').toString();
+
+    return BahanItem(
+      id: (j['id'] as num?)?.toInt(),
+      nama: (j['nama'] ?? '').toString(),
+      penjual: penjual,
+      inisial: inisial.isNotEmpty
+          ? inisial
+          : (penjual.isNotEmpty ? penjual.substring(0, 1).toUpperCase() : '?'),
+      waktu: (j['waktu'] ?? '-').toString(),
+      jarak: jarak == null ? '-' : '${fmt(jarak)} km',
+      kategori: (j['kategori'] ?? '').toString(),
+      gambar: (j['gambar'] ?? '').toString(),
+      badge: stok <= 0
+          ? 'Habis'
+          : (tipe == 'ternak' ? '${fmt(berat)} kg' : '$stok tersisa'),
+      rating: ((j['rating'] as num?)?.toDouble() ?? 0).toStringAsFixed(1),
+      tag: (j['tag'] ?? j['kategori'] ?? '').toString(),
+      tagIcon: tipe == 'ternak' ? Icons.eco_rounded : Icons.local_offer_outlined,
+      harga: lbRp(harga),
+      satuan: harga == 0 ? 'Gratis' : (j['satuan'] ?? '/paket').toString(),
+      hargaAsli: (asli != null && asli > harga) ? lbRp(asli) : null,
+      alamat: (j['alamat'] ?? 'Batam Center, Kepulauan Riau').toString(),
+    );
+  }
 
   bool get gratis => harga == 'Rp0';
 
@@ -333,7 +375,14 @@ class LbLocationRow extends StatelessWidget {
 // ============================================================
 class LbSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
-  const LbSearchBar({super.key, this.onChanged});
+  final VoidCallback? onFilter; // dipanggil saat tombol filter ditekan
+  final bool filterAktif; // true = tampilkan titik penanda
+  const LbSearchBar({
+    super.key,
+    this.onChanged,
+    this.onFilter,
+    this.filterAktif = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -369,17 +418,40 @@ class LbSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: LbColors.sageLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.tune_rounded,
-              size: 22,
-              color: LbColors.forest,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onFilter,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: filterAktif ? LbColors.sage : LbColors.sageLight,
+                shape: BoxShape.circle,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.tune_rounded,
+                    size: 22,
+                    color: LbColors.forest,
+                  ),
+                  if (filterAktif)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: LbColors.peach,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1208,6 +1280,11 @@ class BerandaLayout extends StatefulWidget {
   final VoidCallback? onLihatPeta;
   final ValueChanged<int>? onNavTap;
   final ValueChanged<BahanItem>? onItemTap;
+  final VoidCallback? onFilter;
+  final bool filterAktif;
+  final bool loading;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   const BerandaLayout({
     super.key,
@@ -1222,6 +1299,11 @@ class BerandaLayout extends StatefulWidget {
     this.onLihatPeta,
     this.onNavTap,
     this.onItemTap,
+    this.onFilter,
+    this.filterAktif = false,
+    this.loading = false,
+    this.errorMessage,
+    this.onRetry,
   });
 
   @override
@@ -1252,7 +1334,11 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     const SizedBox(height: 16),
                     const LbLocationRow(),
                     const SizedBox(height: 14),
-                    LbSearchBar(onChanged: widget.onSearch),
+                    LbSearchBar(
+                      onChanged: widget.onSearch,
+                      onFilter: widget.onFilter,
+                      filterAktif: widget.filterAktif,
+                    ),
                     const SizedBox(height: 18),
                     const LbBanner(),
                     const SizedBox(height: 18),
@@ -1276,7 +1362,57 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                 ),
               ),
             ),
-            if (widget.items.isEmpty)
+            if (widget.loading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 56),
+                  child: Center(
+                    child: SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: LbColors.sageDeep,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else if (widget.errorMessage != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 40,
+                    horizontal: 32,
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.cloud_off_rounded,
+                        size: 44,
+                        color: LbColors.sageDeep,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: LbText.body(13),
+                      ),
+                      const SizedBox(height: 14),
+                      TextButton.icon(
+                        onPressed: widget.onRetry,
+                        icon: const Icon(Icons.refresh_rounded,
+                            color: LbColors.forest),
+                        label: Text(
+                          'Coba lagi',
+                          style: LbText.heading(13, weight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (widget.items.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1305,7 +1441,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Coba ganti kata kunci atau kategori lain.',
+                        'Coba ganti kata kunci, kategori, atau filter lain.',
                         textAlign: TextAlign.center,
                         style: LbText.body(12.5),
                       ),
