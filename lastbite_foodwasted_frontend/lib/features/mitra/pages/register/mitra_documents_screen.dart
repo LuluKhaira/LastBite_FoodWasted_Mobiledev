@@ -1,38 +1,104 @@
+// ============================================================
+// LastBite - Daftar Mitra, Langkah 5 dari 6 (Dokumen Pendukung)
+// ============================================================
+
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 
 import 'mitra_menunggu_verifikasi_screen.dart';
 
-const _bg = Color(0xFFEAFDE1);
-const _primary = Color(0xFF006B1E);
-const _cardBg = Color(0xFFF3FAF0);
-const _cardBorder = Color(0xFFD9ECD2);
-const _textDark = Color(0xFF10260F);
-const _textSoft = Color(0xFF3F4A3C);
-const _grey = Color(0xFF8C978A);
+const Color _kBorder = Color(0xFFE9E6E0);
+const Color _kTrack = Color(0xFFECE9E4);
 
 class MitraDocumentsScreen extends StatefulWidget {
-  const MitraDocumentsScreen({super.key});
+  final String phoneNumber;
+
+  const MitraDocumentsScreen({super.key, required this.phoneNumber});
 
   @override
   State<MitraDocumentsScreen> createState() => _MitraDocumentsScreenState();
 }
 
 class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
-  String? _ktpFile;
-  String? _npwpFile;
-  String? _halalFile;
+  File? _ktpFile;
+  File? _npwpFile;
+  File? _halalFile;
 
   bool _setujuSyarat = false;
+  bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
 
-  void _pilihFile(String jenis, void Function(String) onPicked) {
-    onPicked('$jenis-scan.jpg');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$jenis terpilih (simulasi, belum upload asli).')),
+  Future<void> _pilihSumberFile(Function(File) onFileSelected) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Pilih Sumber Dokumen',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.orange),
+              title: Text(
+                'Kamera',
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                final pickedFile = await _picker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 80,
+                );
+                if (pickedFile != null) {
+                  setState(() => onFileSelected(File(pickedFile.path)));
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'Galeri',
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                final pickedFile = await _picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 80,
+                );
+                if (pickedFile != null) {
+                  setState(() => onFileSelected(File(pickedFile.path)));
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  void _selesai() {
+  Future<void> _selesai() async {
     if (_ktpFile == null) {
       _showError('Foto KTP pemilik usaha wajib diunggah.');
       return;
@@ -42,24 +108,46 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
       return;
     }
 
-    // Navigasi ke Halaman Menunggu Verifikasi
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MitraMenungguVerifikasiScreen(),
-      ),
+    setState(() => _isLoading = true);
+
+    bool sukses = await ApiService.setDocuments(
+      phoneNumber: widget.phoneNumber,
+      ktpPath: _ktpFile!.path,
+      npwpPath: _npwpFile?.path,
+      halalPath: _halalFile?.path,
     );
+
+    setState(() => _isLoading = false);
+
+    if (sukses) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MitraMenungguVerifikasiScreen(),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        _showError('Gagal mengunggah dokumen ke server.');
+      }
+    }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.nunito(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -78,20 +166,20 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Verifikasi Dokumen Usaha',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Upload dokumen untuk memastikan keabsahan toko di Lastbite.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
+                      'Upload dokumen asli untuk memastikan keabsahan toko di LastBite.',
+                      style: GoogleFonts.nunito(
+                        fontSize: 14.5,
                         height: 1.6,
-                        color: _textSoft,
+                        color: AppColors.textSoft,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -102,28 +190,31 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                       title: 'KTP Pemilik Usaha',
                       requiredLabel: 'Wajib',
                       buttonLabel: _ktpFile == null
-                          ? 'Pilih Foto KTP (Maks. 5 MB)'
-                          : 'Terpilih: $_ktpFile',
-                      helperText: 'Format JPG, PNG, atau PDF jelas terbaca',
+                          ? 'Ambil / Pilih Foto KTP'
+                          : 'KTP Terpilih (${_ktpFile!.path.split('/').last})',
+                      helperText: 'Foto KTP asli tampak jelas dan tidak blur',
                       picked: _ktpFile != null,
-                      onTap: () => _pilihFile(
-                        'KTP',
-                        (f) => setState(() => _ktpFile = f),
+                      onTap: () => _pilihSumberFile(
+                        (file) => setState(() => _ktpFile = file),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.info_outline, size: 16, color: _grey),
+                        const Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.textSoft,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Data KTP dienkripsi & hanya digunakan untuk validasi identitas mitra.',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
                               height: 1.4,
-                              color: _textSoft,
+                              color: AppColors.textSoft,
                             ),
                           ),
                         ),
@@ -138,13 +229,12 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                       requiredLabel: 'Opsional',
                       optional: true,
                       buttonLabel: _npwpFile == null
-                          ? 'Upload NPWP (Maks. 5 MB)'
-                          : 'Terpilih: $_npwpFile',
-                      helperText: 'Format JPG, PNG, atau PDF (Maks. 5 MB) - boleh dikosongkan bila belum ada',
+                          ? 'Upload NPWP (Opsional)'
+                          : 'NPWP Terpilih (${_npwpFile!.path.split('/').last})',
+                      helperText: 'Boleh dikosongkan bila belum ada',
                       picked: _npwpFile != null,
-                      onTap: () => _pilihFile(
-                        'NPWP',
-                        (f) => setState(() => _npwpFile = f),
+                      onTap: () => _pilihSumberFile(
+                        (file) => setState(() => _npwpFile = file),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -156,32 +246,14 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                       requiredLabel: 'Opsional',
                       optional: true,
                       buttonLabel: _halalFile == null
-                          ? 'Upload Dokumen Halal / SEHATI'
-                          : 'Terpilih: $_halalFile',
-                      helperText: 'Foto sertifikat halal atau bukti pendaftaran program SEHATI (opsional)',
+                          ? 'Upload Dokumen Halal / SEHATI (Opsional)'
+                          : 'Halal Terpilih (${_halalFile!.path.split('/').last})',
+                      helperText:
+                          'Foto sertifikat halal atau bukti pendaftaran SEHATI',
                       picked: _halalFile != null,
-                      onTap: () => _pilihFile(
-                        'Sertifikat Halal',
-                        (f) => setState(() => _halalFile = f),
+                      onTap: () => _pilihSumberFile(
+                        (file) => setState(() => _halalFile = file),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.info_outline, size: 16, color: _grey),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Belum punya sertifikat halal? Tetap bisa mendaftar, program SEHATI pemerintah tersedia secara gratis.',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
-                              height: 1.4,
-                              color: _textSoft,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                     const SizedBox(height: 20),
 
@@ -194,7 +266,8 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                         children: [
                           Checkbox(
                             value: _setujuSyarat,
-                            activeColor: _primary,
+                            activeColor: AppColors.orange,
+                            checkColor: AppColors.textDark,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -203,32 +276,32 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                           ),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 14),
+                              padding: const EdgeInsets.only(top: 10),
                               child: Text.rich(
                                 TextSpan(
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.nunito(
                                     fontSize: 13.5,
                                     height: 1.5,
-                                    color: _textSoft,
+                                    color: AppColors.textSoft,
                                   ),
-                                  children: const [
-                                    TextSpan(text: 'Saya menyetujui '),
+                                  children: [
+                                    const TextSpan(text: 'Saya menyetujui '),
                                     TextSpan(
                                       text: 'Syarat & Ketentuan Kemitraan',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w800,
-                                        color: _textDark,
+                                        color: AppColors.textDark,
                                       ),
                                     ),
-                                    TextSpan(text: ' serta '),
+                                    const TextSpan(text: ' serta '),
                                     TextSpan(
                                       text: 'Kebijakan Privasi',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w800,
-                                        color: _textDark,
+                                        color: AppColors.textDark,
                                       ),
                                     ),
-                                    TextSpan(text: ' Lastbite.'),
+                                    const TextSpan(text: ' LastBite.'),
                                   ],
                                 ),
                               ),
@@ -249,28 +322,45 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _selesai,
+                  onPressed: _isLoading ? null : _selesai,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: AppColors.textDark,
+                    disabledBackgroundColor: AppColors.orange.withOpacity(0.6),
+                    elevation: 3,
+                    shadowColor: AppColors.orange.withOpacity(0.4),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle_outline, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Selesai',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: AppColors.textDark,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline,
+                              size: 20,
+                              color: AppColors.textDark,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Selesai',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
@@ -281,7 +371,6 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
   }
 }
 
-// ---------- Kartu satu dokumen ----------
 class _DocumentCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -311,7 +400,7 @@ class _DocumentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _cardBorder),
+        border: Border.all(color: _kBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,19 +411,19 @@ class _DocumentCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: _textDark,
+                    color: AppColors.textDark,
                   ),
                 ),
               ),
               Text(
                 requiredLabel,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5,
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: optional ? _grey : _primary,
+                  color: optional ? AppColors.textSoft : AppColors.orange,
                 ),
               ),
             ],
@@ -346,11 +435,11 @@ class _DocumentCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 24),
               decoration: BoxDecoration(
-                color: _cardBg,
+                color: AppColors.bg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: picked ? _primary : const Color(0xFFBFE0B8),
-                  style: BorderStyle.solid,
+                  color: picked ? AppColors.orange : _kBorder,
+                  width: picked ? 1.5 : 1,
                 ),
               ),
               child: Column(
@@ -358,13 +447,13 @@ class _DocumentCard extends StatelessWidget {
                   Container(
                     width: 44,
                     height: 44,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: picked ? AppColors.orange : Colors.white,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       picked ? Icons.check_circle : icon,
-                      color: _primary,
+                      color: picked ? AppColors.textDark : AppColors.orange,
                       size: 22,
                     ),
                   ),
@@ -374,10 +463,10 @@ class _DocumentCard extends StatelessWidget {
                     child: Text(
                       buttonLabel,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: _primary,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                       ),
                     ),
                   ),
@@ -387,9 +476,9 @@ class _DocumentCard extends StatelessWidget {
                     child: Text(
                       helperText,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11.5,
-                        color: _grey,
+                      style: GoogleFonts.nunito(
+                        fontSize: 12,
+                        color: AppColors.textSoft,
                       ),
                     ),
                   ),
@@ -403,7 +492,6 @@ class _DocumentCard extends StatelessWidget {
   }
 }
 
-// ---------- Progress bar + label langkah ----------
 class _ProgressBar extends StatelessWidget {
   final int step;
   final int total;
@@ -425,18 +513,18 @@ class _ProgressBar extends StatelessWidget {
           children: [
             Text(
               'Langkah $step dari $total',
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.poppins(
                 fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: _primary,
+                fontWeight: FontWeight.w700,
+                color: AppColors.orange,
               ),
             ),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.nunito(
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _textSoft,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSoft,
               ),
             ),
           ],
@@ -447,8 +535,8 @@ class _ProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: step / total,
             minHeight: 8,
-            color: _primary,
-            backgroundColor: const Color(0xFFD5EDCB),
+            color: AppColors.primary,
+            backgroundColor: _kTrack,
           ),
         ),
       ],
@@ -456,7 +544,6 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-// ---------- Header ----------
 class _Header extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -465,31 +552,18 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      color: _bg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _textDark,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textSoft,
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          subtitle,
+          style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

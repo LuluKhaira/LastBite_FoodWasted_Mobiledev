@@ -9,9 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('mitras', function (Blueprint $table) {
-            $table->id('id_mitra'); // Primary Key (idMitra)
-            $table->string('no_whatsapp');
-            $table->text('alamat');
+            $table->id('id_mitra'); 
+            $table->string('no_whatsapp')->unique();
+            $table->string('otp')->nullable();
+            $table->string('password')->nullable();
+            $table->text('alamat')->nullable();
             $table->string('foto_ktp')->nullable();
             $table->string('foto_npwp')->nullable();
             $table->string('sertifikat_halal')->nullable();

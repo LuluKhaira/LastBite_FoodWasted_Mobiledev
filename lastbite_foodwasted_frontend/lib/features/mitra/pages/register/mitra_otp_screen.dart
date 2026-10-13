@@ -1,19 +1,21 @@
-import 'dart:async';
+// ============================================================
+// LastBite - Daftar Mitra, Langkah 2 dari 7 (Verifikasi OTP)
+// ============================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_password_screen.dart';
 
-const _bg = Color(0xFFEAFDE1);
-const _primary = Color(0xFF006B1E);
-const _fieldBg = Color(0xFFE6F6DE);
-const _emptyBox = Color(0xFFF0FAEA);
-const _textDark = Color(0xFF10260F);
-const _textSoft = Color(0xFF3F4A3C);
+// Warna netral pendukung desain
+const Color _kBorder = Color(0xFFE9E6E0);
+const Color _kTrack = Color(0xFFECE9E4);
 
 class MitraOtpScreen extends StatefulWidget {
-  
   final String phoneNumber;
 
   const MitraOtpScreen({super.key, required this.phoneNumber});
@@ -31,6 +33,7 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
 
   Timer? _timer;
   int _secondsLeft = _resendSeconds;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -42,13 +45,12 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel(); // hentikan timer supaya tidak jalan terus
+    _timer?.cancel();
     _otpController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  // Hitung mundur tiap 1 detik.
   void _startTimer() {
     _timer?.cancel();
     setState(() => _secondsLeft = _resendSeconds);
@@ -67,7 +69,6 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
     return '$m:$s';
   }
 
-  // 8123456789 -> 812-3456-789
   String get _formattedPhone {
     final n = widget.phoneNumber;
     final parts = <String>[];
@@ -85,34 +86,70 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
     return '+62 ${parts.join('-')}';
   }
 
-  void _resend() {
-    // TODO: panggil API untuk kirim ulang OTP
+  Future<void> _resend() async {
     _otpController.clear();
     _startTimer();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Kode baru telah dikirim.')),
-    );
+
+    bool sukses = await ApiService.registerWhatsApp(widget.phoneNumber);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sukses ? 'Kode OTP baru telah dikirim.' : 'Gagal mengirim ulang kode.',
+            style: GoogleFonts.nunito(color: Colors.white),
+          ),
+          backgroundColor: sukses ? AppColors.orange : Colors.red,
+        ),
+      );
+    }
   }
 
-  void _verify() {
-    if (_otpController.text.length != _otpLength) {
+  Future<void> _verify() async {
+    final otpCode = _otpController.text.trim();
+
+    if (otpCode.length != _otpLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan 6 digit kode verifikasi.')),
+        SnackBar(
+          content: Text('Masukkan 6 digit kode verifikasi dengan lengkap.', style: GoogleFonts.nunito(color: Colors.white)),
+        ),
       );
       return;
     }
-    // TODO: kirim ke server untuk dicek kebenaran kodenya.
-    // Sementara langsung lanjut ke langkah 3 kalau 6 digit sudah terisi.
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const MitraPasswordScreen()),
-    );
+
+    setState(() => _isLoading = true);
+
+    bool sukses = await ApiService.verifyOtp(widget.phoneNumber, otpCode);
+
+    if (mounted) setState(() => _isLoading = false);
+
+    if (sukses) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MitraPasswordScreen(
+              phoneNumber: widget.phoneNumber,
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kode OTP salah atau tidak valid!', style: GoogleFonts.nunito(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -128,18 +165,18 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                       children: [
                         Text(
                           'Langkah 2 dari 7',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: _primary,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.orange,
                           ),
                         ),
                         Text(
                           'Verifikasi OTP',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.nunito(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: _textSoft,
+                            color: AppColors.textSoft,
                           ),
                         ),
                       ],
@@ -147,11 +184,11 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(50),
-                      child: const LinearProgressIndicator(
+                      child: LinearProgressIndicator(
                         value: 2 / 7,
                         minHeight: 8,
-                        color: _primary,
-                        backgroundColor: Color(0xFFD5EDCB),
+                        color: AppColors.primary,
+                        backgroundColor: _kTrack,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -161,14 +198,17 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 48,
-                            height: 48,
-                            decoration: const BoxDecoration(
-                              color: _fieldBg,
-                              shape: BoxShape.circle,
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: AppColors.orange.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.mark_chat_unread_rounded,
-                                color: _primary, size: 24),
+                            child: const Icon(
+                              Icons.flag_rounded,
+                              color: AppColors.orange,
+                              size: 26,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -177,19 +217,19 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                               children: [
                                 Text(
                                   'Masukkan Kode Verifikasi',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: _textDark,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
                                     letterSpacing: -0.3,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Amankan akun kemitraan toko Anda',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.nunito(
                                     fontSize: 13.5,
-                                    color: _textSoft,
+                                    color: AppColors.textSoft,
                                   ),
                                 ),
                               ],
@@ -207,10 +247,10 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                         children: [
                           Text(
                             'Kode OTP 6-digit telah dikirimkan via WhatsApp resmi ke nomor:',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              height: 1.6,
-                              color: _textSoft,
+                            style: GoogleFonts.nunito(
+                              fontSize: 14.5,
+                              height: 1.5,
+                              color: AppColors.textSoft,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -218,33 +258,33 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
-                              color: _fieldBg,
+                              color: AppColors.bg,
                               borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: _kBorder, width: 1),
                             ),
                             child: Row(
                               children: [
                                 const Icon(Icons.chat,
-                                    size: 20, color: _primary),
-                                const SizedBox(width: 8),
+                                    size: 20, color: AppColors.orange),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _formattedPhone,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 16,
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w700,
-                                      color: _textDark,
+                                      color: AppColors.textDark,
                                     ),
                                   ),
                                 ),
                                 GestureDetector(
-                                  // Kembali ke halaman langkah 1 untuk ganti nomor.
                                   onTap: () => Navigator.pop(context),
                                   child: Text(
                                     'Ubah',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 15,
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color: _primary,
+                                      color: AppColors.orange,
                                     ),
                                   ),
                                 ),
@@ -259,45 +299,21 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
                     // ---- Kartu input OTP ----
                     _WhiteCard(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             'KODE 6-DIGIT',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: _textSoft,
-                              letterSpacing: 1,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSoft,
+                              letterSpacing: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          _buildOtpBoxes(),
                           const SizedBox(height: 16),
+                          _buildOtpBoxes(),
+                          const SizedBox(height: 20),
                           Center(child: _buildResendChip()),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ---- Peringatan ----
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.shield,
-                              size: 20, color: Color(0xFF6B7B68)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Jangan bagikan kode verifikasi ini kepada siapa pun, termasuk pihak yang mengatasnamakan Lastbite.',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13.5,
-                                height: 1.5,
-                                color: _textSoft,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -306,74 +322,53 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
               ),
             ),
 
-            // ---- Bawah ----
+            // ---- Tombol Bawah ----
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _verify,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Verifikasi & Lanjutkan',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 22),
-                        ],
-                      ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _verify,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: AppColors.textDark,
+                    disabledBackgroundColor: AppColors.orange.withOpacity(0.6),
+                    elevation: 3,
+                    shadowColor: AppColors.orange.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Butuh bantuan? ',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          color: _textSoft,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          // TODO: buka WhatsApp Care (nanti pakai package url_launcher)
-                          debugPrint('WhatsApp Care ditekan');
-                        },
-                        child: Row(
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: AppColors.textDark,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Hubungi WhatsApp Care Lastbite',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: _primary,
+                              'Verifikasi & Lanjutkan',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.open_in_new,
-                                size: 16, color: _primary),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 22,
+                              color: AppColors.textDark,
+                            ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -382,11 +377,9 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
     );
   }
 
-  // 6 kotak OTP. Trik: satu TextField tak terlihat (Opacity 0) diletakkan
-  // di atas kotak-kotak, jadi keyboard tetap muncul dan input tetap 1 string.
   Widget _buildOtpBoxes() {
     final text = _otpController.text;
-    final activeIndex = text.length; // kotak yang sedang diisi
+    final activeIndex = text.length;
 
     return Stack(
       children: [
@@ -396,9 +389,9 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
             final active = i == activeIndex && _focusNode.hasFocus;
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: i == _otpLength - 1 ? 0 : 8),
-                child: AspectRatio(
-                  aspectRatio: 1,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: SizedBox(
+                  height: 54,
                   child: _OtpBox(
                     digit: filled ? text[i] : null,
                     active: active,
@@ -435,9 +428,9 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
     return GestureDetector(
       onTap: canResend ? _resend : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: _fieldBg,
+          color: AppColors.orange.withOpacity(0.12),
           borderRadius: BorderRadius.circular(50),
         ),
         child: Row(
@@ -446,24 +439,25 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
             Icon(
               canResend ? Icons.refresh_rounded : Icons.access_time,
               size: 18,
-              color: canResend ? _primary : const Color(0xFF6B7B68),
+              color: AppColors.orange,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             if (canResend)
               Text(
                 'Kirim Ulang Kode',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.nunito(
                   fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: _primary,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.orange,
                 ),
               )
             else
               Text.rich(
                 TextSpan(
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.nunito(
                     fontSize: 14,
-                    color: const Color(0xFF6B7B68),
+                    color: AppColors.orange,
+                    fontWeight: FontWeight.w700,
                   ),
                   children: [
                     const TextSpan(text: 'Kirim Ulang Kode (dalam '),
@@ -482,7 +476,6 @@ class _MitraOtpScreenState extends State<MitraOtpScreen> {
   }
 }
 
-// ---------- Satu kotak OTP: terisi / aktif / kosong ----------
 class _OtpBox extends StatelessWidget {
   final String? digit;
   final bool active;
@@ -495,18 +488,14 @@ class _OtpBox extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: filled
-            ? _fieldBg
-            : active
-                ? Colors.white
-                : _emptyBox,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: active
-              ? _primary
+              ? AppColors.orange
               : filled
-                  ? const Color(0xFFCDEBC3)
-                  : Colors.transparent,
+                  ? AppColors.orange.withOpacity(0.4)
+                  : _kBorder,
           width: active ? 1.5 : 1,
         ),
       ),
@@ -514,29 +503,24 @@ class _OtpBox extends StatelessWidget {
       child: filled
           ? Text(
               digit!,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: _textDark,
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
               ),
             )
-          : active
-              // Garis kursor
-              ? Container(width: 2, height: 26, color: _primary)
-              // Titik placeholder
-              : Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFCBD5C8),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+          : Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.textDark,
+                shape: BoxShape.circle,
+              ),
+            ),
     );
   }
 }
 
-// ---------- Kartu putih ----------
 class _WhiteCard extends StatelessWidget {
   final Widget child;
   const _WhiteCard({required this.child});
@@ -549,9 +533,10 @@ class _WhiteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _kBorder, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -562,7 +547,6 @@ class _WhiteCard extends StatelessWidget {
   }
 }
 
-// ---------- Header ----------
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -571,24 +555,25 @@ class _Header extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      color: _bg,
+      color: AppColors.bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Daftar Mitra',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.poppins(
               fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _textDark,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
             'Verifikasi Otp',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textSoft,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSoft,
             ),
           ),
         ],

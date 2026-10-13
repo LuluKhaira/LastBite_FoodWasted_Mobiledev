@@ -1,21 +1,18 @@
 // ============================================================
 // LastBite - Daftar Mitra, Langkah 1 dari 7 (Nomor WhatsApp)
-// Simpan sebagai: lib/features/mitra/pages/register/mitra_register_screen.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_otp_screen.dart';
 
-const _bg = Color(0xFFEAFDE1);
-const _primary = Color(0xFF006B1E);
-const _fieldBg = Color(0xFFE6F6DE);
-const _infoBg = Color(0xFFDFF0D8);
-const _textDark = Color(0xFF10260F);
-const _textSoft = Color(0xFF3F4A3C);
+// Warna netral pendukung desain
+const Color _kBorder = Color(0xFFE9E6E0);
+const Color _kTrack = Color(0xFFECE9E4);
 
 class MitraRegisterScreen extends StatefulWidget {
   const MitraRegisterScreen({super.key});
@@ -27,7 +24,6 @@ class MitraRegisterScreen extends StatefulWidget {
 class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
   final _phoneController = TextEditingController();
 
-  // dispose() wajib: membersihkan controller saat halaman ditutup (hindari memory leak).
   @override
   void dispose() {
     _phoneController.dispose();
@@ -37,13 +33,15 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
   Future<void> _kirimKode() async {
     final nomor = _phoneController.text.trim();
 
-    // Validasi sederhana: nomor Indonesia tanpa 0 di depan, minimal 9 digit.
-    if (nomor.length < 9 || nomor.startsWith('0')) {
+    // Validasi panjang nomor (minimal 9 digit setelah dibersihkan)
+    if (nomor.length < 9) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Masukkan nomor WhatsApp yang valid, tanpa angka 0 di depan.',
+            'Masukkan nomor WhatsApp yang valid.',
+            style: GoogleFonts.nunito(color: Colors.white),
           ),
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -54,7 +52,7 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: CircularProgressIndicator(color: _primary),
+        child: CircularProgressIndicator(color: AppColors.orange),
       ),
     );
 
@@ -65,7 +63,6 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
     if (mounted) Navigator.pop(context);
 
     if (sukses) {
-      // Jika berhasil terhubung dan data tersimpan di backend, lanjut ke langkah 2 (OTP)
       if (mounted) {
         Navigator.push(
           context,
@@ -75,11 +72,13 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
         );
       }
     } else {
-      // Jika gagal terhubung atau server Laravel error/mati
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal terhubung ke server. Pastikan Laravel sudah aktif.'),
+          SnackBar(
+            content: Text(
+              'Gagal terhubung ke server. Pastikan Laravel sudah aktif.',
+              style: GoogleFonts.nunito(color: Colors.white),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -90,13 +89,11 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
             const _Header(),
-
-            // Bagian tengah bisa di-scroll (penting saat keyboard muncul).
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
@@ -109,18 +106,18 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                       children: [
                         Text(
                           'LANGKAH 1 DARI 7',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: _primary,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.orange,
                           ),
                         ),
                         Text(
                           'Nomor WhatsApp',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.nunito(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: _textSoft,
+                            color: AppColors.textSoft,
                           ),
                         ),
                       ],
@@ -131,8 +128,8 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                       child: const LinearProgressIndicator(
                         value: 1 / 7,
                         minHeight: 8,
-                        color: _primary,
-                        backgroundColor: Color(0xFFD5EDCB),
+                        color: AppColors.primary,
+                        backgroundColor: _kTrack,
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -140,20 +137,20 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                     // ---- Judul ----
                     Text(
                       'Mulai dengan Nomor WhatsApp',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Daftarkan nomor WhatsApp aktif toko atau pemilik untuk menerima notifikasi pesanan dan kode verifikasi.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
+                      style: GoogleFonts.nunito(
+                        fontSize: 14.5,
                         height: 1.6,
-                        color: _textSoft,
+                        color: AppColors.textSoft,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -164,10 +161,11 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _kBorder, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Colors.black.withOpacity(0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -178,10 +176,10 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                         children: [
                           Text(
                             'Nomor WhatsApp Aktif',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: GoogleFonts.poppins(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: _textDark,
+                              color: AppColors.textDark,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -194,8 +192,9 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                                   horizontal: 16,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _fieldBg,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: AppColors.bg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: _kBorder, width: 1),
                                 ),
                                 child: Row(
                                   children: [
@@ -203,51 +202,54 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                                     const SizedBox(width: 10),
                                     Text(
                                       '+62',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 17,
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w700,
-                                        color: _textDark,
+                                        color: AppColors.textDark,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // Input nomor
+                              // Input nomor (mendukung awalan 0 atau langsung 8)
                               Expanded(
                                 child: TextField(
                                   controller: _phoneController,
                                   keyboardType: TextInputType.phone,
-                                  // Hanya boleh angka
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
                                     LengthLimitingTextInputFormatter(13),
                                   ],
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: _textDark,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
                                   ),
                                   decoration: InputDecoration(
                                     hintText: '812-3456-7890',
-                                    hintStyle: GoogleFonts.plusJakartaSans(
-                                      fontSize: 17,
-                                      color: const Color(0xFF7C8A78),
+                                    hintStyle: GoogleFonts.nunito(
+                                      fontSize: 14,
+                                      color: AppColors.textSoft.withOpacity(0.6),
                                     ),
                                     filled: true,
-                                    fillColor: _fieldBg,
+                                    fillColor: AppColors.bg,
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
-                                      vertical: 18,
+                                      vertical: 16,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      borderSide: BorderSide.none,
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: _kBorder),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: _kBorder),
                                     ),
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(14),
                                       borderSide: const BorderSide(
-                                        color: _primary,
+                                        color: AppColors.orange,
                                         width: 1.5,
                                       ),
                                     ),
@@ -262,15 +264,15 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                               const Icon(
                                 Icons.chat_outlined,
                                 size: 18,
-                                color: _primary,
+                                color: AppColors.orange,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Kami akan kirim kode verifikasi ke nomor ini.',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    color: _textSoft,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13.5,
+                                    color: AppColors.textSoft,
                                   ),
                                 ),
                               ),
@@ -283,8 +285,9 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: _fieldBg,
-                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: _kBorder, width: 1),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,13 +295,13 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                                 Container(
                                   width: 44,
                                   height: 44,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFA5EE9E),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.orange.withOpacity(0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     Icons.verified_outlined,
-                                    color: _primary,
+                                    color: AppColors.orange,
                                     size: 24,
                                   ),
                                 ),
@@ -310,19 +313,19 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                                     children: [
                                       Text(
                                         'Komunikasi Cepat & Aman',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: GoogleFonts.poppins(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
-                                          color: _textDark,
+                                          color: AppColors.textDark,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Notifikasi pesanan surplus Lastbite dikirim langsung melalui WhatsApp.',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        'Notifikasi pesanan surplus LastBite dikirim langsung melalui WhatsApp.',
+                                        style: GoogleFonts.nunito(
                                           fontSize: 13.5,
                                           height: 1.5,
-                                          color: _textSoft,
+                                          color: AppColors.textSoft,
                                         ),
                                       ),
                                     ],
@@ -341,8 +344,9 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: _infoBg,
-                        borderRadius: BorderRadius.circular(24),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _kBorder, width: 1),
                       ),
                       child: Row(
                         children: [
@@ -350,12 +354,12 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.primary.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: const Icon(
                               Icons.storefront_outlined,
-                              color: _primary,
+                              color: AppColors.primary,
                               size: 30,
                             ),
                           ),
@@ -366,19 +370,19 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                               children: [
                                 Text(
                                   'Bergabung dengan 1.200+ Mitra',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: _textDark,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Kurangi makanan terbuang dan dapatkan pendapatan tambahan setiap hari.',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.nunito(
                                     fontSize: 13.5,
                                     height: 1.5,
-                                    color: _textSoft,
+                                    color: AppColors.textSoft,
                                   ),
                                 ),
                               ],
@@ -392,7 +396,7 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
               ),
             ),
 
-            // ---- Bagian bawah (tetap di bawah, tidak ikut scroll) ----
+            // ---- Bagian bawah ----
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
               child: Column(
@@ -403,24 +407,31 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                     child: ElevatedButton(
                       onPressed: _kirimKode,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.orange,
+                        foregroundColor: AppColors.textDark,
+                        elevation: 3,
+                        shadowColor: AppColors.orange.withOpacity(0.4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             'Kirim Kode',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 17,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 22),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 22,
+                            color: AppColors.textDark,
+                          ),
                         ],
                       ),
                     ),
@@ -431,23 +442,21 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                     children: [
                       Text(
                         'Sudah punya akun mitra? ',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.nunito(
                           fontSize: 14,
-                          color: _textSoft,
+                          color: AppColors.textSoft,
                         ),
                       ),
-                      // GestureDetector = bikin widget apa saja bisa diklik.
                       GestureDetector(
                         onTap: () {
-                          // TODO: pindah ke halaman login mitra
                           debugPrint('Masuk di sini ditekan');
                         },
                         child: Text(
                           'Masuk di sini',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.nunito(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: _primary,
+                            color: AppColors.orange,
                           ),
                         ),
                       ),
@@ -463,7 +472,7 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
   }
 }
 
-// ---------- Header: tombol kembali + judul ----------
+// ---------- Header ----------
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -472,12 +481,11 @@ class _Header extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 12, 24, 12),
-      color: const Color(0xFFEAFDE1),
+      color: AppColors.bg,
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: _textDark),
-            // Navigator.pop = kembali ke halaman sebelumnya.
+            icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 4),
@@ -486,18 +494,18 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 'Daftar Mitra',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.poppins(
                   fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
                 ),
               ),
               Text(
-                'Nomor Whatsapp',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _textSoft,
+                'Nomor WhatsApp',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSoft,
                 ),
               ),
             ],
@@ -508,7 +516,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ---------- Bendera Indonesia (digambar pakai 2 kotak, tanpa file gambar) ----------
+// ---------- Bendera Indonesia ----------
 class _IndonesiaFlag extends StatelessWidget {
   const _IndonesiaFlag();
 

@@ -1,16 +1,22 @@
+// ============================================================
+// LastBite - Daftar Mitra, Langkah 4 dari 6 (Nama & Alamat Usaha)
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+
 import 'mitra_documents_screen.dart';
 
-const _bg = Color(0xFFEAFDE1);
-const _primary = Color(0xFF006B1E);
-const _fieldBorder = Color(0xFFE1EBDD);
-const _textDark = Color(0xFF10260F);
-const _textSoft = Color(0xFF3F4A3C);
-const _grey = Color(0xFF8C978A);
+const Color _kBorder = Color(0xFFE9E6E0);
+const Color _kTrack = Color(0xFFECE9E4);
 
 class MitraAddressScreen extends StatefulWidget {
-  const MitraAddressScreen({super.key});
+  final String phoneNumber;
+
+  const MitraAddressScreen({super.key, required this.phoneNumber});
 
   @override
   State<MitraAddressScreen> createState() => _MitraAddressScreenState();
@@ -20,9 +26,10 @@ class _MitraAddressScreenState extends State<MitraAddressScreen> {
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
 
-  // Koordinat pin peta. Nanti ini diisi dari hasil geser peta asli.
-final double _lat = 1.1301;
-final double _lng = 104.0529;
+  bool _isLoading = false;
+
+  final double _lat = 1.1301;
+  final double _lng = 104.0529;
 
   @override
   void dispose() {
@@ -33,34 +40,71 @@ final double _lng = 104.0529;
 
   void _ubahPinPeta() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur geser pin peta menyusul.')),
+      SnackBar(
+        content: Text(
+          'Fitur geser pin peta menyusul.',
+          style: GoogleFonts.nunito(color: Colors.white),
+        ),
+        backgroundColor: AppColors.orange,
+      ),
     );
   }
 
-  void _lanjutkan() {
-    if (_nameController.text.trim().isEmpty) {
+  Future<void> _lanjutkan() async {
+    final namaUsaha = _nameController.text.trim();
+    final alamat = _addressController.text.trim();
+
+    if (namaUsaha.isEmpty) {
       _showError('Nama usaha wajib diisi.');
       return;
     }
-    if (_addressController.text.trim().isEmpty) {
+    if (alamat.isEmpty) {
       _showError('Alamat lengkap usaha wajib diisi.');
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const MitraDocumentsScreen()),
+
+    setState(() => _isLoading = true);
+
+    bool sukses = await ApiService.setAddress(
+      widget.phoneNumber,
+      namaUsaha,
+      alamat,
     );
+
+    setState(() => _isLoading = false);
+
+    if (sukses) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MitraDocumentsScreen(
+              phoneNumber:
+                  widget.phoneNumber, // <-- Kirim nomor HP ke langkah dokumen
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        _showError('Gagal menyimpan nama usaha & alamat ke server.');
+      }
+    }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.nunito(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -72,29 +116,36 @@ final double _lng = 104.0529;
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _ProgressBar(
-                        step: 4, total: 6, label: 'Nama & Alamat Usaha'),
+                      step: 4,
+                      total: 6,
+                      label: 'Nama & Alamat Usaha',
+                    ),
                     const SizedBox(height: 24),
                     Text(
                       'Nama & Alamat Usaha',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Informasikan nama toko dan lokasi penjemputan surplus makanan oleh pelanggan.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
+                      style: GoogleFonts.nunito(
+                        fontSize: 14.5,
                         height: 1.6,
-                        color: _textSoft,
+                        color: AppColors.textSoft,
                       ),
                     ),
                     const SizedBox(height: 24),
 
-                    _FieldLabel(label: 'Nama Usaha / Toko', required: true),
+                    // ---- Field 1: Nama Usaha ----
+                    const _FieldLabel(
+                      label: 'Nama Usaha / Toko',
+                      required: true,
+                    ),
                     const SizedBox(height: 8),
                     _WhiteField(
                       controller: _nameController,
@@ -102,13 +153,16 @@ final double _lng = 104.0529;
                       icon: Icons.storefront_outlined,
                     ),
                     const SizedBox(height: 8),
-                    _HintRow(
-                      text:
-                          'Gunakan nama yang tertera jelas pada plang atau spanduk tokomu.',
+                    const _HintRow(
+                      text: 'Gunakan nama yang tertera jelas pada plang atau spanduk tokomu.',
                     ),
                     const SizedBox(height: 24),
 
-                    _FieldLabel(label: 'Alamat Lengkap Usaha', required: true),
+                    // ---- Field 2: Alamat Lengkap ----
+                    const _FieldLabel(
+                      label: 'Alamat Lengkap Usaha',
+                      required: true,
+                    ),
                     const SizedBox(height: 8),
                     _WhiteField(
                       controller: _addressController,
@@ -116,9 +170,8 @@ final double _lng = 104.0529;
                       maxLines: 3,
                     ),
                     const SizedBox(height: 8),
-                    _HintRow(
-                      text:
-                          'Cantumkan nomor ruko dan patokan yang mudah ditemukan.',
+                    const _HintRow(
+                      text: 'Cantumkan nomor ruko dan patokan yang mudah ditemukan.',
                     ),
                     const SizedBox(height: 24),
 
@@ -127,23 +180,26 @@ final double _lng = 104.0529;
                       children: [
                         Text(
                           'Titik Penjemputan (Peta GPS)',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: _textDark,
+                            color: AppColors.textDark,
                           ),
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.my_location,
-                                size: 14, color: _primary),
+                            const Icon(
+                              Icons.my_location,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'GPS Akurat',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12.5,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: _primary,
+                                color: AppColors.primary,
                               ),
                             ),
                           ],
@@ -159,29 +215,33 @@ final double _lng = 104.0529;
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _kBorder, width: 1),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on,
-                              size: 18, color: _primary),
-                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.location_on,
+                            size: 18,
+                            color: AppColors.orange,
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Batam Center, Batam',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.poppins(
                                     fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: _textDark,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
                                   ),
                                 ),
                                 Text(
                                   '${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12.5,
-                                    color: _grey,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    color: AppColors.textSoft,
                                   ),
                                 ),
                               ],
@@ -191,23 +251,28 @@ final double _lng = 104.0529;
                             onTap: _ubahPinPeta,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFDFF0D8),
+                                color: AppColors.orange.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(50),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.edit_location_alt,
-                                      size: 16, color: _primary),
+                                  const Icon(
+                                    Icons.edit_location_alt,
+                                    size: 16,
+                                    color: AppColors.orange,
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Ubah Pin Peta',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: GoogleFonts.nunito(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: _primary,
+                                      color: AppColors.orange,
                                     ),
                                   ),
                                 ],
@@ -230,28 +295,47 @@ final double _lng = 104.0529;
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _lanjutkan,
+                      onPressed: _isLoading ? null : _lanjutkan,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.orange,
+                        foregroundColor: AppColors.textDark,
+                        disabledBackgroundColor: AppColors.orange.withOpacity(
+                          0.6,
+                        ),
+                        elevation: 3,
+                        shadowColor: AppColors.orange.withOpacity(0.4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Lanjutkan',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: AppColors.textDark,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Lanjutkan',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 22,
+                                  color: AppColors.textDark,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 22),
-                        ],
-                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -260,13 +344,17 @@ final double _lng = 104.0529;
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.chevron_left, size: 18, color: _primary),
+                        const Icon(
+                          Icons.chevron_left,
+                          size: 18,
+                          color: AppColors.orange,
+                        ),
                         Text(
                           'Kembali ke Buat Kata Sandi',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.nunito(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: _primary,
+                            color: AppColors.orange,
                           ),
                         ),
                       ],
@@ -281,6 +369,7 @@ final double _lng = 104.0529;
     );
   }
 }
+
 class _MapPreview extends StatelessWidget {
   final VoidCallback onUbahPin;
   const _MapPreview({required this.onUbahPin});
@@ -294,7 +383,6 @@ class _MapPreview extends StatelessWidget {
         width: double.infinity,
         child: Stack(
           children: [
-            // Latar hijau-biru sebagai pengganti tile peta asli.
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -304,13 +392,14 @@ class _MapPreview extends StatelessWidget {
                 ),
               ),
             ),
-            // Badge "Sinyal Stabil"
             Positioned(
               top: 12,
               right: 12,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(50),
@@ -329,10 +418,10 @@ class _MapPreview extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       'Sinyal Stabil',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.nunito(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
-                        color: _textDark,
+                        color: AppColors.textDark,
                       ),
                     ),
                   ],
@@ -345,20 +434,25 @@ class _MapPreview extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: _primary,
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.storefront,
-                            size: 14, color: Colors.white),
+                        const Icon(
+                          Icons.storefront,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Titik Ambil',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -367,12 +461,14 @@ class _MapPreview extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.location_on,
-                      size: 40, color: Color(0xFFE23D28)),
+                  const Icon(
+                    Icons.location_on,
+                    size: 40,
+                    color: Color(0xFFE23D28),
+                  ),
                 ],
               ),
             ),
-
             Positioned.fill(
               child: Material(
                 color: Colors.transparent,
@@ -399,19 +495,19 @@ class _FieldLabel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 15,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: _textDark,
+            color: AppColors.textDark,
           ),
         ),
         if (required)
           Text(
             'Wajib',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.nunito(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: _primary,
+              color: AppColors.orange,
             ),
           ),
       ],
@@ -419,7 +515,6 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-// ---------- Input putih dipakai ulang ----------
 class _WhiteField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -438,33 +533,37 @@ class _WhiteField extends StatelessWidget {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: GoogleFonts.plusJakartaSans(fontSize: 15, color: _textDark),
+      style: GoogleFonts.nunito(fontSize: 15, color: AppColors.textDark),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14.5, color: _grey),
-        prefixIcon: icon != null ? Icon(icon, color: _grey) : null,
+        hintStyle: GoogleFonts.nunito(
+          fontSize: 14,
+          color: AppColors.textSoft.withOpacity(0.6),
+        ),
+        prefixIcon: icon != null ? Icon(icon, color: AppColors.textSoft) : null,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _fieldBorder),
+          borderSide: const BorderSide(color: _kBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _fieldBorder),
+          borderSide: const BorderSide(color: _kBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.orange, width: 1.5),
         ),
       ),
     );
   }
 }
 
-// ---------- Baris hint dengan ikon info ----------
 class _HintRow extends StatelessWidget {
   final String text;
   const _HintRow({required this.text});
@@ -474,15 +573,15 @@ class _HintRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.info_outline, size: 16, color: _grey),
+        const Icon(Icons.info_outline, size: 16, color: AppColors.textSoft),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
+            style: GoogleFonts.nunito(
+              fontSize: 13.5,
               height: 1.4,
-              color: _textSoft,
+              color: AppColors.textSoft,
             ),
           ),
         ),
@@ -491,14 +590,16 @@ class _HintRow extends StatelessWidget {
   }
 }
 
-// ---------- Progress bar + label langkah ----------
 class _ProgressBar extends StatelessWidget {
   final int step;
   final int total;
   final String label;
 
-  const _ProgressBar(
-      {required this.step, required this.total, required this.label});
+  const _ProgressBar({
+    required this.step,
+    required this.total,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -510,18 +611,18 @@ class _ProgressBar extends StatelessWidget {
           children: [
             Text(
               'Langkah $step dari $total',
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: _textSoft,
+                color: AppColors.orange,
               ),
             ),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.nunito(
                 fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: _primary,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSoft,
               ),
             ),
           ],
@@ -532,8 +633,8 @@ class _ProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: step / total,
             minHeight: 8,
-            color: _primary,
-            backgroundColor: const Color(0xFFD5EDCB),
+            color: AppColors.primary,
+            backgroundColor: _kTrack,
           ),
         ),
       ],
@@ -552,24 +653,24 @@ class _Header extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      color: _bg,
+      color: AppColors.bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.poppins(
               fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _textDark,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
             ),
           ),
           Text(
             subtitle,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textSoft,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSoft,
             ),
           ),
         ],
