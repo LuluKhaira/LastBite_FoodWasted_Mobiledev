@@ -32,8 +32,17 @@ class ApiService {
   static dynamic _handle(http.Response r) {
     final body = r.body.isEmpty ? {} : jsonDecode(r.body);
     if (r.statusCode >= 200 && r.statusCode < 300) return body;
-    final msg =
-        body is Map ? (body['message'] ?? 'Terjadi kesalahan') : 'Terjadi kesalahan';
+
+    var msg = 'Terjadi kesalahan';
+    if (body is Map) {
+      // Error validasi Laravel (422): ambil pesan field pertama
+      final errs = body['errors'];
+      if (errs is Map && errs.isNotEmpty && errs.values.first is List && (errs.values.first as List).isNotEmpty) {
+        msg = (errs.values.first as List).first.toString();
+      } else if (body['message'] != null) {
+        msg = body['message'].toString();
+      }
+    }
     throw Exception(msg);
   }
 
@@ -46,7 +55,7 @@ class ApiService {
     }
   }
 
-  // ---------- AUTH ----------
+  // ---------- AUTH (email + sandi) ----------
   static Future<void> register(String name, String email, String password) async {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/register'),
         headers: await _headers(),
@@ -67,6 +76,48 @@ class ApiService {
     await _kirim(http.post(Uri.parse('$baseUrl/logout'),
         headers: await _headers(auth: true)));
     (await SharedPreferences.getInstance()).remove('token');
+  }
+
+  // ---------- AUTH (WhatsApp OTP via Fonnte) ----------
+  /// Kirim OTP pendaftaran. Akun baru dibuat di server setelah OTP benar.
+  static Future<void> daftarOtp({
+    required String name,
+    required String phone, // format 62812xxxx
+    String? email,
+    String? password,
+  }) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/register-phone'),
+        headers: await _headers(),
+        body: jsonEncode({
+          'name': name,
+          'phone': phone,
+          if (email != null && email.isNotEmpty) 'email': email,
+          if (password != null && password.isNotEmpty) 'password': password,
+        })));
+    _handle(r);
+  }
+
+  /// Kirim OTP untuk masuk (nomor harus sudah terdaftar).
+  static Future<void> masukOtp(String phone) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/login-phone'),
+        headers: await _headers(), body: jsonEncode({'phone': phone})));
+    _handle(r);
+  }
+
+  static Future<void> kirimUlangOtp(String phone, String purpose) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/resend-otp'),
+        headers: await _headers(),
+        body: jsonEncode({'phone': phone, 'purpose': purpose})));
+    _handle(r);
+  }
+
+  /// purpose: 'register' | 'login'. Jika benar, token disimpan.
+  static Future<void> verifikasiOtp(String phone, String code, String purpose) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/verify-otp'),
+        headers: await _headers(),
+        body: jsonEncode({'phone': phone, 'code': code, 'purpose': purpose})));
+    final d = _handle(r);
+    (await SharedPreferences.getInstance()).setString('token', d['token']);
   }
 
   // ---------- PRODUK ----------

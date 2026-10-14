@@ -11,6 +11,14 @@ Route::post('/mitra/set-password', [MitraRegisterController::class, 'setPassword
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// PELANGGAN: daftar & masuk via WhatsApp OTP (Fonnte)
+Route::prefix('auth')->group(function () {
+    Route::post('/register-phone', [AuthController::class, 'registerPhone'])->middleware('throttle:10,1');
+    Route::post('/login-phone',    [AuthController::class, 'loginPhone'])->middleware('throttle:10,1');
+    Route::post('/verify-otp',     [AuthController::class, 'verifyOtp'])->middleware('throttle:15,1');
+    Route::post('/resend-otp',     [AuthController::class, 'resendOtp'])->middleware('throttle:6,1');
+});
+
 Route::get('/produk', [ProdukController::class, 'index']);
 Route::get('/produk/{produk}', [ProdukController::class, 'show']);
 
