@@ -31,3 +31,5 @@ Route::post('/mitra/verify-otp', [MitraRegisterController::class, 'verifyOtp']);
 Route::post('/mitra/set-business', [MitraRegisterController::class, 'setBusinessCategory']);
 Route::post('/mitra/set-address', [MitraRegisterController::class, 'setAddress']);
 Route::post('/mitra/set-documents', [MitraRegisterController::class, 'setDocuments']);
+
+Route::post('/mitra/check-status', [MitraStatusController::class, 'check']);

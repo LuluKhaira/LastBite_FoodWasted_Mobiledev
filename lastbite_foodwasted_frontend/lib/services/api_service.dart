@@ -159,4 +159,27 @@ class ApiService {
       return false;
     }
   }
+
+  // Membaca status verifikasi mitra yang diputuskan admin di dashboard Laravel
+  static Future<Map<String, dynamic>?> checkStatus(String phoneNumber) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/check-status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return Map<String, dynamic>.from(body['data']);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error Check Status: $e');
+      return null;
+    }
+  }
 }
