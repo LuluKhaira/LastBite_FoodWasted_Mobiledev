@@ -1,23 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import '../beranda/halaman_beranda.dart'; // Sesuaikan path file beranda kamu jika berbeda
+import '../beranda/api_service.dart';
+import '../beranda/halaman_beranda.dart';
+import '../widgets/auth_widgets.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+  final String phone;
+  final String purpose;
+
+  const OtpVerificationScreen({
+    super.key,
+    required this.phone,
+    required this.purpose,
+  });
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  // Controller atau variabel penampung OTP jika diperlukan
   final TextEditingController _otpController = TextEditingController();
+  bool _loading = false;
 
   @override
   void dispose() {
     _otpController.dispose();
     super.dispose();
+  }
+
+  Future<void> _verifikasi() async {
+    FocusScope.of(context).unfocus();
+    final code = _otpController.text.trim();
+    if (code.length != 6) {
+      showLbSnack(context, 'Masukkan 6 digit kode.', error: true);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await ApiService.verifikasiOtp(widget.phone, code, widget.purpose);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const BerandaScreen()),
+        (_) => false,
+      );
+    } catch (e) {
+      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _kirimUlang() async {
+    try {
+      await ApiService.kirimUlangOtp(widget.phone, widget.purpose);
+      if (mounted) showLbSnack(context, 'Kode baru sudah dikirim.');
+    } catch (e) {
+      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
+    }
   }
 
   @override
@@ -27,9 +68,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        automaticallyImplyLeading: false, // Menghilangkan tombol back (<-)
+        automaticallyImplyLeading: false,
         title: Text(
-          'Verifikasi Akun',
+          widget.purpose == 'login' ? 'Masuk - Verifikasi' : 'Daftar - Verifikasi',
           style: GoogleFonts.poppins(
             color: AppColors.textDark,
             fontSize: 16,
@@ -55,7 +96,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Kami telah mengirimkan 4 digit kode verifikasi melalui SMS/WhatsApp ke nomor Anda.',
+                'Kami telah mengirimkan 6 digit kode verifikasi ke nomor ${formatPhoneDisplay(widget.phone)}.',
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   color: AppColors.textSoft,
@@ -63,23 +104,22 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Kotak Input OTP Sederhana
               TextField(
                 controller: _otpController,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
+                maxLength: 6,
                 textAlign: TextAlign.center,
+                onSubmitted: (_) => _verifikasi(),
                 style: GoogleFonts.poppins(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
+                  letterSpacing: 6,
                   color: AppColors.textDark,
                 ),
                 decoration: InputDecoration(
                   counterText: '',
-                  hintText: '••••',
-                  hintStyle: GoogleFonts.poppins(color: AppColors.textSoft, letterSpacing: 8),
+                  hintText: '••••••',
+                  hintStyle: GoogleFonts.poppins(color: AppColors.textSoft, letterSpacing: 6),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -97,8 +137,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Tombol Kirim Ulang Kode
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -107,9 +145,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSoft),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      // Aksi kirim ulang kode
-                    },
+                    onTap: _kirimUlang,
                     child: Text(
                       'Kirim Ulang',
                       style: GoogleFonts.poppins(
@@ -122,8 +158,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ],
               ),
               const Spacer(),
-
-              // Tombol Verifikasi & Masuk ke Beranda
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -135,22 +169,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    // Berpindah ke Beranda dan menghapus riwayat halaman sebelumnya (Login/OTP)
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const BerandaScreen()),
-                      (route) => false,
-                    );
-                  },
-                  child: Text(
-                    'Verifikasi & Masuk',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  onPressed: _loading ? null : _verifikasi,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                        )
+                      : Text(
+                          'Verifikasi & Masuk',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),

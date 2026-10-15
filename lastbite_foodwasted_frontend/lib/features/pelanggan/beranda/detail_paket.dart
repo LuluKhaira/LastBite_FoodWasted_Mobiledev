@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'api_service.dart';
 import 'beranda_widgets.dart';
 
 // ============================================================
@@ -93,6 +94,17 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
   String _payId = 'qris';
   bool _fav = false;
   final TextEditingController _notes = TextEditingController();
+  bool _memproses = false;
+
+  static const Map<String, String> _metodeLabel = {
+    'qris': 'QRIS',
+    'gopay': 'GoPay',
+    'ovo': 'OVO',
+    'dana': 'DANA',
+    'bca': 'BCA VA',
+    'mandiri': 'Mandiri VA',
+    'bni': 'BNI VA',
+  };
 
   @override
   void dispose() {
@@ -1587,7 +1599,9 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _total == 0 ? 'Ambil Gratis' : 'Pesan & Bayar',
+                        _memproses
+                            ? 'Memproses...'
+                            : (_total == 0 ? 'Ambil Gratis' : 'Pesan & Bayar'),
                         style: LbText.heading(
                           15,
                           weight: FontWeight.w600,
@@ -1611,9 +1625,52 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
     );
   }
 
-  void _konfirmasi() {
-    FocusScope.of(context).unfocus();
+  void _pesan(String teks) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: LbColors.forest,
+          content: Text(teks, style: LbText.body(13, color: Colors.white)),
+        ),
+      );
+  }
 
+  /// Kirim pesanan ke backend (POST /api/pesanan), lalu tampilkan sheet sukses.
+  Future<void> _konfirmasi() async {
+    FocusScope.of(context).unfocus();
+    if (_memproses) return;
+
+    final id = it.id;
+    if (id == null) {
+      _pesan('Produk ini belum terhubung ke server.');
+      return;
+    }
+
+    setState(() => _memproses = true);
+    try {
+      final metode = _total == 0 ? 'Gratis' : (_metodeLabel[_payId] ?? 'QRIS');
+      final hasil = await ApiService.buatPesanan(
+        id,
+        1,
+        metode,
+        catatan: _notes.text,
+      );
+      if (!mounted) return;
+      setState(() => _memproses = false);
+      _tampilBerhasil('${hasil['kode'] ?? ''}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _memproses = false);
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _pesan(msg.contains('Unauthenticated')
+          ? 'Masuk dulu ya untuk membuat pesanan.'
+          : msg);
+    }
+  }
+
+  void _tampilBerhasil(String kode) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1660,7 +1717,7 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Tunjukkan bukti QR pesananmu ke kasir pada ${it.waktu.replaceAll(':', '.')}.',
+                  'Tunjukkan nota pesananmu ($kode) ke kasir pada ${it.waktu.replaceAll(':', '.')}.',
                   textAlign: TextAlign.center,
                   style: LbText.body(13, height: 1.4),
                 ),

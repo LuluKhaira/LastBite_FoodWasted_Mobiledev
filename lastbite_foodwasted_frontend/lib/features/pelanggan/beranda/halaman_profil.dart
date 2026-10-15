@@ -1,0 +1,1060 @@
+import 'package:flutter/material.dart';
+import 'api_service.dart';
+import 'beranda_widgets.dart';
+import 'halaman_keamanan.dart';
+import 'halaman_tentang.dart';
+import 'lb_nav.dart';
+import 'pesanan_model.dart' show lbRp;
+
+const String kVersiAplikasi = 'v2.4.1';
+
+// ============================================================
+// MODEL
+// ============================================================
+class ProfilData {
+  final String name;
+  final String email;
+  final String phone;
+  final String inisial;
+  final bool isVip;
+  final int level;
+  final double kg;
+  final int paket;
+  final int hemat;
+  final int voucher;
+  final String metodeBayar;
+
+  const ProfilData({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.inisial,
+    required this.isVip,
+    required this.level,
+    required this.kg,
+    required this.paket,
+    required this.hemat,
+    required this.voucher,
+    required this.metodeBayar,
+  });
+
+  factory ProfilData.fromJson(Map<String, dynamic> j) {
+    final nama = (j['name'] ?? '').toString();
+    final inisial = (j['inisial'] ?? '').toString();
+    return ProfilData(
+      name: nama,
+      email: (j['email'] ?? '').toString(),
+      phone: (j['phone'] ?? '').toString(),
+      inisial: inisial.isNotEmpty
+          ? inisial
+          : (nama.isNotEmpty ? nama.substring(0, 1).toUpperCase() : '?'),
+      isVip: j['is_vip'] == true || j['is_vip'] == 1,
+      level: (j['level'] as num?)?.toInt() ?? 1,
+      kg: (j['kg_diselamatkan'] as num?)?.toDouble() ?? 0,
+      paket: (j['paket_diselamatkan'] as num?)?.toInt() ?? 0,
+      hemat: (j['hemat_rupiah'] as num?)?.toInt() ?? 0,
+      voucher: (j['voucher_tersedia'] as num?)?.toInt() ?? 0,
+      metodeBayar: (j['metode_bayar'] ?? '').toString(),
+    );
+  }
+
+  String get kgText => kg == kg.roundToDouble()
+      ? kg.toInt().toString()
+      : kg.toStringAsFixed(1).replaceAll('.', ',');
+}
+
+// ============================================================
+// LAYAR PROFIL
+// ============================================================
+class ProfilScreen extends StatefulWidget {
+  /// Dipanggil setelah logout berhasil (arahkan ke halaman login).
+  final VoidCallback? onLoggedOut;
+  const ProfilScreen({super.key, this.onLoggedOut});
+
+  @override
+  State<ProfilScreen> createState() => _ProfilScreenState();
+}
+
+class _ProfilScreenState extends State<ProfilScreen> {
+  ProfilData? _data;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  Future<void> _muat({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final j = await ApiService.getProfil();
+      if (!mounted) return;
+      setState(() {
+        _data = ProfilData.fromJson(j);
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (_data == null || !silent) {
+          _error = e.toString().replaceFirst('Exception: ', '');
+        }
+      });
+      if (silent) _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(msg, style: LbText.body(13, color: Colors.white)),
+        backgroundColor: LbColors.forest,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ));
+  }
+
+  void _segera(String fitur) => _snack('$fitur segera hadir');
+
+  Future<void> _edit() async {
+    final d = _data;
+    if (d == null) return;
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditProfilSheet(nama: d.name, phone: d.phone),
+    );
+    if (ok == true) {
+      _snack('Profil berhasil diperbarui');
+      _muat(silent: true);
+    }
+  }
+
+  Future<void> _keluar() async {
+    final yakin = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Keluar dari akun?', style: LbText.heading(17)),
+        content: Text('Kamu perlu masuk lagi untuk menyelamatkan makanan.',
+            style: LbText.body(13.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Batal', style: LbText.heading(13.5, color: LbColors.textGrey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Keluar',
+                style: LbText.heading(13.5, color: LbColors.peachDeep)),
+          ),
+        ],
+      ),
+    );
+    if (yakin != true) return;
+
+    try {
+      await ApiService.logout();
+    } catch (_) {
+      // token lokal tetap dihapus oleh ApiService.logout (blok finally)
+    }
+    if (!mounted) return;
+
+    if (widget.onLoggedOut != null) {
+      widget.onLoggedOut!();
+      return;
+    }
+    // GANTI sesuai halaman login kamu, contoh:
+    // Navigator.pushAndRemoveUntil(context,
+    //   MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
+    Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LbColors.offWhite,
+      bottomNavigationBar: LbBottomNav(
+        currentIndex: 3,
+        onTap: (i) => LbNav.go(context, from: 3, to: i),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: _ProfilHeader(),
+            ),
+            Expanded(child: _isi()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _isi() {
+    if (_loading && _data == null) {
+      return const Center(
+        child: SizedBox(
+          width: 30,
+          height: 30,
+          child: CircularProgressIndicator(strokeWidth: 3, color: LbColors.sageDeep),
+        ),
+      );
+    }
+    if (_data == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 44, color: LbColors.sageDeep),
+              const SizedBox(height: 12),
+              Text(_error ?? 'Terjadi kesalahan',
+                  textAlign: TextAlign.center, style: LbText.body(13)),
+              const SizedBox(height: 14),
+              TextButton.icon(
+                onPressed: _muat,
+                icon: const Icon(Icons.refresh_rounded, color: LbColors.forest),
+                label: Text('Coba lagi',
+                    style: LbText.heading(13, weight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final d = _data!;
+    return RefreshIndicator(
+      color: LbColors.sageDeep,
+      onRefresh: () => _muat(silent: true),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          _KartuProfil(
+            data: d,
+            onEdit: _edit,
+            onLevelTap: () => _segera('Detail level penyelamat'),
+          ),
+          const SizedBox(height: 16),
+          _BannerHero(isVip: d.isVip, onTap: () => _segera('Lastbite Hero')),
+
+          const _SectionLabel('PREFERENSI'),
+          _MenuGroup(children: [
+            _MenuTile(
+              icon: Icons.shield_outlined,
+              title: 'Keamanan akun',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KeamananAkunScreen()),
+              ),
+            ),
+            _MenuTile(
+              icon: Icons.notifications_none_rounded,
+              title: 'Langganan & Notifikasi',
+              chip: 'Promo',
+              chipBg: LbColors.peachLight,
+              chipFg: LbColors.peachDeep,
+              onTap: () => _segera('Langganan & Notifikasi'),
+            ),
+            _MenuTile(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Metode pembayaran',
+              subtitle: d.metodeBayar.isEmpty
+                  ? 'Belum ada yang terhubung'
+                  : '${d.metodeBayar} terhubung',
+              onTap: () => _segera('Metode pembayaran'),
+            ),
+            _MenuTile(
+              icon: Icons.group_outlined,
+              title: 'Akun Keluarga / Berbagi',
+              chip: 'Baru',
+              onTap: () => _segera('Akun Keluarga'),
+            ),
+            _MenuTile(
+              icon: Icons.location_on_outlined,
+              title: 'Alamat & Lokasi Ambil Favorit',
+              onTap: () => _segera('Alamat & Lokasi'),
+            ),
+            _MenuTile(
+              icon: Icons.badge_outlined,
+              title: 'Pusat Akun Mahasiswa & Mitra',
+              chip: 'Baru',
+              onTap: () => _segera('Akun Mahasiswa & Mitra'),
+            ),
+          ]),
+
+          const _SectionLabel('AKTIVITAS PENYELAMATAN'),
+          _MenuGroup(children: [
+            _MenuTile(
+              icon: Icons.eco_rounded,
+              iconSolid: true,
+              title: 'Jejak & Dampak Lingkungan',
+              subtitle: '${d.paket} paket • Hemat ${lbRp(d.hemat)}',
+              onTap: () => _segera('Jejak & Dampak'),
+            ),
+            _MenuTile(
+              icon: Icons.confirmation_number_outlined,
+              title: 'Voucher & Kode Promo Saya',
+              trailingText: d.voucher > 0 ? '${d.voucher} Tersedia' : null,
+              trailingColor: LbColors.sageDeep,
+              trailingBold: true,
+              onTap: () => _segera('Voucher'),
+            ),
+            _MenuTile(
+              icon: Icons.star_border_rounded,
+              title: 'Ulasan & Penilaian Resto',
+              onTap: () => _segera('Ulasan'),
+            ),
+          ]),
+
+          const _SectionLabel('PENGATURAN APLIKASI'),
+          _MenuGroup(children: [
+            _MenuTile(
+              icon: Icons.phone_android_rounded,
+              title: 'Tema & Tampilan',
+              trailingText: 'Mode Terang',
+              onTap: () => _segera('Tema & Tampilan'),
+            ),
+            _MenuTile(
+              icon: Icons.help_outline_rounded,
+              title: 'Pusat Bantuan & FAQ',
+              onTap: () => _segera('Pusat Bantuan'),
+            ),
+            _MenuTile(
+              icon: Icons.info_outline_rounded,
+              title: 'Tentang Lastbite',
+              trailingText: kVersiAplikasi,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TentangLastbiteScreen()),
+              ),
+            ),
+          ]),
+
+          const SizedBox(height: 18),
+          _TombolKeluar(onTap: _keluar),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  '“Setiap butir terselamatkan adalah senyuman untuk bumi.”',
+                  textAlign: TextAlign.center,
+                  style: LbText.body(12, height: 1.4),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.eco_rounded, size: 16, color: LbColors.sageDeep),
+            ],
+          ),
+          const SizedBox(height: 90),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// HEADER
+// ============================================================
+class _ProfilHeader extends StatelessWidget {
+  const _ProfilHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [LbColors.sage, LbColors.sageDeep],
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+              topRight: Radius.circular(8),
+              bottomLeft: Radius.circular(8),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: LbColors.sage.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.eco_rounded, color: Colors.white, size: 26),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text('Profil',
+              style: LbText.heading(24, weight: FontWeight.w700)),
+        ),
+        SizedBox(
+          width: 42,
+          height: 42,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                onPressed: () {},
+                icon: const Icon(Icons.notifications_none_rounded,
+                    size: 28, color: LbColors.forest),
+              ),
+              Positioned(
+                top: 8,
+                right: 9,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: LbColors.peach,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: LbColors.offWhite, width: 1.8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// KARTU PROFIL
+// ============================================================
+class _KartuProfil extends StatelessWidget {
+  final ProfilData data;
+  final VoidCallback onEdit;
+  final VoidCallback onLevelTap;
+
+  const _KartuProfil({
+    required this.data,
+    required this.onEdit,
+    required this.onLevelTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _kartuDeco(),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Avatar inisial
+              SizedBox(
+                width: 78,
+                height: 78,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 78,
+                      height: 78,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [LbColors.sage, LbColors.sageDeep],
+                        ),
+                      ),
+                      child: Text(
+                        data.inisial,
+                        style: LbText.heading(26,
+                            weight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: LbColors.forest,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                        ),
+                        child: const Icon(Icons.eco_rounded,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(data.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: LbText.heading(18, weight: FontWeight.w700, height: 1.2)),
+                    const SizedBox(height: 3),
+                    Text(data.email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: LbText.body(12.5)),
+                    if (data.phone.isNotEmpty)
+                      Text(data.phone,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbText.body(12.5)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onEdit,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: LbColors.sageLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.edit_outlined,
+                      size: 21, color: LbColors.sageDeep),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: onLevelTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: LbColors.sageLight,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.workspace_premium_outlined,
+                      size: 24, color: LbColors.sageDeep),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PENYELAMAT AKTIF • LV.${data.level}',
+                          style: LbText.heading(11,
+                              weight: FontWeight.w700,
+                              color: LbColors.sageDeep,
+                              letterSpacing: 0.5),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Telah menyelamatkan ${data.kgText} kg makanan',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbText.body(12.5,
+                              weight: FontWeight.w700, color: LbColors.forest),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 22, color: LbColors.textGrey),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// BANNER LASTBITE HERO (VIP)
+// ============================================================
+class _BannerHero extends StatelessWidget {
+  final bool isVip;
+  final VoidCallback onTap;
+  const _BannerHero({required this.isVip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [LbColors.peachLight, Color(0xFFE3EDC8)],
+          ),
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [LbColors.peach, LbColors.peachDeep],
+                ),
+              ),
+              child: const Icon(Icons.star_rounded, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isVip ? 'Anggota Lastbite Hero' : 'Gabung Lastbite Hero',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbText.heading(15, weight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: LbColors.peachDeep,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('VIP',
+                            style: LbText.heading(10,
+                                weight: FontWeight.w700, color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isVip
+                        ? 'Nikmati voucher hemat 50% & akses stok 15 mnt lebih awal'
+                        : 'Voucher hemat 50% & akses stok 15 mnt lebih awal',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbText.body(12, height: 1.3, color: LbColors.forest),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward_rounded,
+                  size: 22, color: LbColors.forest),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// KOMPONEN MENU
+// ============================================================
+BoxDecoration _kartuDeco() => BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: LbColors.border),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    );
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 22, 0, 10),
+      child: Text(
+        text,
+        style: LbText.heading(12,
+            weight: FontWeight.w700,
+            color: LbColors.textGrey,
+            letterSpacing: 0.8),
+      ),
+    );
+  }
+}
+
+class _MenuGroup extends StatelessWidget {
+  final List<Widget> children;
+  const _MenuGroup({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      rows.add(children[i]);
+      if (i != children.length - 1) {
+        rows.add(const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(height: 1, thickness: 1, color: LbColors.border),
+        ));
+      }
+    }
+    return Container(
+      decoration: _kartuDeco(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(children: rows),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final bool iconSolid; // kotak ikon hijau pekat
+  final String title;
+  final String? subtitle;
+  final String? chip;
+  final Color chipBg;
+  final Color chipFg;
+  final String? trailingText;
+  final Color trailingColor;
+  final bool trailingBold;
+  final VoidCallback? onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    this.iconSolid = false,
+    this.subtitle,
+    this.chip,
+    this.chipBg = LbColors.sage,
+    this.chipFg = LbColors.forest,
+    this.trailingText,
+    this.trailingColor = LbColors.textGrey,
+    this.trailingBold = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: iconSolid ? LbColors.sageDeep : LbColors.sageLight,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon,
+                  size: 23, color: iconSolid ? Colors.white : LbColors.forest),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbText.heading(14.5, weight: FontWeight.w600, height: 1.25),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: LbText.body(12)),
+                  ],
+                ],
+              ),
+            ),
+            if (chip != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: chip == 'Baru' ? LbColors.sage.withValues(alpha: 0.45) : chipBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  chip!,
+                  style: LbText.body(11.5,
+                      weight: FontWeight.w800,
+                      color: chip == 'Baru' ? LbColors.forest : chipFg),
+                ),
+              ),
+            ],
+            if (trailingText != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                trailingText!,
+                style: LbText.body(12,
+                    weight: trailingBold ? FontWeight.w800 : FontWeight.w600,
+                    color: trailingColor),
+              ),
+            ],
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded,
+                size: 22, color: LbColors.textGrey),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TombolKeluar extends StatelessWidget {
+  final VoidCallback onTap;
+  const _TombolKeluar({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: LbColors.peachLight,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: LbColors.peach.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.logout_rounded, size: 22, color: LbColors.peachDeep),
+            const SizedBox(width: 8),
+            Text('Keluar dari Akun',
+                style: LbText.heading(15,
+                    weight: FontWeight.w600, color: LbColors.peachDeep)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// BOTTOM SHEET EDIT PROFIL
+// ============================================================
+class _EditProfilSheet extends StatefulWidget {
+  final String nama;
+  final String phone;
+  const _EditProfilSheet({required this.nama, required this.phone});
+
+  @override
+  State<_EditProfilSheet> createState() => _EditProfilSheetState();
+}
+
+class _EditProfilSheetState extends State<_EditProfilSheet> {
+  late final TextEditingController _nama = TextEditingController(text: widget.nama);
+  late final TextEditingController _phone = TextEditingController(text: widget.phone);
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nama.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _simpan() async {
+    if (_nama.text.trim().isEmpty) {
+      setState(() => _error = 'Nama tidak boleh kosong');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final phone = _phone.text.trim();
+      await ApiService.updateProfil(
+        name: _nama.text.trim(),
+        phone: phone.isEmpty ? null : phone,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  InputDecoration _deco(String label, IconData icon) => InputDecoration(
+        labelText: label,
+        labelStyle: LbText.body(13),
+        prefixIcon: Icon(icon, color: LbColors.sageDeep, size: 21),
+        filled: true,
+        fillColor: LbColors.offWhite,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: LbColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: LbColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: LbColors.sageDeep, width: 1.6),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: LbColors.border,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text('Edit Profil', style: LbText.heading(18, weight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nama,
+                textCapitalization: TextCapitalization.words,
+                cursorColor: LbColors.sageDeep,
+                style: LbText.body(14, color: LbColors.forest),
+                decoration: _deco('Nama lengkap', Icons.person_outline_rounded),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                cursorColor: LbColors.sageDeep,
+                style: LbText.body(14, color: LbColors.forest),
+                decoration: _deco('Nomor HP (+62...)', Icons.phone_outlined),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!,
+                    style: LbText.body(12.5, color: LbColors.peachDeep)),
+              ],
+              const SizedBox(height: 18),
+              GestureDetector(
+                onTap: _saving ? null : _simpan,
+                child: Container(
+                  height: 54,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: const LinearGradient(
+                      colors: [LbColors.sage, LbColors.sageDeep],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: LbColors.sage.withValues(alpha: 0.45),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : Text('Simpan',
+                          style: LbText.heading(15,
+                              weight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

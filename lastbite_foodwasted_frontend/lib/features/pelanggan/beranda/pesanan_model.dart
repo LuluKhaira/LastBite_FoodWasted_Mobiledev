@@ -1,5 +1,5 @@
 // ============================================================
-// MODEL PESANAN + DATA CONTOH
+// MODEL PESANAN (dari API Laravel: GET /api/pesanan)
 // ============================================================
 
 String lbRp(int v) {
@@ -25,9 +25,11 @@ class Pesanan {
   final int qty;
   final int hargaSatuan; // harga di aplikasi Lastbite
   final int hargaAsliSatuan; // harga asli toko
+  final int biaya; // biaya layanan (0 kalau produk gratis)
   final double co2; // kg CO2e dicegah
   final double makanan; // kg makanan diselamatkan
-  final bool baru;
+  final String status; // menunggu | selesai | dibatalkan
+  final bool baru; // selesai tapi belum dinilai
 
   const Pesanan({
     required this.kode,
@@ -42,89 +44,61 @@ class Pesanan {
     required this.qty,
     required this.hargaSatuan,
     required this.hargaAsliSatuan,
+    required this.biaya,
     required this.co2,
     required this.makanan,
+    this.status = 'selesai',
     this.baru = false,
   });
 
-  static const int biayaLayanan = 1000;
+  factory Pesanan.fromJson(Map<String, dynamic> j) {
+    // MySQL decimal sering dikirim Laravel sebagai string -> aman untuk keduanya
+    num? n(dynamic v) => v is num ? v : num.tryParse('${v ?? ''}');
+    int i(dynamic v) => n(v)?.toInt() ?? 0;
+    double d(dynamic v) => n(v)?.toDouble() ?? 0;
+
+    final penjual = '${j['penjual'] ?? ''}';
+    var inisial = '${j['inisial'] ?? ''}';
+    if (inisial.isEmpty && penjual.isNotEmpty) {
+      inisial = penjual
+          .split(' ')
+          .where((w) => w.isNotEmpty)
+          .take(2)
+          .map((w) => w[0].toUpperCase())
+          .join();
+    }
+
+    final satuan = i(j['harga_satuan']);
+    return Pesanan(
+      kode: '${j['kode'] ?? ''}',
+      tanggal: '${j['tanggal'] ?? ''}',
+      jam: '${j['jam'] ?? ''}',
+      penjual: penjual,
+      inisial: inisial,
+      alamat: '${j['alamat'] ?? ''}',
+      produk: '${j['produk'] ?? ''}',
+      gambar: '${j['gambar'] ?? ''}',
+      metode: '${j['metode'] ?? ''}',
+      qty: i(j['qty']) == 0 ? 1 : i(j['qty']),
+      hargaSatuan: satuan,
+      hargaAsliSatuan: i(j['harga_asli_satuan']),
+      biaya: j['biaya_layanan'] == null
+          ? (satuan > 0 ? 1000 : 0)
+          : i(j['biaya_layanan']),
+      co2: d(j['co2']),
+      makanan: d(j['makanan']),
+      status: '${j['status'] ?? 'selesai'}',
+      baru: j['baru'] == true,
+    );
+  }
+
+  /// Pesanan yang belum diambil -> tampil di tab "Aktif".
+  bool get aktif => status == 'menunggu';
 
   int get hargaAsli => hargaAsliSatuan * qty;
   int get subtotal => hargaSatuan * qty;
   int get diskon => hargaAsli > subtotal ? hargaAsli - subtotal : 0;
-  int get total => subtotal + biayaLayanan;
+  int get total => subtotal + biaya;
 
   String get waktuLengkap => '$tanggal, $jam WIB';
 }
-
-const List<Pesanan> daftarPesanan = [
-  Pesanan(
-    kode: 'LB-260930-0412',
-    tanggal: 'Hari ini',
-    jam: '19.12',
-    penjual: 'Holland Bakery – Batam Center',
-    inisial: 'HB',
-    alamat: 'Jl. Engku Putri No. 8, Batam Center',
-    produk: 'Paket Kejutan Roti Manis & Pastry Segar',
-    gambar:
-        'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80',
-    metode: 'QRIS',
-    qty: 1,
-    hargaSatuan: 15000,
-    hargaAsliSatuan: 30000,
-    co2: 2.1,
-    makanan: 0.8,
-    baru: true,
-  ),
-  Pesanan(
-    kode: 'LB-260918-0231',
-    tanggal: '18 Sep 2026',
-    jam: '18.45',
-    penjual: 'Morning Bakery – Windsor',
-    inisial: 'MB',
-    alamat: 'Windsor Plaza, Batam Center',
-    produk: 'Surprise Bakery Box',
-    gambar:
-        'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=400&q=80',
-    metode: 'GoPay',
-    qty: 1,
-    hargaSatuan: 17000,
-    hargaAsliSatuan: 40000,
-    co2: 1.7,
-    makanan: 0.6,
-  ),
-  Pesanan(
-    kode: 'LB-260914-0198',
-    tanggal: '14 Sep 2026',
-    jam: '21.00',
-    penjual: 'Grand Duck Restaurant',
-    inisial: 'GD',
-    alamat: 'Jl. Raja Isa, Batam Center',
-    produk: 'Paket Lauk Malam Lezat',
-    gambar:
-        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80',
-    metode: 'QRIS',
-    qty: 1,
-    hargaSatuan: 24000,
-    hargaAsliSatuan: 55000,
-    co2: 3.4,
-    makanan: 1.2,
-  ),
-  Pesanan(
-    kode: 'LB-260909-0074',
-    tanggal: '09 Sep 2026',
-    jam: '17.30',
-    penjual: 'Fresh Mart Mega Mall',
-    inisial: 'FM',
-    alamat: 'Mega Mall Batam Center, Lt. 1',
-    produk: 'Paket Buah Potong Segar',
-    gambar:
-        'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=400&q=80',
-    metode: 'DANA',
-    qty: 2,
-    hargaSatuan: 7000,
-    hargaAsliSatuan: 16000,
-    co2: 1.9,
-    makanan: 1.0,
-  ),
-];

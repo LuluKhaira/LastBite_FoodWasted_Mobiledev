@@ -418,7 +418,7 @@ class _NotaSheetState extends State<_NotaSheet> {
               valueColor: LbColors.peachDeep,
             ),
           _line('Harga Aplikasi Lastbite', lbRp(p.subtotal)),
-          _line('Biaya Layanan & Admin', lbRp(Pesanan.biayaLayanan)),
+          _line('Biaya Layanan & Admin', lbRp(p.biaya)),
           const SizedBox(height: 8),
           const _Dash(),
           const SizedBox(height: 12),
