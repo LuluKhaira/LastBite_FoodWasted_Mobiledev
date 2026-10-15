@@ -30,6 +30,7 @@ class Pesanan {
   final double makanan; // kg makanan diselamatkan
   final String status; // menunggu | selesai | dibatalkan
   final bool baru; // selesai tapi belum dinilai
+  final int? rating;
 
   const Pesanan({
     required this.kode,
@@ -49,6 +50,7 @@ class Pesanan {
     required this.makanan,
     this.status = 'selesai',
     this.baru = false,
+    this.rating,
   });
 
   factory Pesanan.fromJson(Map<String, dynamic> j) {
@@ -89,6 +91,12 @@ class Pesanan {
       makanan: d(j['makanan']),
       status: '${j['status'] ?? 'selesai'}',
       baru: j['baru'] == true,
+
+      rating: j['rating'] == null
+    ? null
+    : (j['rating'] is num
+        ? (j['rating'] as num).toInt()
+        : int.tryParse('${j['rating']}')),
     );
   }
 

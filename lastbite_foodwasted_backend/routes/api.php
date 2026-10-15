@@ -71,3 +71,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/akun/password', [AkunController::class, 'ubahPassword']);
     Route::post('/akun/logout-lainnya', [AkunController::class, 'logoutLainnya']);
 });
+
+use App\Http\Controllers\Api\AlamatController;
+use App\Http\Controllers\Api\BantuanController;
+use App\Http\Controllers\Api\MitraFavoritController;
+ 
+// 2) DI LUAR grup auth (publik), mis. dekat route /produk:
+ 
+// 3) DI DALAM grup Route::middleware('auth:sanctum')->group(...):
+Route::get('/alamat', [AlamatController::class, 'index']);
+Route::post('/alamat', [AlamatController::class, 'store']);
+Route::put('/alamat/{id}', [AlamatController::class, 'update']);
+Route::delete('/alamat/{id}', [AlamatController::class, 'destroy']);
+Route::post('/alamat/{id}/utama', [AlamatController::class, 'utama']);
+ 
+Route::get('/mitra-favorit', [MitraFavoritController::class, 'index']);
+Route::get('/mitra-favorit/status', [MitraFavoritController::class, 'status']);
+Route::post('/mitra-favorit/toggle', [MitraFavoritController::class, 'toggle']);
+Route::delete('/mitra-favorit/{idMitra}', [MitraFavoritController::class, 'destroy']);
+
+use App\Http\Controllers\Api\BantuanPesanController;
+use App\Http\Controllers\Api\FaqController;
+
+// Tempelkan ke routes/api.php yang sudah ada; jangan mengganti seluruh file.
+Route::get('/faq', [FaqController::class, 'index']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/bantuan/pesan', [BantuanPesanController::class, 'index']);
+    Route::post('/bantuan/pesan', [BantuanPesanController::class, 'store']);
+});

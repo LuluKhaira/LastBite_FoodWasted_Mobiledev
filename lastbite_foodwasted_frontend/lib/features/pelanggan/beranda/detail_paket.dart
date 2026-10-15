@@ -107,6 +107,46 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _muatFavorit();
+  }
+
+  Future<void> _muatFavorit() async {
+    final id = widget.item.id;
+    if (id == null) return;
+    try {
+      final f = await ApiService.statusMitraFavorit(id);
+      if (mounted) setState(() => _fav = f);
+    } catch (_) {
+      // belum login / gagal: biarkan hati kosong
+    }
+  }
+
+  Future<void> _toggleFavorit() async {
+    final id = it.id;
+    if (id == null) {
+      _pesan('Produk ini belum terhubung ke server.');
+      return;
+    }
+    final lama = _fav;
+    setState(() => _fav = !lama);
+    try {
+      final f = await ApiService.toggleMitraFavorit(id);
+      if (!mounted) return;
+      setState(() => _fav = f);
+      _pesan(f ? 'Mitra ditambahkan ke favorit' : 'Mitra dihapus dari favorit');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _fav = lama);
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _pesan(msg.contains('Unauthenticated')
+          ? 'Masuk dulu ya untuk menyimpan mitra favorit.'
+          : msg);
+    }
+  }
+
+  @override
   void dispose() {
     _notes.dispose();
     super.dispose();
@@ -425,7 +465,7 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
         const SizedBox(width: 8),
         _roundBtn(
           _fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          () => setState(() => _fav = !_fav),
+          _toggleFavorit,
           color: _fav ? LbColors.peach : LbColors.forest,
         ),
       ],

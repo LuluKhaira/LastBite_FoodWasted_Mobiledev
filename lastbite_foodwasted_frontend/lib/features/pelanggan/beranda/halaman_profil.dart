@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'beranda_widgets.dart';
+import 'halaman_alamat.dart';
+import 'halaman_bantuan.dart';
 import 'halaman_keamanan.dart';
 import 'halaman_tentang.dart';
+import 'halaman_ulasan.dart';
 import 'lb_nav.dart';
 import 'pesanan_model.dart' show lbRp;
 
@@ -125,6 +128,95 @@ class _ProfilScreenState extends State<ProfilScreen> {
   }
 
   void _segera(String fitur) => _snack('$fitur segera hadir');
+
+  /// Detail level penyelamat: dihitung dari pesanan yang sudah diambil.
+  /// Angka 5 harus sama dengan PAKET_PER_LEVEL di ProfilController (Laravel).
+  void _detailLevel(ProfilData d) {
+    const int perLevel = 5;
+    final sisa = d.paket % perLevel;
+    final menujuNext = perLevel - sisa;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+        decoration: const BoxDecoration(
+          color: LbColors.offWhite,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: LbColors.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Penyelamat Aktif • Lv.${d.level}',
+                  style: LbText.heading(19, weight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(
+                'Tambah $menujuNext paket lagi yang sudah diambil untuk naik ke Lv.${d.level + 1}.',
+                textAlign: TextAlign.center,
+                style: LbText.body(13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: sisa / perLevel,
+                  minHeight: 10,
+                  backgroundColor: LbColors.sageLight,
+                  color: LbColors.sageDeep,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  for (final t in [
+                    ('${d.paket}', 'Paket diselamatkan'),
+                    (d.kgText, 'kg makanan'),
+                    (lbRp(d.hemat), 'Total hemat'),
+                  ])
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: LbColors.border),
+                        ),
+                        child: Column(
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(t.$1,
+                                  style: LbText.heading(16, weight: FontWeight.w700)),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(t.$2,
+                                textAlign: TextAlign.center,
+                                style: LbText.body(11, height: 1.25)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _edit() async {
     final d = _data;
@@ -250,7 +342,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
           _KartuProfil(
             data: d,
             onEdit: _edit,
-            onLevelTap: () => _segera('Detail level penyelamat'),
+            onLevelTap: () => _detailLevel(d),
           ),
           const SizedBox(height: 16),
           _BannerHero(isVip: d.isVip, onTap: () => _segera('Lastbite Hero')),
@@ -266,76 +358,36 @@ class _ProfilScreenState extends State<ProfilScreen> {
               ),
             ),
             _MenuTile(
-              icon: Icons.notifications_none_rounded,
-              title: 'Langganan & Notifikasi',
-              chip: 'Promo',
-              chipBg: LbColors.peachLight,
-              chipFg: LbColors.peachDeep,
-              onTap: () => _segera('Langganan & Notifikasi'),
-            ),
-            _MenuTile(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Metode pembayaran',
-              subtitle: d.metodeBayar.isEmpty
-                  ? 'Belum ada yang terhubung'
-                  : '${d.metodeBayar} terhubung',
-              onTap: () => _segera('Metode pembayaran'),
-            ),
-            _MenuTile(
-              icon: Icons.group_outlined,
-              title: 'Akun Keluarga / Berbagi',
-              chip: 'Baru',
-              onTap: () => _segera('Akun Keluarga'),
-            ),
-            _MenuTile(
               icon: Icons.location_on_outlined,
               title: 'Alamat & Lokasi Ambil Favorit',
-              onTap: () => _segera('Alamat & Lokasi'),
-            ),
-            _MenuTile(
-              icon: Icons.badge_outlined,
-              title: 'Pusat Akun Mahasiswa & Mitra',
-              chip: 'Baru',
-              onTap: () => _segera('Akun Mahasiswa & Mitra'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AlamatScreen()),
+              ),
             ),
           ]),
 
           const _SectionLabel('AKTIVITAS PENYELAMATAN'),
           _MenuGroup(children: [
             _MenuTile(
-              icon: Icons.eco_rounded,
-              iconSolid: true,
-              title: 'Jejak & Dampak Lingkungan',
-              subtitle: '${d.paket} paket • Hemat ${lbRp(d.hemat)}',
-              onTap: () => _segera('Jejak & Dampak'),
-            ),
-            _MenuTile(
-              icon: Icons.confirmation_number_outlined,
-              title: 'Voucher & Kode Promo Saya',
-              trailingText: d.voucher > 0 ? '${d.voucher} Tersedia' : null,
-              trailingColor: LbColors.sageDeep,
-              trailingBold: true,
-              onTap: () => _segera('Voucher'),
-            ),
-            _MenuTile(
               icon: Icons.star_border_rounded,
               title: 'Ulasan & Penilaian Resto',
-              onTap: () => _segera('Ulasan'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UlasanScreen()),
+              ),
             ),
           ]),
 
           const _SectionLabel('PENGATURAN APLIKASI'),
           _MenuGroup(children: [
             _MenuTile(
-              icon: Icons.phone_android_rounded,
-              title: 'Tema & Tampilan',
-              trailingText: 'Mode Terang',
-              onTap: () => _segera('Tema & Tampilan'),
-            ),
-            _MenuTile(
               icon: Icons.help_outline_rounded,
               title: 'Pusat Bantuan & FAQ',
-              onTap: () => _segera('Pusat Bantuan'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BantuanScreen()),
+              ),
             ),
             _MenuTile(
               icon: Icons.info_outline_rounded,
