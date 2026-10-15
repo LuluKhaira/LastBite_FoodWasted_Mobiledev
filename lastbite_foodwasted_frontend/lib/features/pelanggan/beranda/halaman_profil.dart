@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'beranda_widgets.dart';
+import 'halaman_keamanan.dart';
+import 'halaman_tentang.dart';
 import 'lb_nav.dart';
 import 'pesanan_model.dart' show lbRp;
 
@@ -180,28 +182,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
     Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
-  void _tentang() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text('Tentang Lastbite', style: LbText.heading(17)),
-        content: Text(
-          'Lastbite menghubungkan kamu dengan makanan & bahan organik sisa '
-          'berkualitas agar tidak terbuang.\n\nVersi $kVersiAplikasi',
-          style: LbText.body(13.5, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Tutup', style: LbText.heading(13.5, color: LbColors.sageDeep)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -280,7 +260,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
             _MenuTile(
               icon: Icons.shield_outlined,
               title: 'Keamanan akun',
-              onTap: () => _segera('Keamanan akun'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KeamananAkunScreen()),
+              ),
             ),
             _MenuTile(
               icon: Icons.notifications_none_rounded,
@@ -358,7 +341,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
               icon: Icons.info_outline_rounded,
               title: 'Tentang Lastbite',
               trailingText: kVersiAplikasi,
-              onTap: _tentang,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TentangLastbiteScreen()),
+              ),
             ),
           ]),
 

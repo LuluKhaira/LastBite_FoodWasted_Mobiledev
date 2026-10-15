@@ -3,6 +3,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PesananController;
 use App\Http\Controllers\Api\ProdukController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ProfilController;
+use App\Http\Controllers\Api\AkunController;
 
 //MITRA
 use App\Http\Controllers\Api\MitraRegisterController;
@@ -52,4 +54,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
     Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
     Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/pesanan', [PesananController::class, 'index']);
+    Route::post('/pesanan', [PesananController::class, 'store']);
+    Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
+    Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
+    Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
+
+    Route::get('/profil', [ProfilController::class, 'show']);
+    Route::put('/profil', [ProfilController::class, 'update']);
+    Route::put('/akun/password', [AkunController::class, 'ubahPassword']);
+    Route::post('/akun/logout-lainnya', [AkunController::class, 'logoutLainnya']);
 });

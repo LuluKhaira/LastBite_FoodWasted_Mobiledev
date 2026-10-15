@@ -73,9 +73,13 @@ class ApiService {
   }
 
   static Future<void> logout() async {
-    await _kirim(http.post(Uri.parse('$baseUrl/logout'),
-        headers: await _headers(auth: true)));
-    (await SharedPreferences.getInstance()).remove('token');
+    try {
+      await _kirim(http.post(Uri.parse('$baseUrl/logout'),
+          headers: await _headers(auth: true)));
+    } finally {
+      // token lokal SELALU dihapus, walau server tidak terjangkau
+      (await SharedPreferences.getInstance()).remove('token');
+    }
   }
 
   // ---------- AUTH (WhatsApp OTP via Fonnte) ----------
@@ -204,6 +208,45 @@ class ApiService {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan/$kode/rating'),
         headers: await _headers(auth: true),
         body: jsonEncode({'rating': rating})));
+    _handle(r);
+  }
+
+  // ---------- PROFIL ----------
+  static Future<Map<String, dynamic>> getProfil() async {
+    final d = _handle(await _kirim(
+        http.get(Uri.parse('$baseUrl/profil'), headers: await _headers(auth: true))));
+    return Map<String, dynamic>.from(d['data']);
+  }
+
+  static Future<Map<String, dynamic>> updateProfil({
+    required String name,
+    String? phone,
+  }) async {
+    final r = await _kirim(http.put(Uri.parse('$baseUrl/profil'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({
+          'name': name,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+        })));
+    return Map<String, dynamic>.from(_handle(r)['data']);
+  }
+
+  // ---------- AKUN / KEAMANAN ----------
+  /// [lama] boleh null bila akun belum punya kata sandi (daftar via OTP).
+  static Future<void> ubahPassword({String? lama, required String baru}) async {
+    final r = await _kirim(http.put(Uri.parse('$baseUrl/akun/password'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({
+          if (lama != null && lama.isNotEmpty) 'password_lama': lama,
+          'password_baru': baru,
+        })));
+    _handle(r);
+  }
+
+  /// Cabut semua token KECUALI perangkat ini.
+  static Future<void> keluarPerangkatLain() async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/akun/logout-lainnya'),
+        headers: await _headers(auth: true)));
     _handle(r);
   }
 }
