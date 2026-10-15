@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'api_service.dart';
 import 'beranda_widgets.dart';
 import 'pesanan_model.dart';
 import 'nota_pesanan.dart';
@@ -12,11 +13,83 @@ class PesananScreen extends StatefulWidget {
 }
 
 class _PesananScreenState extends State<PesananScreen> {
-  int _tab = 1; // 0 = Aktif, 1 = Riwayat
-  final List<Pesanan> _riwayat = daftarPesanan;
+  int _tab = 0; // 0 = Aktif, 1 = Riwayat
+  bool _tabDipilih = false;
+  bool _loading = true;
+  String? _error;
+  List<Pesanan> _semua = [];
+
+  List<Pesanan> get _aktif => _semua.where((p) => p.aktif).toList();
+  List<Pesanan> get _riwayat => _semua.where((p) => !p.aktif).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  Future<void> _muat({bool senyap = false}) async {
+    if (!senyap) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final data = await ApiService.getPesanan();
+      if (!mounted) return;
+      setState(() {
+        _semua = data.map(Pesanan.fromJson).toList();
+        _loading = false;
+        _error = null;
+        // pertama kali dibuka: kalau tidak ada yang aktif, langsung ke Riwayat
+        if (!_tabDipilih) {
+          _tab = (_aktif.isEmpty && _riwayat.isNotEmpty) ? 1 : 0;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _loading = false;
+        if (!senyap) {
+          _error = msg.contains('Unauthenticated')
+              ? 'Masuk dulu ya untuk melihat pesananmu.'
+              : msg;
+        }
+      });
+      if (senyap) _snack(msg);
+    }
+  }
+
+  void _snack(String teks) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: LbColors.forest,
+          content: Text(teks, style: LbText.body(13, color: Colors.white)),
+        ),
+      );
+  }
+
+  Future<void> _tandaiDiambil(Pesanan p) async {
+    try {
+      await ApiService.selesaikanPesanan(p.kode);
+      if (!mounted) return;
+      _snack('Pesanan ditandai sudah diambil. Terima kasih!');
+      await _muat(senyap: true);
+    } catch (e) {
+      if (!mounted) return;
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final daftar = _tab == 0 ? _aktif : _riwayat;
+
     return Scaffold(
       backgroundColor: LbColors.offWhite,
       bottomNavigationBar: LbBottomNav(
@@ -25,56 +98,115 @@ class _PesananScreenState extends State<PesananScreen> {
       ),
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const LbHeader(title: 'Pesanan'),
-                    const SizedBox(height: 20),
-                    _titleRow(),
-                    const SizedBox(height: 16),
-                    _tabs(),
-                    const SizedBox(height: 16),
-                  ],
+        child: RefreshIndicator(
+          color: LbColors.sageDeep,
+          onRefresh: () => _muat(senyap: true),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const LbHeader(title: 'Pesanan'),
+                      const SizedBox(height: 20),
+                      _titleRow(),
+                      const SizedBox(height: 16),
+                      _tabs(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (_tab == 1)
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                sliver: SliverList.separated(
-                  itemCount: _riwayat.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) {
-                    final p = _riwayat[i];
-                    return _PesananCard(
-                      p: p,
-                      onNota: () => showNotaPesanan(
-                        context,
-                        p,
-                        onPesanLagi: () =>
-                            LbNav.go(context, from: 1, to: 0),
+              if (_loading)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 60),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: LbColors.sageDeep,
                       ),
-                      onAksi: () {
-                        if (p.baru) {
-                          _showRating(p);
-                        } else {
-                          LbNav.go(context, from: 1, to: 0);
-                        }
-                      },
-                    );
-                  },
+                    ),
+                  ),
+                )
+              else if (_error != null)
+                SliverToBoxAdapter(child: _errorView())
+              else if (daftar.isEmpty)
+                SliverToBoxAdapter(
+                  child: _tab == 0
+                      ? _empty(
+                          judul: 'Belum ada pesanan aktif',
+                          isi:
+                              'Yuk selamatkan makanan di sekitarmu dan kurangi food waste hari ini.',
+                        )
+                      : _empty(
+                          judul: 'Belum ada riwayat pesanan',
+                          isi:
+                              'Pesanan yang sudah selesai akan muncul di sini.',
+                        ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  sliver: SliverList.separated(
+                    itemCount: daftar.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, i) {
+                      final p = daftar[i];
+                      return _PesananCard(
+                        p: p,
+                        onNota: () => showNotaPesanan(
+                          context,
+                          p,
+                          onPesanLagi: () =>
+                              LbNav.go(context, from: 1, to: 0),
+                        ),
+                        onAksi: () {
+                          if (p.aktif) {
+                            _tandaiDiambil(p);
+                          } else if (p.baru) {
+                            _showRating(p);
+                          } else {
+                            LbNav.go(context, from: 1, to: 0);
+                          }
+                        },
+                      );
+                    },
+                  ),
                 ),
-              )
-            else
-              SliverToBoxAdapter(child: _emptyAktif()),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _errorView() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_rounded,
+              size: 44, color: LbColors.textGrey),
+          const SizedBox(height: 12),
+          Text(
+            _error ?? '',
+            textAlign: TextAlign.center,
+            style: LbText.body(13, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: _muat,
+            child: Text(
+              'Coba lagi',
+              style: LbText.heading(14, weight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -152,7 +284,10 @@ class _PesananScreenState extends State<PesananScreen> {
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _tab = i),
+          onTap: () => setState(() {
+            _tab = i;
+            _tabDipilih = true;
+          }),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             height: 46,
@@ -221,14 +356,14 @@ class _PesananScreenState extends State<PesananScreen> {
       ),
       child: Row(
         children: [
-          item(0, 'Aktif', count: 0),
+          item(0, 'Aktif', count: _aktif.length),
           item(1, 'Riwayat', count: _riwayat.length),
         ],
       ),
     );
   }
 
-  Widget _emptyAktif() {
+  Widget _empty({required String judul, required String isi}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
       child: Column(
@@ -248,12 +383,12 @@ class _PesananScreenState extends State<PesananScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Belum ada pesanan aktif',
+            judul,
             style: LbText.heading(16, weight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
           Text(
-            'Yuk selamatkan makanan di sekitarmu dan kurangi food waste hari ini.',
+            isi,
             textAlign: TextAlign.center,
             style: LbText.body(13, height: 1.4),
           ),
@@ -359,8 +494,18 @@ class _PesananScreenState extends State<PesananScreen> {
                     ),
                     const SizedBox(height: 22),
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(ctx);
+                        try {
+                          await ApiService.beriNilai(p.kode, stars);
+                        } catch (e) {
+                          if (mounted) {
+                            _snack(e.toString().replaceFirst('Exception: ', ''));
+                          }
+                          return;
+                        }
+                        if (!mounted) return;
+                        _muat(senyap: true);
                         ScaffoldMessenger.of(pageContext).showSnackBar(
                           SnackBar(
                             behavior: SnackBarBehavior.floating,
@@ -535,14 +680,20 @@ class _PesananCard extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.check_rounded,
+                                      Icon(
+                                        p.aktif
+                                            ? Icons.storefront_rounded
+                                            : Icons.check_rounded,
                                         size: 14,
                                         color: LbColors.sageDeep,
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        'Selesai',
+                                        p.aktif
+                                            ? 'Siap Diambil'
+                                            : (p.status == 'dibatalkan'
+                                                ? 'Dibatalkan'
+                                                : 'Selesai'),
                                         style: LbText.body(
                                           11.5,
                                           weight: FontWeight.w800,
@@ -623,7 +774,7 @@ class _PesananCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            p.baru ? 'Total Pembayaran' : 'Total',
+                            (p.baru || p.aktif) ? 'Total Pembayaran' : 'Total',
                             style: LbText.body(12, weight: FontWeight.w800),
                           ),
                           const SizedBox(height: 1),
@@ -641,7 +792,7 @@ class _PesananCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (p.baru)
+                          if (p.baru || p.aktif)
                             Text(
                               '${p.metode} • Lunas',
                               style: LbText.body(11.5, weight: FontWeight.w700),
@@ -658,7 +809,15 @@ class _PesananCard extends StatelessWidget {
                       bg: LbColors.sageLight,
                     ),
                     const SizedBox(width: 8),
-                    if (p.baru)
+                    if (p.aktif)
+                      _button(
+                        label: 'Sudah Diambil',
+                        icon: Icons.check_circle_outline_rounded,
+                        onTap: onAksi,
+                        fg: Colors.white,
+                        gradient: true,
+                      )
+                    else if (p.baru)
                       _button(
                         label: 'Beri Nilai',
                         icon: Icons.star_rounded,

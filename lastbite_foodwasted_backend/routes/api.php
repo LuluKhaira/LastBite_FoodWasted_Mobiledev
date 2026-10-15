@@ -39,3 +39,17 @@ Route::post('/mitra/verify-otp', [MitraRegisterController::class, 'verifyOtp']);
 Route::post('/mitra/set-business', [MitraRegisterController::class, 'setBusinessCategory']);
 Route::post('/mitra/set-address', [MitraRegisterController::class, 'setAddress']);
 Route::post('/mitra/set-documents', [MitraRegisterController::class, 'setDocuments']);
+
+
+//pelanggan  pesanan
+ 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/pesanan', [PesananController::class, 'index']);
+    Route::post('/pesanan', [PesananController::class, 'store']);
+    Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
+    Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
+    Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
+});

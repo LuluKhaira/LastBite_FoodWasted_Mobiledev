@@ -178,10 +178,32 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> buatPesanan(
-      int produkId, int qty, String metode) async {
+      int produkId, int qty, String metode,
+      {String? catatan}) async {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan'),
         headers: await _headers(auth: true),
-        body: jsonEncode({'produk_id': produkId, 'qty': qty, 'metode': metode})));
+        body: jsonEncode({
+          'produk_id': produkId,
+          'qty': qty,
+          'metode': metode,
+          if (catatan != null && catatan.trim().isNotEmpty)
+            'catatan': catatan.trim(),
+        })));
     return Map<String, dynamic>.from(_handle(r)['data']);
+  }
+
+  /// Tandai pesanan sudah diambil (status menunggu -> selesai).
+  static Future<void> selesaikanPesanan(String kode) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan/$kode/selesai'),
+        headers: await _headers(auth: true)));
+    _handle(r);
+  }
+
+  /// Beri bintang 1-5 untuk pesanan yang sudah selesai.
+  static Future<void> beriNilai(String kode, int rating) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan/$kode/rating'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({'rating': rating})));
+    _handle(r);
   }
 }
