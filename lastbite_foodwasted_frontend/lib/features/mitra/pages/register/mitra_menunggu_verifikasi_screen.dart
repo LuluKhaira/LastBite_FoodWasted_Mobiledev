@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_disetujui_screen.dart';
 
 const _bg = Color(0xFFEAFDE1);
@@ -10,6 +11,7 @@ const _textDark = Color(0xFF10260F);
 const _textSoft = Color(0xFF3F4A3C);
 
 class MitraMenungguVerifikasiScreen extends StatefulWidget {
+  final String phoneNumber;
   final String namaToko;
   final String kategori;
   final String regId;
@@ -17,10 +19,11 @@ class MitraMenungguVerifikasiScreen extends StatefulWidget {
 
   const MitraMenungguVerifikasiScreen({
     super.key,
-    this.namaToko = 'Toko Roti Berkah Batam',
-    this.kategori = 'Roti & Bakery',
-    this.regId = '#LB-88219',
-    this.waktuPengajuan = 'Hari ini, 10:15 WIB',
+    required this.phoneNumber,
+    this.namaToko = '-',
+    this.kategori = '-',
+    this.regId = '-',
+    this.waktuPengajuan = '-',
   });
 
   @override
@@ -30,45 +33,79 @@ class MitraMenungguVerifikasiScreen extends StatefulWidget {
 
 class _MitraMenungguVerifikasiScreenState
     extends State<MitraMenungguVerifikasiScreen> {
-  int _secretTapCount = 0;
   bool _isLoading = false;
 
-  void _simulasiDisetujuiAdmin() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Status: Pendaftaran Disetujui! Masuk ke Dashboard...'),
-        backgroundColor: _primary,
-        duration: Duration(seconds: 1),
-      ),
-    );
+  late String _namaToko = widget.namaToko;
+  late String _kategori = widget.kategori;
+  late String _regId = widget.regId;
+  late String _waktu = widget.waktuPengajuan;
+  String _status = 'menunggu_verifikasi';
+  String? _alasan;
 
-    // Navigasi berpindah ke layar MitraDisetujuiScreen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MitraDisetujuiScreen()),
+  bool get _ditolak => _status == 'ditolak';
+
+  @override
+  void initState() {
+    super.initState();
+    // Ambil data & status terbaru dari server begitu layar dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) => _cekStatus(silent: true));
+  }
+
+  void _snack(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
     );
   }
 
-  void _cekStatusVerifikasi() {
+  Future<void> _cekStatus({bool silent = false}) async {
+    if (widget.phoneNumber.isEmpty) {
+      if (!silent) _snack('Nomor WhatsApp tidak tersedia.');
+      return;
+    }
+
     setState(() => _isLoading = true);
+    final data = await ApiService.checkStatus(widget.phoneNumber);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Memeriksa status verifikasi ke server...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    if (data == null) {
+      if (!silent) _snack('Gagal memeriksa status. Coba lagi.');
+      return;
+    }
 
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _simulasiDisetujuiAdmin();
+    setState(() {
+      _status = (data['status'] ?? _status).toString();
+      _alasan = data['alasan_penolakan']?.toString();
+      if ((data['nama_usaha'] ?? '').toString().isNotEmpty) {
+        _namaToko = data['nama_usaha'].toString();
+      }
+      if ((data['kategori'] ?? '').toString().isNotEmpty) {
+        _kategori = data['kategori'].toString();
+      }
+      if (data['id'] != null) {
+        _regId = '#LB-${data['id'].toString().padLeft(5, '0')}';
+      }
+      if ((data['diajukan'] ?? '').toString().isNotEmpty) {
+        _waktu = data['diajukan'].toString();
       }
     });
+
+    if (_status == 'disetujui') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MitraDisetujuiScreen()),
+      );
+    } else if (!silent) {
+      _snack(_ditolak
+          ? 'Pendaftaran ditolak oleh admin.'
+          : 'Pendaftaran masih ditinjau tim Lastbite.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _ditolak ? Colors.redAccent : _primary;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -91,50 +128,50 @@ class _MitraMenungguVerifikasiScreenState
                       ),
                       child: Column(
                         children: [
-                          // Icon Jam Pasir (Ketuk 3x untuk bypass ACC admin)
-                          GestureDetector(
-                            onTap: () {
-                              _secretTapCount++;
-                              if (_secretTapCount >= 3) {
-                                _secretTapCount = 0;
-                                _simulasiDisetujuiAdmin();
-                              }
-                            },
-                            child: Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFE2F5DD),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.hourglass_top_rounded,
-                                    size: 48,
-                                    color: Color(0xFF2E7D32),
-                                  ),
+                          Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: _ditolak
+                                      ? const Color(0xFFFFECEB)
+                                      : const Color(0xFFE2F5DD),
+                                  shape: BoxShape.circle,
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: _primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.access_time_filled,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
+                                child: Icon(
+                                  _ditolak
+                                      ? Icons.cancel_outlined
+                                      : Icons.hourglass_top_rounded,
+                                  size: 48,
+                                  color: _ditolak
+                                      ? Colors.redAccent
+                                      : const Color(0xFF2E7D32),
                                 ),
-                              ],
-                            ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _ditolak
+                                      ? Icons.close
+                                      : Icons.access_time_filled,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 20),
 
                           Text(
-                            'Pendaftaran Sedang\nDitinjau',
+                            _ditolak
+                                ? 'Pendaftaran\nDitolak'
+                                : 'Pendaftaran Sedang\nDitinjau',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 22,
@@ -145,9 +182,14 @@ class _MitraMenungguVerifikasiScreenState
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Tim Lastbite sedang meninjau data usahamu.\n'
-                            'Biasanya selesai dalam 1x24 jam. Kami akan\n'
-                            'kabari lewat WhatsApp begitu disetujui.',
+                            _ditolak
+                                ? ((_alasan != null && _alasan!.isNotEmpty)
+                                    ? 'Alasan: $_alasan'
+                                    : 'Data usahamu belum memenuhi syarat. '
+                                        'Silakan periksa kembali dan daftar ulang.')
+                                : 'Tim Lastbite sedang meninjau data usahamu.\n'
+                                    'Biasanya selesai dalam 1x24 jam. Kami akan\n'
+                                    'kabari lewat WhatsApp begitu disetujui.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13.5,
@@ -193,7 +235,7 @@ class _MitraMenungguVerifikasiScreenState
                                         ),
                                       ),
                                       Text(
-                                        'Informasi tokomu tersimpan rahasia & tere...',
+                                        'Informasi tokomu tersimpan rahasia & terenkripsi.',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12,
                                           color: _textSoft,
@@ -230,7 +272,7 @@ class _MitraMenungguVerifikasiScreenState
                                       ),
                                     ),
                                     Text(
-                                      'ID: ${widget.regId}',
+                                      'ID: $_regId',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w800,
@@ -246,14 +288,14 @@ class _MitraMenungguVerifikasiScreenState
                                 _SummaryRow(
                                   icon: Icons.storefront_outlined,
                                   label: 'Nama Toko',
-                                  value: widget.namaToko,
+                                  value: _namaToko,
                                   boldValue: true,
                                 ),
                                 const SizedBox(height: 12),
                                 _SummaryRow(
                                   icon: Icons.bakery_dining_outlined,
                                   label: 'Kategori',
-                                  value: widget.kategori,
+                                  value: _kategori,
                                   boldValue: true,
                                 ),
                                 const SizedBox(height: 12),
@@ -300,7 +342,9 @@ class _MitraMenungguVerifikasiScreenState
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            'Sedang Diverifikasi',
+                                            _ditolak
+                                                ? 'Ditolak'
+                                                : 'Sedang Diverifikasi',
                                             style: GoogleFonts.plusJakartaSans(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w800,
@@ -316,7 +360,7 @@ class _MitraMenungguVerifikasiScreenState
                                 _SummaryRow(
                                   icon: Icons.calendar_today_outlined,
                                   label: 'Diajukan pada',
-                                  value: widget.waktuPengajuan,
+                                  value: _waktu,
                                 ),
                               ],
                             ),
@@ -391,7 +435,7 @@ class _MitraMenungguVerifikasiScreenState
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _cekStatusVerifikasi,
+                      onPressed: _isLoading ? null : () => _cekStatus(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
@@ -486,12 +530,16 @@ class _SummaryRow extends StatelessWidget {
             ),
           ],
         ),
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13.5,
-            fontWeight: boldValue ? FontWeight.w800 : FontWeight.w600,
-            color: _textDark,
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: boldValue ? FontWeight.w800 : FontWeight.w600,
+              color: _textDark,
+            ),
           ),
         ),
       ],

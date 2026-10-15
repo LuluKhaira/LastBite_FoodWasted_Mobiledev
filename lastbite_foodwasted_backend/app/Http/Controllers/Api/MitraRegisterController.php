@@ -193,40 +193,29 @@ class MitraRegisterController extends Controller
 
     public function setDocuments(Request $request)
     {
-        \Log::info('Data dokumen upload diterima:', $request->all());
-
         $request->validate([
             'phone' => 'required|string',
-            'foto_ktp' => 'required|image|max:5120', // Maks 5MB
+            'foto_ktp' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'foto_npwp' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'sertifikat_halal' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
-        $cleanPhone = $this->formatToLocal($request->phone);
-        $mitra = Mitra::where('no_whatsapp', $cleanPhone)->first();
+        $mitra = Mitra::where('no_whatsapp', $this->formatToLocal($request->phone))->first();
 
         if (!$mitra) {
-            return response()->json(['success' => false, 'message' => 'Mitra tidak ditemukan'], 404);
+            return response()->json(['success' => false, 'message' => 'Data mitra tidak ditemukan.'], 404);
         }
 
-        $ktpPath = $request->file('foto_ktp')->store('documents/ktp', 'public');
+        $folders = ['foto_ktp' => 'ktp', 'foto_npwp' => 'npwp', 'sertifikat_halal' => 'halal'];
+        $data = ['status_verifikasi' => 'menunggu_verifikasi'];
+        foreach ($folders as $field => $folder) {
+            if ($request->hasFile($field)) {
+                $data[$field] = $request->file($field)->store('documents/' . $folder, 'public');
+            }
+        }
 
-        $npwpPath = $request->hasFile('foto_npwp')
-            ? $request->file('foto_npwp')->store('documents/npwp', 'public')
-            : null;
+        $mitra->forceFill($data)->save();
 
-        $halalPath = $request->hasFile('sertifikat_halal')
-            ? $request->file('sertifikat_halal')->store('documents/halal', 'public')
-            : null;
-
-        $mitra->update([
-            'foto_ktp' => $ktpPath,
-            'foto_npwp' => $npwpPath,
-            'sertifikat_halal' => $halalPath,
-            'status_verifikasi' => 'menunggu_verifikasi',
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Dokumen asli berhasil diunggah!',
-        ], 200);
+        return response()->json(['success' => true, 'message' => 'Dokumen berhasil diunggah!'], 200);
     }
 }

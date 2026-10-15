@@ -124,7 +124,9 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const MitraMenungguVerifikasiScreen(),
+            builder: (context) => MitraMenungguVerifikasiScreen(
+              phoneNumber: widget.phoneNumber,
+            ),
           ),
         );
       }
