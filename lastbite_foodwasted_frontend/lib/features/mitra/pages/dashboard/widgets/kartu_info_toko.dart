@@ -3,11 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
 class KartuInfoToko extends StatelessWidget {
+  final String namaToko;
   final bool isTokoBuka;
-  final ValueChanged onStatusChanged;
+  final ValueChanged<bool> onStatusChanged;
 
   const KartuInfoToko({
     super.key,
+    required this.namaToko,
     required this.isTokoBuka,
     required this.onStatusChanged,
   });
@@ -47,7 +49,7 @@ class KartuInfoToko extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Halo, Holland Bakery Batam C',
+            'Halo, $namaToko',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -85,7 +87,9 @@ class KartuInfoToko extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Menerima Penyelamatan Makanan',
+                        isTokoBuka
+                            ? 'Menerima Penyelamatan Makanan'
+                            : 'Tidak menerima pesanan',
                         style: GoogleFonts.nunito(
                           fontSize: 10.5,
                           color: AppColors.textSoft,

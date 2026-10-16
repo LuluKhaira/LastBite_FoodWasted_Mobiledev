@@ -1,9 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart'; 
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
 class SurplusSection extends StatelessWidget {
-  const SurplusSection({super.key});
+  final List<Map<String, dynamic>> items;
+
+  const SurplusSection({super.key, this.items = const []});
+
+  static String _rupiah(dynamic v) {
+    final n = num.tryParse('$v') ?? 0;
+    final s = n.round().toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return 'Rp $buf';
+  }
+
+  // "20:00:00" -> "20.00 WIB"
+  static String? _batas(dynamic v) {
+    if (v == null) return null;
+    final p = '$v'.split(':');
+    if (p.length < 2) return null;
+    return '${p[0]}.${p[1]} WIB';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +36,7 @@ class SurplusSection extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Surplus Sedang Tayang',
+                  'Produk Sedang Tayang',
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -34,7 +55,7 @@ class SurplusSection extends StatelessWidget {
               ],
             ),
             Text(
-              '1 Aktif',
+              '${items.length} Aktif',
               style: GoogleFonts.nunito(
                 fontSize: 11,
                 color: AppColors.textSoft,
@@ -44,159 +65,133 @@ class SurplusSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+        if (items.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              'Belum ada produk yang tayang. Tekan tombol + untuk menambah.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSoft),
+            ),
+          )
+        else
+          ...items.map((p) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _kartu(p),
+              )),
+      ],
+    );
+  }
+
+  Widget _kartu(Map<String, dynamic> p) {
+    final batas = _batas(p['waktu_selesai']);
+    final stok = int.tryParse('${p['stok']}') ?? 0;
+    final adaAsli = (num.tryParse('${p['harga_asli']}') ?? 0) > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: AppColors.orange.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.bakery_dining,
+                size: 36, color: AppColors.textDark),
           ),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: AppColors.orange.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.bakery_dining, size: 36, color: AppColors.textDark),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.orange.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'Cepat Habis',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textDark,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Batas 20.00 WIB',
-                              style: GoogleFonts.nunito(
-                                fontSize: 10.5,
-                                color: AppColors.textSoft,
-                              ),
-                            ),
-                          ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (stok <= 3)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.orange.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Paket Kejutan Roti Manis & Pastry',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                        child: Text(
+                          'Cepat Habis',
+                          style: GoogleFonts.nunito(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.textDark,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              'Rp 15.000',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textDark,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Rp 45.000',
-                              style: GoogleFonts.nunito(
-                                fontSize: 11,
-                                color: AppColors.textSoft,
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Sisa Stok Penyelamatan',
-                    style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSoft),
-                  ),
-                  Text(
-                    '3 dari 10 paket',
-                    style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textDark),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: 0.3,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.25),
-                  color: AppColors.orange,
-                  minHeight: 6,
+                      ),
+                    if (batas != null)
+                      Text(
+                        'Batas $batas',
+                        style: GoogleFonts.nunito(
+                            fontSize: 10.5, color: AppColors.textSoft),
+                      ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.tune, size: 16, color: AppColors.textDark),
-                      label: Text(
-                        'Kelola Stok / Tutup',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                        side: BorderSide.none,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                const SizedBox(height: 4),
+                Text(
+                  '${p['nama_produk'] ?? '-'}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      _rupiah(p['harga_diskon']),
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                       ),
                     ),
+                    if (adaAsli) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        _rupiah(p['harga_asli']),
+                        style: GoogleFonts.nunito(
+                          fontSize: 11,
+                          color: AppColors.textSoft,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Sisa stok: $stok',
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.textDark),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

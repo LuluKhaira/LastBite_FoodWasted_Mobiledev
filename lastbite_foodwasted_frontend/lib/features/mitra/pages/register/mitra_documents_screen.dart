@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 
 import 'mitra_menunggu_verifikasi_screen.dart';
@@ -56,7 +56,7 @@ class _MitraDocumentsScreenState extends State<MitraDocumentsScreen> {
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.orange),
+              leading: Icon(Icons.camera_alt, color: AppColors.orange),
               title: Text(
                 'Kamera',
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w600),

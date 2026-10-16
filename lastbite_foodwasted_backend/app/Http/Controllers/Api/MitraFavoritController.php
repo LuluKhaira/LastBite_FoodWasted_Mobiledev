@@ -7,6 +7,7 @@ use App\Models\MitraFavorit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class MitraFavoritController extends Controller
@@ -75,13 +76,19 @@ class MitraFavoritController extends Controller
 
     /**
      * Data ringkas satu mitra untuk kartu favorit.
-     * SESUAIKAN daftar nama kolom di bawah dengan tabel mitras & produks-mu
-     * (urutan = prioritas; yang pertama terisi dipakai).
+     * Produk yang dipilih: yang masih ada stok dulu, lalu yang terbaru.
      */
     private function ringkas(int $idMitra): array
     {
         $m = DB::table('mitras')->where('id_mitra', $idMitra)->first();
-        $p = DB::table('produks')->where('id_mitra', $idMitra)->orderByDesc('id')->first();
+
+        $qp = DB::table('produks')->where('id_mitra', $idMitra);
+        if (Schema::hasColumn('produks', 'aktif')) {
+            $qp->where('aktif', true);
+        }
+        $p = $qp->orderByRaw('CASE WHEN stok > 0 THEN 0 ELSE 1 END')
+            ->orderByDesc('id')
+            ->first();
 
         $nama   = $this->pilih($m, ['nama_usaha', 'nama_toko', 'nama_bisnis', 'nama_mitra', 'nama', 'name'])
             ?? $this->pilih($p, ['penjual'])
@@ -92,16 +99,29 @@ class MitraFavoritController extends Controller
             ?? $this->pilih($m, ['foto', 'logo', 'gambar']);
 
         $waktu = $this->pilih($p, ['waktu', 'waktu_ambil', 'jam_ambil']);
-        if (! $waktu && $p && ! empty($p->jam_mulai) && ! empty($p->jam_selesai)) {
-            $waktu = substr((string) $p->jam_mulai, 0, 5) . ' - ' . substr((string) $p->jam_selesai, 0, 5);
+        if (! $waktu && $p) {
+            $mulai   = $this->pilih($p, ['waktu_mulai', 'jam_mulai']);
+            $selesai = $this->pilih($p, ['waktu_selesai', 'jam_selesai']);
+            if ($mulai && $selesai) {
+                $waktu = substr($mulai, 0, 5) . ' - ' . substr($selesai, 0, 5) . ' WIB';
+            }
         }
 
+        $hargaAsli = $p && isset($p->harga_asli) && $p->harga_asli !== null ? (int) $p->harga_asli : null;
+
         return [
-            'id_mitra' => $idMitra,
-            'nama'     => $nama,
-            'alamat'   => $alamat,
-            'gambar'   => $gambar,
-            'waktu'    => $waktu,
+            'id_mitra'    => $idMitra,
+            'nama'        => $nama,
+            'alamat'      => $alamat,
+            'gambar'      => $gambar,
+            'waktu'       => $waktu,
+            // data tambahan untuk halaman Favorit
+            'produk_id'   => $p ? (int) $p->id : null,
+            'nama_produk' => $this->pilih($p, ['nama']),
+            'harga'       => $p ? (int) ($p->harga ?? 0) : 0,
+            'harga_asli'  => $hargaAsli,
+            'stok'        => $p ? (int) ($p->stok ?? 0) : 0,
+            'jarak_km'    => null,
         ];
     }
 
