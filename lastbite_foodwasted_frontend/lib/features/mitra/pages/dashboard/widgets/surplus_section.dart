@@ -36,7 +36,7 @@ class SurplusSection extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Surplus Sedang Tayang',
+                  'Produk Sedang Tayang',
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -74,7 +74,7 @@ class SurplusSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              'Belum ada surplus yang tayang. Tekan tombol + untuk menambah.',
+              'Belum ada produk yang tayang. Tekan tombol + untuk menambah.',
               textAlign: TextAlign.center,
               style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSoft),
             ),

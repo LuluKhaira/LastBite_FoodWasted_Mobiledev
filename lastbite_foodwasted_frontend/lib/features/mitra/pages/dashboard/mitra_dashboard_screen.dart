@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
 import 'widgets/ringkasan_section.dart';
@@ -69,6 +70,19 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     });
+  }
+
+  // Buka form tambah produk; kalau berhasil disimpan, muat ulang dashboard
+  Future<void> _bukaTambahProduk() async {
+    final berhasil = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TambahProdukScreen(phoneNumber: widget.phoneNumber),
+      ),
+    );
+    if (berhasil == true) {
+      await _muatDashboard();
+    }
   }
 
   // Simpan status buka/tutup ke server; kalau gagal, kembalikan tombolnya
@@ -146,7 +160,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
               right: 16,
               bottom: 76,
               child: FloatingActionButton(
-                onPressed: () {},
+                onPressed: _bukaTambahProduk,
                 backgroundColor: AppColors.primary,
                 elevation: 3,
                 child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -351,7 +365,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                   ),
                 ),
                 Text(
-                  'Makanan yang diunggah sebelum jam 17.00 rata-rata laku dalam 35 menit! Coba upload surplus lebih awal untuk penjualan maksimal.',
+                  'Makanan yang diunggah sebelum jam 17.00 rata-rata laku dalam 35 menit! Coba upload produk lebih awal untuk penjualan maksimal.',
                   style: GoogleFonts.nunito(
                     fontSize: 10.5,
                     color: AppColors.textSoft,
