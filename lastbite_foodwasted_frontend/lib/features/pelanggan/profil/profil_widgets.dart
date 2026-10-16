@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'beranda_widgets.dart';
+import '../beranda/beranda_widgets.dart';
 
 /// Komponen bersama yang dipakai oleh halaman Alamat, Bantuan, dan Ulasan.
 BoxDecoration pkKartuDeco({Color? color}) => BoxDecoration(

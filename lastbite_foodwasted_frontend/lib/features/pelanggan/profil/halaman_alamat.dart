@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'beranda_widgets.dart';
+import '../beranda/api_service.dart';
+import '../beranda/beranda_widgets.dart';
 import 'halaman_bantuan.dart';
 import 'profil_widgets.dart';
 

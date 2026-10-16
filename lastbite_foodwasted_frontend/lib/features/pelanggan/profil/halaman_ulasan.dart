@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'beranda_widgets.dart';
-import 'pesanan_model.dart';
+import '../beranda/api_service.dart';
+import '../beranda/beranda_widgets.dart';
+import '../beranda/pesanan_model.dart';
 import 'profil_widgets.dart';
 
 // ============================================================

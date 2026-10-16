@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'beranda_widgets.dart';
+import '../beranda/beranda_widgets.dart';
 import 'halaman_profil.dart' show kVersiAplikasi;
 
 const String _kBuild = '2409';

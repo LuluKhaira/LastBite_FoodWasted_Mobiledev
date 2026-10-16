@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'beranda_widgets.dart';
+import '../beranda/api_service.dart';
+import '../beranda/beranda_widgets.dart';
 import 'halaman_alamat.dart';
 import 'halaman_bantuan.dart';
 import 'halaman_keamanan.dart';
 import 'halaman_tentang.dart';
 import 'halaman_ulasan.dart';
-import 'lb_nav.dart';
-import 'pesanan_model.dart' show lbRp;
+import '../beranda/lb_nav.dart';
+import '../beranda/pesanan_model.dart' show lbRp;
 
 const String kVersiAplikasi = 'v2.4.1';
 
