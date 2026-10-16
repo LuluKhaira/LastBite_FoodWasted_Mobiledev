@@ -7,8 +7,8 @@ import 'profil_widgets.dart';
 
 // ============================================================
 // PUSAT BANTUAN & FAQ
-// FAQ dari database (GET /api/faq). Pesan ke CS dikirim lewat backend
-// ke WhatsApp tim CS via Fonnte (POST /api/bantuan/pesan).
+// FAQ dari database (GET /api/faq). Live Chat CS memakai
+// GET/POST /api/bantuan/pesan (riwayat + balasan CS dari database).
 // ============================================================
 class BantuanScreen extends StatefulWidget {
   const BantuanScreen({super.key});
@@ -87,16 +87,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     await Clipboard.setData(ClipboardData(text: teks));
     if (!mounted) return;
     pkSnack(context, '$label disalin');
-  }
-
-  Future<void> _kirimWhatsApp() async {
-    final hasil = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _KirimPesanSheet(),
-    );
-    if (hasil != null && mounted) pkSnack(context, hasil);
   }
 
   void _mulaiLiveChat() {
@@ -228,45 +218,17 @@ class _BantuanScreenState extends State<BantuanScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('Bantuan Langsung',
-                  style: LbText.heading(16, weight: FontWeight.w600)),
-            ),
-            Text('Layanan Prioritas', style: LbText.body(12)),
-          ],
-        ),
+        Text('Bantuan Langsung',
+            style: LbText.heading(16, weight: FontWeight.w600)),
         const SizedBox(height: 12),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _kartuLayanan(
-                  icon: Icons.chat_rounded,
-                  chip: 'Cepat',
-                  chipOk: true,
-                  judul: 'Chat WhatsApp',
-                  sub: 'Pesanmu diteruskan ke tim CS',
-                  aksi: 'Kirim Pesan',
-                  onTap: _kirimWhatsApp,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _kartuLayanan(
-                  icon: Icons.headset_mic_outlined,
-                  chip: _csBuka ? 'Aktif' : 'Offline',
-                  chipOk: _csBuka,
-                  judul: 'Live Chat CS',
-                  sub: 'Riwayat percakapan & balasan CS',
-                  aksi: 'Mulai Chat',
-                  onTap: _mulaiLiveChat,
-                ),
-              ),
-            ],
-          ),
+        _kartuLayanan(
+          icon: Icons.headset_mic_outlined,
+          chip: _csBuka ? 'Aktif' : 'Offline',
+          chipOk: _csBuka,
+          judul: 'Live Chat CS',
+          sub: 'Tulis pertanyaanmu, balasan tim CS muncul di riwayat percakapan',
+          aksi: 'Mulai Chat',
+          onTap: _mulaiLiveChat,
         ),
       ],
     );
@@ -343,8 +305,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
               Text(judul, style: LbText.heading(15, weight: FontWeight.w700)),
               const SizedBox(height: 3),
               Text(sub, style: LbText.body(12, height: 1.35)),
-              const Spacer(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Text(aksi,
@@ -537,8 +498,8 @@ class _BantuanScreenState extends State<BantuanScreen> {
 
   // ---------- kontak ----------
   Widget _kartuKontak() {
-    final email = '${_kontak['email'] ?? 'bantuan@lastbite.id'}';
-    final telp = '${_kontak['telepon'] ?? '021-5099-LAST'}';
+    final email = '${_kontak['email'] ?? ''}'.trim();
+    final telp = '${_kontak['telepon'] ?? ''}'.trim();
 
     Widget baris(IconData icon, String label, String nilai, VoidCallback? onTap) {
       return InkWell(
@@ -618,10 +579,12 @@ class _BantuanScreenState extends State<BantuanScreen> {
             ),
             child: Column(
               children: [
-                baris(Icons.mail_outline_rounded, 'Email:', email,
-                    () => _salin(email, 'Email')),
-                baris(Icons.call_outlined, 'Telepon:', telp,
-                    () => _salin(telp, 'Nomor telepon')),
+                if (email.isNotEmpty)
+                  baris(Icons.mail_outline_rounded, 'Email:', email,
+                      () => _salin(email, 'Email')),
+                if (telp.isNotEmpty)
+                  baris(Icons.call_outlined, 'Telepon:', telp,
+                      () => _salin(telp, 'Nomor telepon')),
                 baris(Icons.schedule_rounded, 'Jam Operasional:', _jamText, null),
               ],
             ),
@@ -636,175 +599,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// SHEET KIRIM PESAN KE CS (WhatsApp via Fonnte)
-// ============================================================
-class _KirimPesanSheet extends StatefulWidget {
-  const _KirimPesanSheet();
-
-  @override
-  State<_KirimPesanSheet> createState() => _KirimPesanSheetState();
-}
-
-class _KirimPesanSheetState extends State<_KirimPesanSheet> {
-  final TextEditingController _pesan = TextEditingController();
-  bool _kirim = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _pesan.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final t = _pesan.text.trim();
-    if (t.length < 5) {
-      setState(() => _error = 'Tulis pesan minimal 5 karakter');
-      return;
-    }
-    setState(() {
-      _kirim = true;
-      _error = null;
-    });
-    try {
-      final j = await ApiService.kirimBantuan(t, kanal: 'whatsapp');
-      if (!mounted) return;
-      Navigator.pop(context, '${j['message'] ?? 'Pesan terkirim'}');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _kirim = false;
-        _error = pkPesanError(e);
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bawah = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      padding: EdgeInsets.fromLTRB(22, 14, 22, 22 + bawah),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: LbColors.border,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(
-                      color: LbColors.sageLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.chat_rounded,
-                        size: 21, color: LbColors.forest),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Chat WhatsApp CS',
-                        style: LbText.heading(18, weight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Pesanmu diteruskan ke WhatsApp tim CS beserta nama dan nomor akunmu, sehingga mereka bisa menghubungimu kembali.',
-                style: LbText.body(12.5, height: 1.45),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _pesan,
-                minLines: 4,
-                maxLines: 6,
-                maxLength: 1000,
-                style: LbText.body(14, color: LbColors.forest),
-                decoration: InputDecoration(
-                  hintText: 'Tulis pertanyaan atau kendalamu… (sertakan nomor pesanan bila ada)',
-                  hintStyle: LbText.body(13.5),
-                  filled: true,
-                  fillColor: LbColors.offWhite,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: LbColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: LbColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide:
-                        const BorderSide(color: LbColors.sageDeep, width: 1.6),
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 4),
-                Text(_error!,
-                    style: LbText.body(12.5,
-                        weight: FontWeight.w700, color: LbColors.peachDeep)),
-              ],
-              const SizedBox(height: 14),
-              GestureDetector(
-                onTap: _kirim ? null : _submit,
-                child: Container(
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    gradient: const LinearGradient(
-                      colors: [LbColors.sage, LbColors.sageDeep],
-                    ),
-                  ),
-                  child: _kirim
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2.4, color: Colors.white),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('Kirim Pesan',
-                                style: LbText.heading(15,
-                                    weight: FontWeight.w600,
-                                    color: Colors.white)),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.send_rounded,
-                                size: 18, color: Colors.white),
-                          ],
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -985,9 +779,7 @@ class _LiveChatScreenState extends State<_LiveChatScreen> {
     final status = '${p['status'] ?? ''}';
     final info = status == 'terkirim'
         ? 'Terkirim ke CS'
-        : (status == 'gagal'
-            ? 'Tersimpan, belum terteruskan ke WhatsApp CS'
-            : 'Tersimpan');
+        : 'Tersimpan';
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(

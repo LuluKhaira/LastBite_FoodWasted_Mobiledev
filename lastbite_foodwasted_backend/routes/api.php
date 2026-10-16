@@ -1,19 +1,37 @@
 <?php
+
+use App\Http\Controllers\Api\AkunController;
+use App\Http\Controllers\Api\AlamatController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BantuanPesanController;
+use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\MitraFavoritController;
+use App\Http\Controllers\Api\MitraRegisterController;
 use App\Http\Controllers\Api\PesananController;
 use App\Http\Controllers\Api\ProdukController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProfilController;
-use App\Http\Controllers\Api\AkunController;
+use Illuminate\Support\Facades\Route;
 
-//MITRA
-use App\Http\Controllers\Api\MitraRegisterController;
+// ============================================================
+// MITRA
+// ============================================================
 Route::post('/mitra/set-password', [MitraRegisterController::class, 'setPassword']);
+Route::post('/mitra/register-phone', [MitraRegisterController::class, 'registerPhone']);
+Route::post('/mitra/verify-otp', [MitraRegisterController::class, 'verifyOtp']);
+Route::post('/mitra/set-business', [MitraRegisterController::class, 'setBusinessCategory']);
+Route::post('/mitra/set-address', [MitraRegisterController::class, 'setAddress']);
+Route::post('/mitra/set-documents', [MitraRegisterController::class, 'setDocuments']);
+// MitraStatusController belum di-import & belum ada di daftar controller-mu;
+// baris ini tetap ada seperti semula, tapi akan error bila dipanggil.
+Route::post('/mitra/check-status', [\App\Http\Controllers\Api\MitraStatusController::class, 'check']);
 
+// ============================================================
+// PELANGGAN (publik)
+// ============================================================
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// PELANGGAN: daftar & masuk via WhatsApp OTP (Fonnte)
+// daftar & masuk via WhatsApp OTP (Fonnte)
 Route::prefix('auth')->group(function () {
     Route::post('/register-phone', [AuthController::class, 'registerPhone'])->middleware('throttle:10,1');
     Route::post('/login-phone',    [AuthController::class, 'loginPhone'])->middleware('throttle:10,1');
@@ -24,79 +42,42 @@ Route::prefix('auth')->group(function () {
 Route::get('/produk', [ProdukController::class, 'index']);
 Route::get('/produk/{produk}', [ProdukController::class, 'show']);
 
+Route::get('/faq', [FaqController::class, 'index']);
+
+// ============================================================
+// PELANGGAN (harus login)
+// ============================================================
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('/pesanan', [PesananController::class, 'index']);
-    Route::post('/pesanan', [PesananController::class, 'store']);
-    Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
-});
-
-//MITRAA
-
-//MITRA REGSITER
-Route::post('/mitra/register-phone', [MitraRegisterController::class, 'registerPhone']);
-Route::post('/mitra/verify-otp', [MitraRegisterController::class, 'verifyOtp']);
-Route::post('/mitra/set-business', [MitraRegisterController::class, 'setBusinessCategory']);
-Route::post('/mitra/set-address', [MitraRegisterController::class, 'setAddress']);
-Route::post('/mitra/set-documents', [MitraRegisterController::class, 'setDocuments']);
-Route::post('/mitra/check-status', [MitraStatusController::class, 'check']);
-
-//pelanggan  pesanan
- 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-
-    Route::get('/pesanan', [PesananController::class, 'index']);
-    Route::post('/pesanan', [PesananController::class, 'store']);
-    Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
-    Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
-    Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
-});
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-
+    // pesanan
     Route::get('/pesanan', [PesananController::class, 'index']);
     Route::post('/pesanan', [PesananController::class, 'store']);
     Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
     Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
     Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
 
+    // profil & akun
     Route::get('/profil', [ProfilController::class, 'show']);
     Route::put('/profil', [ProfilController::class, 'update']);
     Route::put('/akun/password', [AkunController::class, 'ubahPassword']);
     Route::post('/akun/logout-lainnya', [AkunController::class, 'logoutLainnya']);
-});
 
-use App\Http\Controllers\Api\AlamatController;
-use App\Http\Controllers\Api\BantuanController;
-use App\Http\Controllers\Api\MitraFavoritController;
- 
-// 2) DI LUAR grup auth (publik), mis. dekat route /produk:
- 
-// 3) DI DALAM grup Route::middleware('auth:sanctum')->group(...):
-Route::get('/alamat', [AlamatController::class, 'index']);
-Route::post('/alamat', [AlamatController::class, 'store']);
-Route::put('/alamat/{id}', [AlamatController::class, 'update']);
-Route::delete('/alamat/{id}', [AlamatController::class, 'destroy']);
-Route::post('/alamat/{id}/utama', [AlamatController::class, 'utama']);
- 
-Route::get('/mitra-favorit', [MitraFavoritController::class, 'index']);
-Route::get('/mitra-favorit/status', [MitraFavoritController::class, 'status']);
-Route::post('/mitra-favorit/toggle', [MitraFavoritController::class, 'toggle']);
-Route::delete('/mitra-favorit/{idMitra}', [MitraFavoritController::class, 'destroy']);
+    // alamat
+    Route::get('/alamat', [AlamatController::class, 'index']);
+    Route::post('/alamat', [AlamatController::class, 'store']);
+    Route::put('/alamat/{id}', [AlamatController::class, 'update']);
+    Route::delete('/alamat/{id}', [AlamatController::class, 'destroy']);
+    Route::post('/alamat/{id}/utama', [AlamatController::class, 'utama']);
 
-use App\Http\Controllers\Api\BantuanPesanController;
-use App\Http\Controllers\Api\FaqController;
+    // mitra favorit
+    Route::get('/mitra-favorit', [MitraFavoritController::class, 'index']);
+    Route::get('/mitra-favorit/status', [MitraFavoritController::class, 'status']);
+    Route::post('/mitra-favorit/toggle', [MitraFavoritController::class, 'toggle']);
+    Route::delete('/mitra-favorit/{idMitra}', [MitraFavoritController::class, 'destroy']);
 
-// Tempelkan ke routes/api.php yang sudah ada; jangan mengganti seluruh file.
-Route::get('/faq', [FaqController::class, 'index']);
-
-Route::middleware('auth:sanctum')->group(function () {
+    // live chat CS
     Route::get('/bantuan/pesan', [BantuanPesanController::class, 'index']);
     Route::post('/bantuan/pesan', [BantuanPesanController::class, 'store']);
 });

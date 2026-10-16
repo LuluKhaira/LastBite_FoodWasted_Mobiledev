@@ -127,8 +127,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
       ));
   }
 
-  void _segera(String fitur) => _snack('$fitur segera hadir');
-
   /// Detail level penyelamat: dihitung dari pesanan yang sudah diambil.
   /// Angka 5 harus sama dengan PAKET_PER_LEVEL di ProfilController (Laravel).
   void _detailLevel(ProfilData d) {
@@ -344,9 +342,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
             onEdit: _edit,
             onLevelTap: () => _detailLevel(d),
           ),
-          const SizedBox(height: 16),
-          _BannerHero(isVip: d.isVip, onTap: () => _segera('Lastbite Hero')),
-
           const _SectionLabel('PREFERENSI'),
           _MenuGroup(children: [
             _MenuTile(
@@ -646,110 +641,6 @@ class _KartuProfil extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// BANNER LASTBITE HERO (VIP)
-// ============================================================
-class _BannerHero extends StatelessWidget {
-  final bool isVip;
-  final VoidCallback onTap;
-  const _BannerHero({required this.isVip, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [LbColors.peachLight, Color(0xFFE3EDC8)],
-          ),
-          border: Border.all(color: Colors.white, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [LbColors.peach, LbColors.peachDeep],
-                ),
-              ),
-              child: const Icon(Icons.star_rounded, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          isVip ? 'Anggota Lastbite Hero' : 'Gabung Lastbite Hero',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: LbText.heading(15, weight: FontWeight.w700),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: LbColors.peachDeep,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text('VIP',
-                            style: LbText.heading(10,
-                                weight: FontWeight.w700, color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isVip
-                        ? 'Nikmati voucher hemat 50% & akses stok 15 mnt lebih awal'
-                        : 'Voucher hemat 50% & akses stok 15 mnt lebih awal',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbText.body(12, height: 1.3, color: LbColors.forest),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_forward_rounded,
-                  size: 22, color: LbColors.forest),
-            ),
-          ],
-        ),
       ),
     );
   }

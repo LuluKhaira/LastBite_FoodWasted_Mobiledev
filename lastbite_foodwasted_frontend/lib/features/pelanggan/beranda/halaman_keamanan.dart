@@ -92,8 +92,6 @@ class _KeamananAkunScreenState extends State<KeamananAkunScreen> {
       ));
   }
 
-  void _segera(String fitur) => _snack('$fitur segera hadir');
-
   Future<void> _ubahSandi() async {
     final ok = await showModalBottomSheet<bool>(
       context: context,
@@ -241,29 +239,6 @@ class _KeamananAkunScreenState extends State<KeamananAkunScreen> {
               subtitle: _subSandi,
               trailingText: _punyaPassword ? 'Ubah' : 'Buat',
               onTap: _ubahSandi,
-            ),
-            _Baris(
-              icon: Icons.pin_outlined,
-              title: 'PIN Transaksi',
-              subtitle: 'Amankan pembayaran dengan 6 digit PIN',
-              chip: 'Segera',
-              onTap: () => _segera('PIN Transaksi'),
-            ),
-            _Baris(
-              icon: Icons.phonelink_lock_rounded,
-              title: 'Verifikasi 2 Langkah',
-              subtitle: 'OTP via WhatsApp',
-              chip: 'Segera',
-              switchValue: false,
-              onTap: () => _segera('Verifikasi 2 langkah'),
-            ),
-            _Baris(
-              icon: Icons.fingerprint_rounded,
-              title: 'Masuk Sidik Jari / Face ID',
-              subtitle: 'Akses cepat saat login & transaksi',
-              chip: 'Segera',
-              switchValue: false,
-              onTap: () => _segera('Sidik jari / Face ID'),
             ),
           ]),
           const _Label('INFORMASI AKUN'),

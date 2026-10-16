@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class BantuanPesan extends Model
 {
-    protected $table = 'bantuan_pesans';
+    // Nama tabel di migration 2026_10_16_000001 adalah 'pesan_bantuans'
+    protected $table = 'pesan_bantuans';
 
     protected $fillable = [
         'user_id',

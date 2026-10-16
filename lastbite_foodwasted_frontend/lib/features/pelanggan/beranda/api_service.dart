@@ -320,9 +320,9 @@ class ApiService {
         _handle(await _kirim(http.get(uri, headers: await _headers()))));
   }
 
-  /// kanal: 'whatsapp' | 'live'. Diteruskan backend ke WhatsApp CS lewat Fonnte.
+  /// Kirim pesan ke Live Chat CS (disimpan di database, dibalas tim CS).
   static Future<Map<String, dynamic>> kirimBantuan(String pesan,
-      {String kanal = 'whatsapp'}) async {
+      {String kanal = 'live'}) async {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/bantuan/pesan'),
         headers: await _headers(auth: true),
         body: jsonEncode({'pesan': pesan, 'kanal': kanal})));
