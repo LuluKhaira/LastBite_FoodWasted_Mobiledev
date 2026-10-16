@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
+import 'halaman_bantuan.dart';
 import 'beranda_widgets.dart';
 import 'pesanan_model.dart';
 import 'nota_pesanan.dart';
@@ -236,18 +237,10 @@ class _PesananScreenState extends State<PesananScreen> {
         ),
         const SizedBox(width: 10),
         GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: LbColors.forest,
-                content: Text(
-                  'Pusat bantuan segera hadir',
-                  style: LbText.body(13, color: Colors.white),
-                ),
-              ),
-            );
-          },
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BantuanScreen()),
+          ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(

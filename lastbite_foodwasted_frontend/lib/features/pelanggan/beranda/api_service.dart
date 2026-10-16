@@ -249,4 +249,89 @@ class ApiService {
         headers: await _headers(auth: true)));
     _handle(r);
   }
+
+  // ---------- ALAMAT ----------
+  static Future<List<Map<String, dynamic>>> getAlamat() async {
+    final d = _handle(await _kirim(
+        http.get(Uri.parse('$baseUrl/alamat'), headers: await _headers(auth: true))));
+    return List<Map<String, dynamic>>.from(d['data']);
+  }
+
+  /// [id] null = tambah baru, ada = ubah.
+  static Future<void> simpanAlamat(Map<String, dynamic> data, {int? id}) async {
+    final uri = Uri.parse(id == null ? '$baseUrl/alamat' : '$baseUrl/alamat/$id');
+    final h = await _headers(auth: true);
+    final body = jsonEncode(data);
+    final r = await _kirim(
+        id == null ? http.post(uri, headers: h, body: body) : http.put(uri, headers: h, body: body));
+    _handle(r);
+  }
+
+  static Future<void> hapusAlamat(int id) async {
+    final r = await _kirim(http.delete(Uri.parse('$baseUrl/alamat/$id'),
+        headers: await _headers(auth: true)));
+    _handle(r);
+  }
+
+  static Future<void> jadikanAlamatUtama(int id) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/alamat/$id/utama'),
+        headers: await _headers(auth: true)));
+    _handle(r);
+  }
+
+  // ---------- MITRA FAVORIT ----------
+  static Future<List<Map<String, dynamic>>> getMitraFavorit() async {
+    final d = _handle(await _kirim(http.get(Uri.parse('$baseUrl/mitra-favorit'),
+        headers: await _headers(auth: true))));
+    return List<Map<String, dynamic>>.from(d['data']);
+  }
+
+  /// Apakah mitra dari produk ini sudah difavoritkan?
+  static Future<bool> statusMitraFavorit(int produkId) async {
+    final uri = Uri.parse('$baseUrl/mitra-favorit/status')
+        .replace(queryParameters: {'produk_id': '$produkId'});
+    final d = _handle(await _kirim(http.get(uri, headers: await _headers(auth: true))));
+    return d['favorit'] == true;
+  }
+
+  /// Tambah / hapus mitra dari favorit. Mengembalikan status terbaru.
+  static Future<bool> toggleMitraFavorit(int produkId) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/mitra-favorit/toggle'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({'produk_id': produkId})));
+    return _handle(r)['favorit'] == true;
+  }
+
+  static Future<void> hapusMitraFavorit(int idMitra) async {
+    final r = await _kirim(http.delete(Uri.parse('$baseUrl/mitra-favorit/$idMitra'),
+        headers: await _headers(auth: true)));
+    _handle(r);
+  }
+
+  // ---------- BANTUAN ----------
+  /// Mengembalikan { data: [faq], kategori: [..], kontak: {..} }
+  static Future<Map<String, dynamic>> getFaq({String? q, String? kategori}) async {
+    final params = <String, String>{
+      if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      if (kategori != null && kategori.isNotEmpty) 'kategori': kategori,
+    };
+    final uri = Uri.parse('$baseUrl/faq').replace(queryParameters: params.isEmpty ? null : params);
+    return Map<String, dynamic>.from(
+        _handle(await _kirim(http.get(uri, headers: await _headers()))));
+  }
+
+  /// kanal: 'whatsapp' | 'live'. Diteruskan backend ke WhatsApp CS lewat Fonnte.
+  static Future<Map<String, dynamic>> kirimBantuan(String pesan,
+      {String kanal = 'whatsapp'}) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/bantuan/pesan'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({'pesan': pesan, 'kanal': kanal})));
+    return Map<String, dynamic>.from(_handle(r));
+  }
+
+  static Future<List<Map<String, dynamic>>> getPesanBantuan() async {
+    final d = _handle(await _kirim(http.get(Uri.parse('$baseUrl/bantuan/pesan'),
+        headers: await _headers(auth: true))));
+    return List<Map<String, dynamic>>.from(d['data']);
+  }
 }
