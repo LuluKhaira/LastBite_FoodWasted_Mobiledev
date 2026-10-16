@@ -1,21 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
 import 'widgets/ringkasan_section.dart';
 import 'widgets/surplus_section.dart';
 
 class MitraDashboardScreen extends StatefulWidget {
-  const MitraDashboardScreen({super.key});
+  // Nomor WhatsApp mitra, dipakai untuk mengambil data miliknya dari server
+  final String phoneNumber;
+
+  const MitraDashboardScreen({super.key, required this.phoneNumber});
 
   @override
-  State createState() => _MitraDashboardScreenState();
+  State<MitraDashboardScreen> createState() => _MitraDashboardScreenState();
 }
 
-class _MitraDashboardScreenState extends State {
+class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
   bool _isTokoBuka = true;
-  bool _showWarningBanner = true;
+  bool _showWarningBanner = false;
+  bool _isLoading = true;
+  String _namaToko = 'Mitra Dashboard';
+  int _pesananAktif = 0;
+  int _pesananHariIni = 0;
+  double _pendapatan = 0;
+  int _porsi = 0;
+  double _co2Kg = 0;
+  List<Map<String, dynamic>> _surplus = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _muatDashboard();
+  }
+
+  // Ambil data terbaru dari server (dipanggil saat layar dibuka & saat layar ditarik ke bawah)
+  Future<void> _muatDashboard() async {
+    setState(() => _isLoading = true);
+    final data = await ApiService.getMitraDashboard(widget.phoneNumber);
+    if (!mounted) return;
+
+    if (data == null) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal memuat data dashboard. Tarik layar ke bawah untuk mencoba lagi.'),
+        ),
+      );
+      return;
+    }
+
+    final toko = Map<String, dynamic>.from(data['toko'] ?? {});
+    setState(() {
+      _isLoading = false;
+      _namaToko = (toko['nama'] ?? 'Mitra Dashboard').toString();
+      _isTokoBuka = toko['buka'] == true;
+      // Banner muncul hanya kalau jam operasional belum diisi
+      _showWarningBanner = data['jam_operasional_lengkap'] != true;
+      _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
+
+      final r = Map<String, dynamic>.from(data['ringkasan'] ?? {});
+      _pesananHariIni = int.tryParse('${r['pesanan_hari_ini']}') ?? 0;
+      _pendapatan = double.tryParse('${r['pendapatan_hari_ini']}') ?? 0;
+      _porsi = int.tryParse('${r['porsi_terselamatkan']}') ?? 0;
+      _co2Kg = double.tryParse('${r['co2_kg']}') ?? 0;
+      _surplus = ((data['surplus'] ?? []) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    });
+  }
+
+  // Simpan status buka/tutup ke server; kalau gagal, kembalikan tombolnya
+  Future<void> _ubahStatusToko(bool buka) async {
+    setState(() => _isTokoBuka = buka);
+    final berhasil = await ApiService.setTokoStatus(widget.phoneNumber, buka);
+    if (!mounted || berhasil) return;
+
+    setState(() => _isTokoBuka = !buka);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal mengubah status toko. Coba lagi.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +90,11 @@ class _MitraDashboardScreenState extends State {
       body: SafeArea(
         child: Stack(
           children: [
-            SingleChildScrollView(
+            RefreshIndicator(
+              onRefresh: _muatDashboard,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 90),
               child: Column(
                 children: [
@@ -35,21 +105,24 @@ class _MitraDashboardScreenState extends State {
                       children: [
                         const SizedBox(height: 12),
                         KartuInfoToko(
+                          namaToko: _namaToko,
                           isTokoBuka: _isTokoBuka,
-                          onStatusChanged: (val) {
-                            setState(() {
-                              _isTokoBuka = val;
-                            });
-                          },
+                          onStatusChanged: _ubahStatusToko,
                         ),
                         const SizedBox(height: 12),
                         if (_showWarningBanner) _buildWarningBanner(),
                         const SizedBox(height: 16),
                         const AksiCepat(),
                         const SizedBox(height: 20),
-                        const RingkasanSection(),
+                        RingkasanSection(
+                          pesananHariIni: _pesananHariIni,
+                          pesananAktif: _pesananAktif,
+                          pendapatan: _pendapatan,
+                          porsi: _porsi,
+                          co2Kg: _co2Kg,
+                        ),
                         const SizedBox(height: 20),
-                        const SurplusSection(),
+                        SurplusSection(items: _surplus),
                         const SizedBox(height: 16),
                         _buildTipsBanner(),
                         const SizedBox(height: 16),
@@ -59,6 +132,15 @@ class _MitraDashboardScreenState extends State {
                 ],
               ),
             ),
+            ),
+
+            if (_isLoading)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(minHeight: 3),
+              ),
             
             Positioned(
               right: 16,
@@ -126,7 +208,7 @@ class _MitraDashboardScreenState extends State {
                   ],
                 ),
                 Text(
-                  'Mitra Dashboard',
+                  _namaToko,
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     color: AppColors.textSoft,
@@ -315,7 +397,8 @@ class _MitraDashboardScreenState extends State {
         ),
         BottomNavigationBarItem(
           icon: Badge(
-            label: const Text('3'),
+            isLabelVisible: _pesananAktif > 0,
+            label: Text('$_pesananAktif'),
             backgroundColor: AppColors.orange,
             child: const Icon(Icons.assignment_outlined),
           ),

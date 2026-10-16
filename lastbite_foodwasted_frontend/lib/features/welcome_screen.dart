@@ -102,24 +102,6 @@ class WelcomeScreen extends StatelessWidget {
                 ),
 
                   const SizedBox(height: 16),
-                  Text(
-                    'LastBite',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    'SAVE FOOD, SAVE EARTH',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSoft,
-                      letterSpacing: 2,
-                    ),
-                  ),
                 ],
               ),
 

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_disetujui_screen.dart';
+import 'mitra_session.dart';
 
 const _bg = Color(0xFFEAFDE1);
 const _primary = Color(0xFF006B1E);
@@ -34,6 +37,7 @@ class MitraMenungguVerifikasiScreen extends StatefulWidget {
 class _MitraMenungguVerifikasiScreenState
     extends State<MitraMenungguVerifikasiScreen> {
   bool _isLoading = false;
+  Timer? _poller;
 
   late String _namaToko = widget.namaToko;
   late String _kategori = widget.kategori;
@@ -47,8 +51,25 @@ class _MitraMenungguVerifikasiScreenState
   @override
   void initState() {
     super.initState();
+    // Ingat pendaftaran ini, supaya saat aplikasi dibuka lagi mitra langsung kembali ke layar ini
+    if (widget.phoneNumber.isNotEmpty) {
+      MitraSession.savePendingPhone(widget.phoneNumber);
+    }
+
     // Ambil data & status terbaru dari server begitu layar dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) => _cekStatus(silent: true));
+
+    // Selama layar terbuka, periksa otomatis tiap 30 detik
+    _poller = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _cekStatus(silent: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    _poller?.cancel();
+    super.dispose();
   }
 
   void _snack(String text) {
@@ -63,10 +84,10 @@ class _MitraMenungguVerifikasiScreenState
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (!silent) setState(() => _isLoading = true);
     final data = await ApiService.checkStatus(widget.phoneNumber);
     if (!mounted) return;
-    setState(() => _isLoading = false);
+    if (!silent) setState(() => _isLoading = false);
 
     if (data == null) {
       if (!silent) _snack('Gagal memeriksa status. Coba lagi.');
@@ -91,6 +112,9 @@ class _MitraMenungguVerifikasiScreenState
     });
 
     if (_status == 'disetujui') {
+      _poller?.cancel();
+      await MitraSession.clear();
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MitraDisetujuiScreen()),
@@ -470,7 +494,10 @@ class _MitraMenungguVerifikasiScreenState
                   ),
                   const SizedBox(height: 12),
                   GestureDetector(
-                    onTap: () {
+                    onTap: () async {
+                      // Pendaftaran ditolak: hapus ingatan agar bisa daftar ulang
+                      if (_ditolak) await MitraSession.clear();
+                      if (!context.mounted) return;
                       Navigator.popUntil(context, (route) => route.isFirst);
                     },
                     child: Row(

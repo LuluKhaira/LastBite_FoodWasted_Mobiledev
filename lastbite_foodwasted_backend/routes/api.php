@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ProdukController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProfilController;
 use App\Http\Controllers\Api\AkunController;
+use App\Http\Controllers\Api\MitraStatusController;
+use App\Http\Controllers\Api\dashboard_mitra\MitraDashboardController;
 
 //MITRA
 use App\Http\Controllers\Api\MitraRegisterController;
@@ -12,6 +14,10 @@ Route::post('/mitra/set-password', [MitraRegisterController::class, 'setPassword
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login-mitra', [AuthController::class, 'loginMitra']);
+//MITRA DASHBOARD
+Route::post('/mitra/dashboard', [MitraDashboardController::class, 'show']);
+Route::post('/mitra/toko-status', [MitraDashboardController::class, 'setStatusToko']);
 
 // PELANGGAN: daftar & masuk via WhatsApp OTP (Fonnte)
 Route::prefix('auth')->group(function () {

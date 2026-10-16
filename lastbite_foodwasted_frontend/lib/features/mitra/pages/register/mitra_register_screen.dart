@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_otp_screen.dart';
+import 'login/mitra_login_screen.dart';
 
 // Warna netral pendukung desain
 const Color _kBorder = Color(0xFFE9E6E0);
@@ -449,7 +450,12 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          debugPrint('Masuk di sini ditekan');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MitraLoginScreen(),
+                            ),
+                          );
                         },
                         child: Text(
                           'Masuk di sini',

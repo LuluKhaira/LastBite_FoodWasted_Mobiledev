@@ -182,4 +182,55 @@ class ApiService {
       return null;
     }
   }
+
+  // Mengambil data dashboard mitra (info toko, status buka, jumlah pesanan, dll)
+  // Rute Laravel-nya POST, jadi harus dipanggil dengan http.post (bukan get).
+  static Future<Map<String, dynamic>?> getMitraDashboard(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/dashboard'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final data = jsonResponse['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        return null;
+      }
+
+      debugPrint(
+        'getMitraDashboard gagal: ${response.statusCode} ${response.body}',
+      );
+      return null;
+    } catch (e) {
+      debugPrint('Error getMitraDashboard: $e');
+      return null;
+    }
+  }
+
+  // Menyimpan status toko (buka/tutup) dari tombol di dashboard
+  static Future<bool> setTokoStatus(String phoneNumber, bool buka) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/toko-status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'buka': buka}),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error Set Status Toko: $e');
+      return false;
+    }
+  }
 }
