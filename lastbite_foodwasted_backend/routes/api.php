@@ -13,8 +13,7 @@ use App\Http\Controllers\Api\ProfilController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MitraStatusController;
 use App\Http\Controllers\Api\dashboard_mitra\MitraDashboardController;
-
-// ============================================================
+use App\Http\Controllers\Auth\EmailOtpController;
 // MITRA
 // ============================================================
 Route::post('/mitra/set-password', [MitraRegisterController::class, 'setPassword']);
@@ -88,4 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // live chat CS
     Route::get('/bantuan/pesan', [BantuanPesanController::class, 'index']);
     Route::post('/bantuan/pesan', [BantuanPesanController::class, 'store']);
+
+    Route::post('/auth/login-email', [EmailOtpController::class, 'kirim']);
+    Route::post('/auth/verify-email-otp', [EmailOtpController::class, 'verifikasi']);
+// ============================================================
 });

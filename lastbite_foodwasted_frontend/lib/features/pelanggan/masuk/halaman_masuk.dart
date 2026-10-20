@@ -6,6 +6,7 @@ import '../beranda/api_service.dart';
 import '../beranda/halaman_beranda.dart';
 import '../daftar/halaman_daftar.dart';
 import '../daftar/verifikasi_otp.dart';
+import '../daftar/verifikasi_email_otp.dart';
 import '../widgets/auth_widgets.dart';
 
 class UserLoginScreen extends StatefulWidget {
@@ -21,6 +22,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+
+  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   int _tab = 0; // 0 = WhatsApp, 1 = Email
   bool _loading = false;
@@ -80,6 +83,33 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
   }
 
+  /// Kirim kode OTP 6 digit ke email lalu buka layar verifikasi.
+  Future<void> _kirimOtpEmail() async {
+    FocusScope.of(context).unfocus();
+    final email = _emailCtrl.text.trim();
+
+    if (!_emailRegex.hasMatch(email)) {
+      // Pindah ke tab Email supaya kolomnya terlihat
+      if (_tab != 1) setState(() => _tab = 1);
+      showLbSnack(context, 'Isi email yang valid dulu di kolom Email Akun.', error: true);
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await ApiService.kirimEmailOtp(email);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => EmailOtpScreen(email: email)),
+      );
+    } catch (e) {
+      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,9 +152,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
               const SizedBox(height: 12),
               LbSecondaryButton(
                 filled: true,
-                label: 'Kirim Tautan Masuk Ajaib (Magic Link)',
+                label: 'Kirim Kode OTP ke Email',
                 leading: const Icon(Icons.mark_email_read_outlined, color: AppColors.textDark, size: 24),
-                onPressed: () => showLbSnack(context, 'Magic Link segera hadir.'),
+                onPressed: _kirimOtpEmail,
               ),
               const SizedBox(height: 26),
               Center(
@@ -228,7 +258,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             validator: (v) {
               final t = (v ?? '').trim();
               if (t.isEmpty) return 'Email wajib diisi';
-              if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) return 'Format email tidak valid';
+              if (!_emailRegex.hasMatch(t)) return 'Format email tidak valid';
               return null;
             },
           ),

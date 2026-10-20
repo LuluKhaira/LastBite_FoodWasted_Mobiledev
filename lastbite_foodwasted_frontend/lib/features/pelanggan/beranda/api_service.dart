@@ -334,4 +334,18 @@ class ApiService {
         headers: await _headers(auth: true))));
     return List<Map<String, dynamic>>.from(d['data']);
   }
+    // ---------- AUTH (Email OTP) ----------
+  static Future<void> kirimEmailOtp(String email) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/login-email'),
+        headers: await _headers(), body: jsonEncode({'email': email})));
+    _handle(r);
+  }
+
+  static Future<void> verifikasiEmailOtp(String email, String code) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/verify-email-otp'),
+        headers: await _headers(),
+        body: jsonEncode({'email': email, 'code': code})));
+    final d = _handle(r);
+    (await SharedPreferences.getInstance()).setString('token', d['token']);
+  }
 }
