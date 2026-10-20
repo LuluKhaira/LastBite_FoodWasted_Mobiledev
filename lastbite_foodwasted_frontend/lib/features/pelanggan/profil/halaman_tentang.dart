@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../beranda/beranda_widgets.dart';
 import 'halaman_profil.dart' show kVersiAplikasi;
 
+
 const String _kBuild = '2409';
 const String _kEmailKemitraan = 'partnership@lastbite.id';
 
@@ -110,17 +111,7 @@ class TentangLastbiteScreen extends StatelessWidget {
             icon: const Icon(Icons.arrow_back_rounded,
                 color: LbColors.forest, size: 26),
           ),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [LbColors.sage, LbColors.sageDeep],
-              ),
-            ),
-            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 20),
-          ),
+          const LbLogoMark(size: 36, circle: true),
           const SizedBox(width: 10),
           Expanded(
             child: Text('Tentang Lastbite',
@@ -155,7 +146,7 @@ class TentangLastbiteScreen extends StatelessWidget {
                 ],
               ),
               child: Image.asset(
-                'assets/images/lastbite_logo.png',
+                'assets/images/logo_mark.png',
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => Container(
                   decoration: const BoxDecoration(

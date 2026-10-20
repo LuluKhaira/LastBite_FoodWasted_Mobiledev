@@ -429,31 +429,7 @@ class _ProfilHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [LbColors.sage, LbColors.sageDeep],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
-              topRight: Radius.circular(8),
-              bottomLeft: Radius.circular(8),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: LbColors.sage.withValues(alpha: 0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.eco_rounded, color: Colors.white, size: 26),
-        ),
+        const LbLogoMark(size: 44),
         const SizedBox(width: 12),
         Expanded(
           child: Text('Profil',

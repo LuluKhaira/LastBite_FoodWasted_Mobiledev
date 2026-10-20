@@ -60,18 +60,7 @@ class PkHeader extends StatelessWidget {
                 color: LbColors.forest, size: 26),
           ),
           if (logo) ...[
-            Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [LbColors.sage, LbColors.sageDeep],
-                ),
-              ),
-              child: const Icon(Icons.eco_rounded,
-                  color: Colors.white, size: 20),
-            ),
+            const LbLogoMark(size: 36, circle: true),
             const SizedBox(width: 10),
           ],
           Expanded(
