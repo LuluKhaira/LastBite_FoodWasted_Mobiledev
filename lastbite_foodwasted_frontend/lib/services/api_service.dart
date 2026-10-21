@@ -347,4 +347,79 @@ class ApiService {
       return false;
     }
   }
+
+  // Daftar semua produk milik mitra (untuk layar Produk Saya)
+  static Future<List<Map<String, dynamic>>?> getMitraProduk(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/list'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final dynamic raw = decoded is Map ? (decoded['data'] ?? decoded) : decoded;
+        if (raw is List) {
+          return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        return [];
+      }
+
+      debugPrint('getMitraProduk gagal: ${response.statusCode} ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error getMitraProduk: $e');
+      return null;
+    }
+  }
+
+  // Mengubah sisa stok produk
+  static Future<bool> updateStokProduk(
+    String phoneNumber,
+    int idProduk,
+    int stok,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/stok'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'id': idProduk, 'stok': stok}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error updateStokProduk: $e');
+      return false;
+    }
+  }
+
+  // Mengaktifkan / menonaktifkan produk
+  static Future<bool> setProdukAktif(
+    String phoneNumber,
+    int idProduk,
+    bool aktif,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/aktif'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'id': idProduk, 'aktif': aktif}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error setProdukAktif: $e');
+      return false;
+    }
+  }
 }
