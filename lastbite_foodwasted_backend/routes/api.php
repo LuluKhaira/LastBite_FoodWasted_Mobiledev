@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MitraStatusController;
 use App\Http\Controllers\Api\dashboard_mitra\MitraDashboardController;
 use App\Http\Controllers\Auth\EmailOtpController;
+use App\Http\Controllers\Api\GoogleAuthController;
+
+
 // MITRA
 // ============================================================
 Route::post('/mitra/set-password', [MitraRegisterController::class, 'setPassword']);
@@ -100,5 +103,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/akun/email/kirim-otp',  [EmailOtpController::class, 'kirimVerifikasi'])->middleware('throttle:6,1');
     Route::post('/akun/email/verifikasi', [EmailOtpController::class, 'verifikasiEmail'])->middleware('throttle:15,1');
 
+    // login via Google
+    Route::post('/auth/google', [GoogleAuthController::class, 'login']);
+
+    //otp gmail
+    
+    Route::post('/email-otp/kirim', [EmailOtpController::class, 'kirim']);
+    Route::post('/email-otp/verifikasi', [EmailOtpController::class, 'verifikasi']);
 // ============================================================
 });

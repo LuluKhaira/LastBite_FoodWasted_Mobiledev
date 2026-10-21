@@ -344,4 +344,17 @@ class ApiService {
     final d = _handle(r);
     (await SharedPreferences.getInstance()).setString('token', d['token']);
   }
+
+    static Future<void> loginGoogle(String idToken) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/auth/google'),
+      headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+      body: jsonEncode({'id_token': idToken}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Login Google gagal (${res.statusCode}): ${res.body}');
+    }
+    final data = jsonDecode(res.body);
+    // TODO: simpan token dan user persis seperti di fungsi login()
+  }
 }

@@ -8,6 +8,8 @@ import '../daftar/halaman_daftar.dart';
 import '../daftar/verifikasi_otp.dart';
 import '../daftar/verifikasi_email_otp.dart';
 import '../widgets/auth_widgets.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class UserLoginScreen extends StatefulWidget {
   const UserLoginScreen({super.key});
@@ -22,9 +24,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-
+  
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
+  
   int _tab = 0; // 0 = WhatsApp, 1 = Email
   bool _loading = false;
 
@@ -34,6 +36,38 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
+  }
+  
+  static const _googleClientId = '1234567890-abcdefg.apps.googleusercontent.com';
+
+  final GoogleSignIn _google = GoogleSignIn(
+    scopes: const ['email', 'profile'],
+    clientId: kIsWeb ? _googleClientId : null,
+  );
+
+  Future<void> _masukGoogle() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _loading = true);
+    try {
+      final akun = await _google.signIn(); // muncul pilihan akun Google
+      if (akun == null) return;            // popup ditutup
+      final auth = await akun.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null) throw Exception('Token Google tidak diterima');
+
+      await ApiService.loginGoogle(idToken);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const BerandaScreen()),
+        (_) => false,
+      );
+    } catch (e, stack) {
+      debugPrint('[HalamanMasuk] Gagal login Google: $e\n$stack');
+      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -149,7 +183,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
               LbSecondaryButton(
                 label: 'Lanjutkan dengan Akun Google',
                 leading: const GoogleGlyph(),
-                onPressed: () => showLbSnack(context, 'Masuk dengan Google segera hadir.'),
+                onPressed: _masukGoogle,
               ),
               const SizedBox(height: 12),
               LbSecondaryButton(
