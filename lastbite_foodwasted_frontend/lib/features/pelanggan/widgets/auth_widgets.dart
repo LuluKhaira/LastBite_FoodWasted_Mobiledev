@@ -1,4 +1,4 @@
-// Widget bersama untuk halaman Masuk, Daftar, dan OTP pelanggan.
+﻿// Widget bersama untuk halaman Masuk, Daftar, dan OTP pelanggan.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';

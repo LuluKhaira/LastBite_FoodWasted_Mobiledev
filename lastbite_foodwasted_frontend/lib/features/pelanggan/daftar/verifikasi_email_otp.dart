@@ -32,6 +32,7 @@ class _EmailOtpScreenState extends State<EmailOtpScreen> {
     }
     setState(() => _loading = true);
     try {
+      debugPrint('[VerifikasiEmailOtp] Verifikasi email: ${widget.email}, kode: $kode');
       await ApiService.verifikasiEmailOtp(widget.email, kode);
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
@@ -39,7 +40,8 @@ class _EmailOtpScreenState extends State<EmailOtpScreen> {
         MaterialPageRoute(builder: (_) => const BerandaScreen()),
         (_) => false,
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[VerifikasiEmailOtp] Gagal verifikasi: $e\n$stack');
       if (mounted) showLbSnack(context, lbPesanError(e), error: true);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -48,9 +50,11 @@ class _EmailOtpScreenState extends State<EmailOtpScreen> {
 
   Future<void> _kirimUlang() async {
     try {
+      debugPrint('[VerifikasiEmailOtp] Kirim ulang kode ke ${widget.email}');
       await ApiService.kirimEmailOtp(widget.email);
       if (mounted) showLbSnack(context, 'Kode baru dikirim.');
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[VerifikasiEmailOtp] Gagal kirim ulang: $e\n$stack');
       if (mounted) showLbSnack(context, lbPesanError(e), error: true);
     }
   }

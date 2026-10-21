@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/mitra_dashboard_screen.dart'; // Sesuaikan path dashboard kamu
 
@@ -43,7 +44,7 @@ class _MitraLoginScreenState extends State<MitraLoginScreen> {
     });
 
     try {
-        final url = Uri.parse('http://127.0.0.1:8000/api/login-mitra');
+      final url = Uri.parse('${ApiConfig.baseUrl}/login-mitra');
 
       final response = await http.post(
         url,

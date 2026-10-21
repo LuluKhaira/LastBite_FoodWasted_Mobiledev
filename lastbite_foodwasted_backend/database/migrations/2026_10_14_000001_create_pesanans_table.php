@@ -9,6 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pesanans', function (Blueprint $t) {
+            if (Schema::hasTable('pesanans')) {
+        return;
+        }
             $t->id();
             $t->string('kode', 30)->nullable()->unique();      // LB-261014-0001
             $t->foreignId('user_id')->constrained()->cascadeOnDelete();

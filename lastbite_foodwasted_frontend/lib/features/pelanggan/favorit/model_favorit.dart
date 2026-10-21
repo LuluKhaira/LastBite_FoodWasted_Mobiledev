@@ -1,4 +1,4 @@
-/// Data satu toko (mitra) yang disimpan pelanggan sebagai favorit.
+﻿/// Data satu toko (mitra) yang disimpan pelanggan sebagai favorit.
 /// Dibuat dari JSON `GET /api/mitra-favorit`. Semua field aman terhadap null.
 class TokoFavorit {
   final int idMitra;

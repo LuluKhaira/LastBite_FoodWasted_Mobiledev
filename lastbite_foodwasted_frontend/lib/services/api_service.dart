@@ -3,25 +3,42 @@ import 'dart:convert';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../core/config/api_config.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static String get baseUrl => ApiConfig.baseUrl;
+  static String? lastErrorMessage;
 
   static Future<bool> registerWhatsApp(String phoneNumber) async {
+    lastErrorMessage = null;
+    final url = Uri.parse('$baseUrl/mitra/register-phone');
+    debugPrint('--> POST $url (phone: $phoneNumber)');
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/mitra/register-phone'),
-        headers: {'Content-Type': 'application/json'},
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: jsonEncode({'phone': phoneNumber}),
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('<-- [${response.statusCode}] $url: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
+        try {
+          final data = jsonDecode(response.body);
+          lastErrorMessage = data['message'] ?? 'Server error [${response.statusCode}]';
+        } catch (_) {
+          lastErrorMessage = 'Server error [${response.statusCode}]: ${response.body}';
+        }
         return false;
       }
-    } catch (e) {
-      debugPrint('Error: $e');
+    } catch (e, stack) {
+      debugPrint('Error registerWhatsApp: $e\n$stack');
+      lastErrorMessage = 'Gagal terhubung ($e). Pastikan server aktif di $baseUrl';
       return false;
     }
   }

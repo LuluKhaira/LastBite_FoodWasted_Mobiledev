@@ -57,27 +57,46 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
       ),
     );
 
-    // Panggil API Laravel melalui ApiService
-    bool sukses = await ApiService.registerWhatsApp(nomor);
+    try {
+      // Panggil API Laravel melalui ApiService
+      debugPrint('[MitraRegister] Mengirim kode verifikasi ke nomor: $nomor');
+      bool sukses = await ApiService.registerWhatsApp(nomor);
 
-    // Tutup loading dialog
-    if (mounted) Navigator.pop(context);
+      // Tutup loading dialog
+      if (mounted) Navigator.pop(context);
 
-    if (sukses) {
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MitraOtpScreen(phoneNumber: nomor),
-          ),
-        );
+      if (sukses) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MitraOtpScreen(phoneNumber: nomor),
+            ),
+          );
+        }
+      } else {
+        final pesan = ApiService.lastErrorMessage ?? 'Gagal terhubung ke server. Pastikan Laravel sudah aktif.';
+        debugPrint('[MitraRegister] Gagal kirim kode: $pesan');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                pesan,
+                style: GoogleFonts.nunito(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-    } else {
+    } catch (e, stack) {
+      if (mounted) Navigator.pop(context);
+      debugPrint('[MitraRegister] Exception di tombol Kirim Kode: $e\n$stack');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Gagal terhubung ke server. Pastikan Laravel sudah aktif.',
+              'Error ($e). Pastikan server Laravel aktif di ${ApiService.baseUrl}',
               style: GoogleFonts.nunito(color: Colors.white),
             ),
             backgroundColor: Colors.red,

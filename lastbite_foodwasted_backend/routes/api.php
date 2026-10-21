@@ -38,13 +38,21 @@ Route::post('/mitra/toko-status', [MitraDashboardController::class, 'setStatusTo
 Route::post('/mitra/produk', [\App\Http\Controllers\Api\dashboard_mitra\MitraProdukController::class, 'store']);
 Route::post('/mitra/produk/template', [\App\Http\Controllers\Api\dashboard_mitra\MitraProdukController::class, 'template']);
 
-// daftar & masuk via WhatsApp OTP (Fonnte)
+// daftar & masuk via WhatsApp OTP & Email OTP
 Route::prefix('auth')->group(function () {
     Route::post('/register-phone', [AuthController::class, 'registerPhone'])->middleware('throttle:10,1');
     Route::post('/login-phone',    [AuthController::class, 'loginPhone'])->middleware('throttle:10,1');
     Route::post('/verify-otp',     [AuthController::class, 'verifyOtp'])->middleware('throttle:15,1');
     Route::post('/resend-otp',     [AuthController::class, 'resendOtp'])->middleware('throttle:6,1');
+
+    // Email OTP publik (masuk & verifikasi tanpa login)
+    Route::post('/login-email',      [EmailOtpController::class, 'kirim'])->middleware('throttle:10,1');
+    Route::post('/verify-email-otp', [EmailOtpController::class, 'verifikasi'])->middleware('throttle:15,1');
 });
+
+// Alias tanpa prefix /auth untuk fleksibilitas client
+Route::post('/login-email',      [EmailOtpController::class, 'kirim'])->middleware('throttle:10,1');
+Route::post('/verify-email-otp', [EmailOtpController::class, 'verifikasi'])->middleware('throttle:15,1');
 
 Route::get('/produk', [ProdukController::class, 'index']);
 Route::get('/produk/{produk}', [ProdukController::class, 'show']);
@@ -88,7 +96,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/bantuan/pesan', [BantuanPesanController::class, 'index']);
     Route::post('/bantuan/pesan', [BantuanPesanController::class, 'store']);
 
-    Route::post('/auth/login-email', [EmailOtpController::class, 'kirim']);
-    Route::post('/auth/verify-email-otp', [EmailOtpController::class, 'verifikasi']);
+    // verifikasi email akun pengguna yang sedang login
+    Route::post('/akun/email/kirim-otp',  [EmailOtpController::class, 'kirimVerifikasi'])->middleware('throttle:6,1');
+    Route::post('/akun/email/verifikasi', [EmailOtpController::class, 'verifikasiEmail'])->middleware('throttle:15,1');
+
 // ============================================================
 });

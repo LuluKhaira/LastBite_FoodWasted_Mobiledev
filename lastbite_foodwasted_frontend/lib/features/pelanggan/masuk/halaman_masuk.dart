@@ -97,13 +97,15 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
     setState(() => _loading = true);
     try {
+      debugPrint('[HalamanMasuk] Mengirim OTP ke email: $email (via ${ApiService.baseUrl})');
       await ApiService.kirimEmailOtp(email);
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => EmailOtpScreen(email: email)),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[HalamanMasuk] Gagal kirim OTP email: $e\n$stack');
       if (mounted) showLbSnack(context, lbPesanError(e), error: true);
     } finally {
       if (mounted) setState(() => _loading = false);

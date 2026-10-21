@@ -1,4 +1,4 @@
-class MitraModel {
+﻿class MitraModel {
   final int? id;
   final String? nama;
   final String? email;

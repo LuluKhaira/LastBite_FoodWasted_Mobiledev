@@ -3,17 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/config/api_config.dart';
 
 class ApiService {
-  /// Otomatis: Chrome/iOS/desktop -> 127.0.0.1 | Emulator Android -> 10.0.2.2
-  /// HP fisik: ganti manual ke IP laptop, mis. 'http://192.168.1.10:8000/api'
-  static String get baseUrl {
-    if (kIsWeb) return 'http://127.0.0.1:8000/api';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000/api';
-    }
-    return 'http://127.0.0.1:8000/api';
-  }
+  /// Diambil dari ApiConfig (mendukung HP asli lewat LAN IP 192.168.1.203 atau Emulator 10.0.2.2)
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static const _timeout = Duration(seconds: 12);
 
@@ -30,10 +24,11 @@ class ApiService {
   }
 
   static dynamic _handle(http.Response r) {
+    debugPrint('HTTP [${r.statusCode}] ${r.request?.url}: ${r.body}');
     final body = r.body.isEmpty ? {} : jsonDecode(r.body);
     if (r.statusCode >= 200 && r.statusCode < 300) return body;
 
-    var msg = 'Terjadi kesalahan';
+    var msg = 'Terjadi kesalahan (${r.statusCode})';
     if (body is Map) {
       // Error validasi Laravel (422): ambil pesan field pertama
       final errs = body['errors'];
@@ -43,15 +38,16 @@ class ApiService {
         msg = body['message'].toString();
       }
     }
-    throw Exception(msg);
+    throw Exception('Status ${r.statusCode}: $msg');
   }
 
   static Future<http.Response> _kirim(Future<http.Response> req) async {
     try {
       return await req.timeout(_timeout);
-    } on Exception {
+    } catch (e, stack) {
+      debugPrint('Koneksi HTTP gagal ke server: $e\n$stack');
       throw Exception(
-          'Tidak bisa terhubung ke server. Pastikan "php artisan serve" menyala.');
+          'Tidak bisa terhubung ke server ($e). Pastikan "php artisan serve --host=0.0.0.0" menyala di $baseUrl');
     }
   }
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Logo LastBite (ikon apel-bumi). Dipakai di header & kartu sambutan.
 /// File gambar: assets/images/logo_mark.png (transparan).
