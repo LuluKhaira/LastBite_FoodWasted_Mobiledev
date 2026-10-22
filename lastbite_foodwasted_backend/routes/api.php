@@ -15,7 +15,8 @@ use App\Http\Controllers\Api\MitraStatusController;
 use App\Http\Controllers\Api\dashboard_mitra\MitraDashboardController;
 use App\Http\Controllers\Auth\EmailOtpController;
 use App\Http\Controllers\Api\GoogleAuthController;
-
+use App\Http\Controllers\Api\PembayaranController;
+use App\Http\Controllers\Api\dashboard_mitra\MitraPesananController;
 
 // MITRA
 // ============================================================
@@ -57,6 +58,21 @@ Route::prefix('auth')->group(function () {
 Route::post('/login-email',      [EmailOtpController::class, 'kirim'])->middleware('throttle:10,1');
 Route::post('/verify-email-otp', [EmailOtpController::class, 'verifikasi'])->middleware('throttle:15,1');
 
+// Webhook Midtrans (publik, dipanggil server Midtrans)
+Route::post('/midtrans/webhook', [PembayaranController::class, 'webhook']);
+Route::post('/payment/webhook',  [PembayaranController::class, 'webhook']);
+
+// Partner / Mitra order API (publik atau berbasis token mitra)
+Route::post('/partner/orders',                     [MitraPesananController::class, 'index']);
+Route::get('/partner/orders',                      [MitraPesananController::class, 'index']);
+Route::post('/partner/orders/verify-pickup',       [MitraPesananController::class, 'ambil']);
+Route::post('/partner/orders/{order_id}/ready',    [MitraPesananController::class, 'siap']);
+Route::post('/mitra/pesanan',                      [MitraPesananController::class, 'index']);
+Route::post('/mitra/pesanan/verify-pickup',        [MitraPesananController::class, 'ambil']);
+Route::post('/mitra/pesanan/{kode}/siap',          [MitraPesananController::class, 'siap']);
+Route::post('/mitra/pesanan/{kode}/ambil',         [MitraPesananController::class, 'ambil']);
+Route::post('/mitra/pesanan/{kode}/tolak',         [MitraPesananController::class, 'tolak']);
+
 Route::get('/produk', [ProdukController::class, 'index']);
 Route::get('/produk/{produk}', [ProdukController::class, 'show']);
 
@@ -73,7 +89,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pesanan', [PesananController::class, 'index']);
     Route::post('/pesanan', [PesananController::class, 'store']);
     Route::get('/pesanan/{kode}', [PesananController::class, 'show']);
-    Route::post('/pesanan/{kode}/selesai', [PesananController::class, 'selesai']);
+    Route::post('/pesanan/{kode}/batal', [PesananController::class, 'batal']);
+    Route::post('/orders/{order_id}/cancel', [PesananController::class, 'batal']);
     Route::post('/pesanan/{kode}/rating', [PesananController::class, 'rating']);
 
     // profil & akun
@@ -110,5 +127,14 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::post('/email-otp/kirim', [EmailOtpController::class, 'kirim']);
     Route::post('/email-otp/verifikasi', [EmailOtpController::class, 'verifikasi']);
+
+    
+    // pembayaran via Midtrans
+    Route::post('/pesanan/{kode}/bayar', [PembayaranController::class, 'buat']);
+    Route::get('/pesanan/{kode}/cek-bayar', [PembayaranController::class, 'cek']);
+    Route::post('/mitra/pesanan', [MitraPesananController::class, 'index']);
+    Route::post('/mitra/pesanan/{kode}/siap', [MitraPesananController::class, 'siap']);
+    Route::post('/mitra/pesanan/{kode}/ambil', [MitraPesananController::class, 'ambil']);
+    Route::post('/mitra/pesanan/{kode}/tolak', [MitraPesananController::class, 'tolak']);
 // ============================================================
 });

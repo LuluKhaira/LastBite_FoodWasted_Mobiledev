@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
@@ -8,6 +8,7 @@ class RingkasanSection extends StatelessWidget {
   final double pendapatan;
   final int porsi;
   final double co2Kg;
+  final VoidCallback? onTapPesanan;
 
   const RingkasanSection({
     super.key,
@@ -16,6 +17,7 @@ class RingkasanSection extends StatelessWidget {
     this.pendapatan = 0,
     this.porsi = 0,
     this.co2Kg = 0,
+    this.onTapPesanan,
   });
 
   static String _rupiah(double v) {
@@ -58,94 +60,101 @@ class RingkasanSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTapPesanan,
             borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pesanan Hari Ini',
-                      style: GoogleFonts.nunito(
-                        fontSize: 12,
-                        color: AppColors.textDark.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$pesananHariIni',
-                          style: GoogleFonts.poppins(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
+                          'Pesanan Hari Ini',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            color: AppColors.textDark.withValues(alpha: 0.8),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Pesanan',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '$pesananHariIni',
+                              style: GoogleFonts.poppins(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Pesanan',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.textDark,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                pesananAktif > 0
+                                    ? '$pesananAktif Perlu disiapkan sekarang'
+                                    : 'Belum ada pesanan masuk',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 10.5,
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.textDark,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            pesananAktif > 0
-                                ? '$pesananAktif Perlu disiapkan sekarang'
-                                : 'Belum ada pesanan masuk',
-                            style: GoogleFonts.nunito(
-                              fontSize: 10.5,
-                              color: AppColors.textDark,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                ),
+                    child: const Icon(Icons.shopping_bag_outlined,
+                        color: AppColors.textDark, size: 28),
+                  ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.shopping_bag_outlined,
-                    color: AppColors.textDark, size: 28),
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 10),

@@ -347,4 +347,130 @@ class ApiService {
       return false;
     }
   }
+
+  // ---------- MANAJEMEN PESANAN MITRA ----------
+  /// Mengambil daftar pesanan mitra (tab: baru | siap | riwayat)
+  static Future<Map<String, dynamic>> getMitraPesanan(
+    String phoneNumber, {
+    String tab = 'baru',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/pesanan'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'tab': tab}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'ok': true,
+          'tab': data['tab'] ?? tab,
+          'mitra': data['mitra'] ?? {},
+          'data': List<Map<String, dynamic>>.from(data['data'] ?? []),
+        };
+      }
+      return {'ok': false, 'message': _pesanError(response), 'data': <Map<String, dynamic>>[]};
+    } catch (e) {
+      debugPrint('Error getMitraPesanan: $e');
+      return {'ok': false, 'message': 'Gagal terhubung ke server.', 'data': <Map<String, dynamic>>[]};
+    }
+  }
+
+  /// Mitra menandai pesanan telah disiapkan dan siap diambil (status -> siap)
+  static Future<Map<String, dynamic>> tandaiPesananSiap(
+    String phoneNumber,
+    String kode,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/pesanan/$kode/siap'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'ok': true,
+          'message': data['message'] ?? 'Pesanan siap diambil.',
+          'kode_ambil': data['kode_ambil'],
+          'data': data['data'],
+        };
+      }
+      return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error tandaiPesananSiap: $e');
+      return {'ok': false, 'message': 'Gagal menghubungi server.'};
+    }
+  }
+
+  /// Mitra memverifikasi kode pengambilan unik (LB-XXXXXX) atau QR scan
+  static Future<Map<String, dynamic>> verifikasiPengambilan(
+    String phoneNumber,
+    String pickupCode, {
+    String? kode,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/pesanan/verify-pickup'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'pickup_code': pickupCode,
+          if (kode != null && kode.isNotEmpty) 'kode': kode,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'ok': true,
+          'message': data['message'] ?? 'Pengambilan berhasil diverifikasi.',
+          'pendapatan': data['pendapatan'] ?? 0,
+          'saldo_terbaru': data['saldo_terbaru'],
+          'data': data['data'],
+        };
+      }
+      return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error verifikasiPengambilan: $e');
+      return {'ok': false, 'message': 'Gagal verifikasi pengambilan ke server.'};
+    }
+  }
+
+  /// Mitra menolak pesanan baru masuk
+  static Future<Map<String, dynamic>> tolakPesanan(
+    String phoneNumber,
+    String kode,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/pesanan/$kode/tolak'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'ok': true, 'message': data['message'] ?? 'Pesanan berhasil ditolak.'};
+      }
+      return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error tolakPesanan: $e');
+      return {'ok': false, 'message': 'Gagal menolak pesanan.'};
+    }
+  }
 }

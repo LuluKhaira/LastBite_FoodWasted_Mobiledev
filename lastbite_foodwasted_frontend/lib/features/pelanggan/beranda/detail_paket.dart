@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'beranda_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ============================================================
 // HELPER
@@ -1679,36 +1680,72 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
 
   /// Kirim pesanan ke backend (POST /api/pesanan), lalu tampilkan sheet sukses.
   Future<void> _konfirmasi() async {
-    FocusScope.of(context).unfocus();
-    if (_memproses) return;
+  FocusScope.of(context).unfocus();
+  if (_memproses) return;
 
-    final id = it.id;
-    if (id == null) {
-      _pesan('Produk ini belum terhubung ke server.');
+  final id = it.id;
+  if (id == null) {
+    _pesan('Produk ini belum terhubung ke server.');
+    return;
+  }
+
+    setState(() => _memproses = true);
+  try {
+    final metode = _total == 0 ? 'Gratis' : (_metodeLabel[_payId] ?? 'QRIS');
+    final hasil = await ApiService.buatPesanan(id, 1, metode, catatan: _notes.text);
+    final kode = '${hasil['kode'] ?? ''}';
+    if (!mounted) return;
+
+    if (_total == 0) {
+      setState(() => _memproses = false);
+      _tampilBerhasil(kode);
       return;
     }
 
-    setState(() => _memproses = true);
-    try {
-      final metode = _total == 0 ? 'Gratis' : (_metodeLabel[_payId] ?? 'QRIS');
-      final hasil = await ApiService.buatPesanan(
-        id,
-        1,
-        metode,
-        catatan: _notes.text,
-      );
-      if (!mounted) return;
-      setState(() => _memproses = false);
-      _tampilBerhasil('${hasil['kode'] ?? ''}');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _memproses = false);
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      _pesan(msg.contains('Unauthenticated')
-          ? 'Masuk dulu ya untuk membuat pesanan.'
-          : msg);
-    }
+    final url = await ApiService.buatPembayaran(kode);
+    await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
+    if (!mounted) return;
+    setState(() => _memproses = false);
+    _dialogCekBayar(kode);
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _memproses = false);
+    final msg = e.toString().replaceFirst('Exception: ', '');
+    _pesan(msg.contains('Unauthenticated') ? 'Masuk dulu ya untuk membuat pesanan.' : msg);
   }
+}
+
+  void _dialogCekBayar(String kode) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Selesaikan pembayaran'),
+      content: const Text(
+          'Bayar di halaman Midtrans yang terbuka, lalu tekan "Saya sudah bayar".'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Nanti')),
+        TextButton(
+          onPressed: () async {
+            try {
+              final s = await ApiService.cekBayar(kode);
+              if (!ctx.mounted) return;
+              if (s == 'lunas') {
+                Navigator.pop(ctx);
+                _tampilBerhasil(kode);
+              } else {
+                _pesan('Pembayaran belum diterima (status: $s).');
+              }
+            } catch (e) {
+              _pesan(e.toString().replaceFirst('Exception: ', ''));
+            }
+          },
+          child: const Text('Saya sudah bayar'),
+        ),
+      ],
+    ),
+  );
+}
 
   void _tampilBerhasil(String kode) {
     showModalBottomSheet(

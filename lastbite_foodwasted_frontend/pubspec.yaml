@@ -10,12 +10,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  webview_flutter: ^4.8.0
   http: ^1.2.0
   image_picker: ^1.0.7
   google_fonts: ^6.1.0
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.2
   google_sign_in: ^6.2.1
+  url_launcher: ^6.3.3
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

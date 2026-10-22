@@ -1,12 +1,15 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_scan_pengambilan_screen.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
 import 'widgets/ringkasan_section.dart';
 import 'widgets/surplus_section.dart';
+
 
 class MitraDashboardScreen extends StatefulWidget {
   // Nomor WhatsApp mitra, dipakai untuk mengambil data miliknya dari server
@@ -97,6 +100,35 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     );
   }
 
+  // Buka halaman manajemen pesanan mitra
+  Future<void> _bukaPesanan({int initialTab = 0}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MitraPesananScreen(
+          phoneNumber: widget.phoneNumber,
+          initialTab: initialTab,
+        ),
+      ),
+    );
+    await _muatDashboard();
+  }
+
+  // Buka scanner QR & input manual kode pengambilan
+  Future<void> _bukaScanQR() async {
+    final berhasil = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MitraScanPengambilanScreen(
+          phoneNumber: widget.phoneNumber,
+        ),
+      ),
+    );
+    if (berhasil == true) {
+      await _muatDashboard();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,7 +158,15 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                         const SizedBox(height: 12),
                         if (_showWarningBanner) _buildWarningBanner(),
                         const SizedBox(height: 16),
-                        const AksiCepat(),
+                        AksiCepat(
+                          onScanQR: _bukaScanQR,
+                          onRiwayat: () => _bukaPesanan(initialTab: 3),
+                          onBantuan: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Pusat Bantuan Mitra: Hubungi support@lastbite.id')),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 20),
                         RingkasanSection(
                           pesananHariIni: _pesananHariIni,
@@ -389,6 +429,19 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
       selectedLabelStyle: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700),
       unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w500),
       currentIndex: 0,
+      onTap: (i) {
+        if (i == 1) {
+          _bukaTambahProduk();
+        } else if (i == 2) {
+          _bukaScanQR();
+        } else if (i == 3) {
+          _bukaPesanan(initialTab: 0);
+        } else if (i == 4) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profil Toko Mitra')),
+          );
+        }
+      },
       items: [
         const BottomNavigationBarItem(
           icon: Icon(Icons.grid_view_rounded),

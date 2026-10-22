@@ -32,7 +32,10 @@ class ApiService {
     if (body is Map) {
       // Error validasi Laravel (422): ambil pesan field pertama
       final errs = body['errors'];
-      if (errs is Map && errs.isNotEmpty && errs.values.first is List && (errs.values.first as List).isNotEmpty) {
+      if (errs is Map &&
+          errs.isNotEmpty &&
+          errs.values.first is List &&
+          (errs.values.first as List).isNotEmpty) {
         msg = (errs.values.first as List).first.toString();
       } else if (body['message'] != null) {
         msg = body['message'].toString();
@@ -52,7 +55,8 @@ class ApiService {
   }
 
   // ---------- AUTH (email + sandi) ----------
-  static Future<void> register(String name, String email, String password) async {
+  static Future<void> register(
+      String name, String email, String password) async {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/register'),
         headers: await _headers(),
         body: jsonEncode({'name': name, 'email': email, 'password': password})));
@@ -112,10 +116,35 @@ class ApiService {
   }
 
   /// purpose: 'register' | 'login'. Jika benar, token disimpan.
-  static Future<void> verifikasiOtp(String phone, String code, String purpose) async {
+  static Future<void> verifikasiOtp(
+      String phone, String code, String purpose) async {
     final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/verify-otp'),
         headers: await _headers(),
         body: jsonEncode({'phone': phone, 'code': code, 'purpose': purpose})));
+    final d = _handle(r);
+    (await SharedPreferences.getInstance()).setString('token', d['token']);
+  }
+
+  // ---------- AUTH (Email OTP) ----------
+  static Future<void> kirimEmailOtp(String email) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/login-email'),
+        headers: await _headers(), body: jsonEncode({'email': email})));
+    _handle(r);
+  }
+
+  static Future<void> verifikasiEmailOtp(String email, String code) async {
+    final r = await _kirim(http.post(
+        Uri.parse('$baseUrl/auth/verify-email-otp'),
+        headers: await _headers(),
+        body: jsonEncode({'email': email, 'code': code})));
+    final d = _handle(r);
+    (await SharedPreferences.getInstance()).setString('token', d['token']);
+  }
+
+  // ---------- AUTH (Google) ----------
+  static Future<void> loginGoogle(String idToken) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/google'),
+        headers: await _headers(), body: jsonEncode({'id_token': idToken})));
     final d = _handle(r);
     (await SharedPreferences.getInstance()).setString('token', d['token']);
   }
@@ -172,8 +201,8 @@ class ApiService {
 
   // ---------- PESANAN ----------
   static Future<List<Map<String, dynamic>>> getPesanan() async {
-    final d = _handle(await _kirim(
-        http.get(Uri.parse('$baseUrl/pesanan'), headers: await _headers(auth: true))));
+    final d = _handle(await _kirim(http.get(Uri.parse('$baseUrl/pesanan'),
+        headers: await _headers(auth: true))));
     return List<Map<String, dynamic>>.from(d['data']);
   }
 
@@ -194,9 +223,18 @@ class ApiService {
 
   /// Tandai pesanan sudah diambil (status menunggu -> selesai).
   static Future<void> selesaikanPesanan(String kode) async {
-    final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan/$kode/selesai'),
+    final r = await _kirim(http.post(
+        Uri.parse('$baseUrl/pesanan/$kode/selesai'),
         headers: await _headers(auth: true)));
     _handle(r);
+  }
+
+  /// Batalkan pesanan sebelum siap diambil.
+  static Future<Map<String, dynamic>> batalPesanan(String kode) async {
+    final r = await _kirim(http.post(
+        Uri.parse('$baseUrl/pesanan/$kode/batal'),
+        headers: await _headers(auth: true)));
+    return Map<String, dynamic>.from(_handle(r)['data'] ?? {});
   }
 
   /// Beri bintang 1-5 untuk pesanan yang sudah selesai.
@@ -207,10 +245,26 @@ class ApiService {
     _handle(r);
   }
 
+  // ---------- PEMBAYARAN (Midtrans) ----------
+  /// Mengembalikan redirect_url halaman Snap Midtrans.
+  static Future<String> buatPembayaran(String kode) async {
+    final r = await _kirim(http.post(Uri.parse('$baseUrl/pesanan/$kode/bayar'),
+        headers: await _headers(auth: true)));
+    return _handle(r)['redirect_url'] as String;
+  }
+
+  /// Mengembalikan 'belum' | 'menunggu' | 'lunas' | 'gagal'.
+  static Future<String> cekBayar(String kode) async {
+    final r = await _kirim(http.get(
+        Uri.parse('$baseUrl/pesanan/$kode/cek-bayar'),
+        headers: await _headers(auth: true)));
+    return _handle(r)['status_bayar'] as String;
+  }
+
   // ---------- PROFIL ----------
   static Future<Map<String, dynamic>> getProfil() async {
-    final d = _handle(await _kirim(
-        http.get(Uri.parse('$baseUrl/profil'), headers: await _headers(auth: true))));
+    final d = _handle(await _kirim(http.get(Uri.parse('$baseUrl/profil'),
+        headers: await _headers(auth: true))));
     return Map<String, dynamic>.from(d['data']);
   }
 
@@ -248,18 +302,20 @@ class ApiService {
 
   // ---------- ALAMAT ----------
   static Future<List<Map<String, dynamic>>> getAlamat() async {
-    final d = _handle(await _kirim(
-        http.get(Uri.parse('$baseUrl/alamat'), headers: await _headers(auth: true))));
+    final d = _handle(await _kirim(http.get(Uri.parse('$baseUrl/alamat'),
+        headers: await _headers(auth: true))));
     return List<Map<String, dynamic>>.from(d['data']);
   }
 
   /// [id] null = tambah baru, ada = ubah.
   static Future<void> simpanAlamat(Map<String, dynamic> data, {int? id}) async {
-    final uri = Uri.parse(id == null ? '$baseUrl/alamat' : '$baseUrl/alamat/$id');
+    final uri =
+        Uri.parse(id == null ? '$baseUrl/alamat' : '$baseUrl/alamat/$id');
     final h = await _headers(auth: true);
     final body = jsonEncode(data);
-    final r = await _kirim(
-        id == null ? http.post(uri, headers: h, body: body) : http.put(uri, headers: h, body: body));
+    final r = await _kirim(id == null
+        ? http.post(uri, headers: h, body: body)
+        : http.put(uri, headers: h, body: body));
     _handle(r);
   }
 
@@ -286,32 +342,37 @@ class ApiService {
   static Future<bool> statusMitraFavorit(int produkId) async {
     final uri = Uri.parse('$baseUrl/mitra-favorit/status')
         .replace(queryParameters: {'produk_id': '$produkId'});
-    final d = _handle(await _kirim(http.get(uri, headers: await _headers(auth: true))));
+    final d = _handle(
+        await _kirim(http.get(uri, headers: await _headers(auth: true))));
     return d['favorit'] == true;
   }
 
   /// Tambah / hapus mitra dari favorit. Mengembalikan status terbaru.
   static Future<bool> toggleMitraFavorit(int produkId) async {
-    final r = await _kirim(http.post(Uri.parse('$baseUrl/mitra-favorit/toggle'),
+    final r = await _kirim(http.post(
+        Uri.parse('$baseUrl/mitra-favorit/toggle'),
         headers: await _headers(auth: true),
         body: jsonEncode({'produk_id': produkId})));
     return _handle(r)['favorit'] == true;
   }
 
   static Future<void> hapusMitraFavorit(int idMitra) async {
-    final r = await _kirim(http.delete(Uri.parse('$baseUrl/mitra-favorit/$idMitra'),
+    final r = await _kirim(http.delete(
+        Uri.parse('$baseUrl/mitra-favorit/$idMitra'),
         headers: await _headers(auth: true)));
     _handle(r);
   }
 
   // ---------- BANTUAN ----------
   /// Mengembalikan { data: [faq], kategori: [..], kontak: {..} }
-  static Future<Map<String, dynamic>> getFaq({String? q, String? kategori}) async {
+  static Future<Map<String, dynamic>> getFaq(
+      {String? q, String? kategori}) async {
     final params = <String, String>{
       if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
       if (kategori != null && kategori.isNotEmpty) 'kategori': kategori,
     };
-    final uri = Uri.parse('$baseUrl/faq').replace(queryParameters: params.isEmpty ? null : params);
+    final uri = Uri.parse('$baseUrl/faq')
+        .replace(queryParameters: params.isEmpty ? null : params);
     return Map<String, dynamic>.from(
         _handle(await _kirim(http.get(uri, headers: await _headers()))));
   }
@@ -330,31 +391,28 @@ class ApiService {
         headers: await _headers(auth: true))));
     return List<Map<String, dynamic>>.from(d['data']);
   }
-    // ---------- AUTH (Email OTP) ----------
-  static Future<void> kirimEmailOtp(String email) async {
-    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/login-email'),
-        headers: await _headers(), body: jsonEncode({'email': email})));
-    _handle(r);
-  }
 
-  static Future<void> verifikasiEmailOtp(String email, String code) async {
-    final r = await _kirim(http.post(Uri.parse('$baseUrl/auth/verify-email-otp'),
-        headers: await _headers(),
-        body: jsonEncode({'email': email, 'code': code})));
-    final d = _handle(r);
-    (await SharedPreferences.getInstance()).setString('token', d['token']);
-  }
+static Future<List<Map<String, dynamic>>> mitraPesanan(
+    {int? idMitra, String? phone, String tab = 'semua'}) async {
+  final r = await _kirim(http.post(Uri.parse('$baseUrl/mitra/pesanan'),
+      headers: await _headers(),
+      body: jsonEncode({
+        if (idMitra != null) 'id_mitra': idMitra,
+        if (phone != null) 'phone': phone,
+        'tab': tab,
+      })));
+  return List<Map<String, dynamic>>.from(_handle(r)['data']);
+}
 
-    static Future<void> loginGoogle(String idToken) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/auth/google'),
-      headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-      body: jsonEncode({'id_token': idToken}),
-    );
-    if (res.statusCode != 200) {
-      throw Exception('Login Google gagal (${res.statusCode}): ${res.body}');
-    }
-    final data = jsonDecode(res.body);
-    // TODO: simpan token dan user persis seperti di fungsi login()
-  }
+static Future<void> mitraAksiPesanan(String kode, String aksi,
+    {int? idMitra, String? phone, String? kodeAmbil}) async {
+  final r = await _kirim(http.post(Uri.parse('$baseUrl/mitra/pesanan/$kode/$aksi'),
+      headers: await _headers(),
+      body: jsonEncode({
+        if (idMitra != null) 'id_mitra': idMitra,
+        if (phone != null) 'phone': phone,
+        if (kodeAmbil != null) 'kode_ambil': kodeAmbil,
+      })));
+  _handle(r);
+}
 }
