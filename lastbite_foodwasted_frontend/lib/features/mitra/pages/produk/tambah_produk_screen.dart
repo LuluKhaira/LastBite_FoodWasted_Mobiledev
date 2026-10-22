@@ -4,12 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 
 /// Warna khusus layar ini. Semuanya diturunkan dari AppColors milik tim,
 /// jadi kalau AppColors.primary / orange diganti, layar ini ikut berubah.
 class _Warna {
   /// Hijau tua untuk tombol utama & chip terpilih (turunan dari primary).
-  /// Mau lebih gelap/terang? ubah angka 0.25 (0.0 = hitam, 1.0 = putih).
   static Color get primaryDark =>
       HSLColor.fromColor(AppColors.primary).withLightness(0.25).toColor();
 
@@ -88,18 +88,17 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
 
   Uint8List? _fotoBytes;
   String? _fotoNama;
-  String? _gambarLama; // path foto dari template (di server)
-  String? _gambarLamaUrl; // url untuk menampilkan
+  String? _gambarLama;
+  String? _gambarLamaUrl;
 
-  Map<String, dynamic>? _template;
   bool _saving = false;
+  bool _isLoadingData = false;
 
   @override
   void initState() {
     super.initState();
     _asliCtrl.addListener(() => setState(() {}));
     _diskonCtrl.addListener(() => setState(() {}));
-    _muatTemplate();
   }
 
   @override
@@ -108,36 +107,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     _asliCtrl.dispose();
     _diskonCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _muatTemplate() async {
-    final t = await ApiService.getTemplateProduk(widget.phoneNumber);
-    if (!mounted) return;
-    setState(() => _template = t);
-  }
-
-  void _pakaiTemplate() {
-    final t = _template;
-    if (t == null) return;
-    final asli = int.tryParse('${t['harga_asli']}') ?? 0;
-    final diskon = int.tryParse('${t['harga']}') ?? 0;
-    final stok = int.tryParse('${t['stok']}') ?? 1;
-
-    setState(() {
-      _namaCtrl.text = '${t['nama'] ?? ''}';
-      _kategori = _daftarKategori.any((k) => k.nama == t['kategori'])
-          ? '${t['kategori']}'
-          : null;
-      _asliCtrl.text = asli > 0 ? _ribuan(asli) : '';
-      _diskonCtrl.text = _ribuan(diskon);
-      _stok = stok.clamp(1, 999);
-      if (t['gambar'] != null && '${t['gambar']}'.isNotEmpty) {
-        _gambarLama = '${t['gambar']}';
-        _gambarLamaUrl = t['gambar_url']?.toString();
-        _fotoBytes = null;
-        _fotoNama = null;
-      }
-    });
   }
 
   int? get _hematPersen {
@@ -276,30 +245,31 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  children: [
-                    if (_template != null) ...[
-                      _bannerTemplate(),
-                      const SizedBox(height: 14),
-                    ],
-                    _kartuFoto(),
-                    const SizedBox(height: 14),
-                    _kartuNama(),
-                    const SizedBox(height: 14),
-                    _kartuKategori(),
-                    const SizedBox(height: 14),
-                    _kartuHarga(),
-                    const SizedBox(height: 14),
-                    _kartuStok(),
-                    const SizedBox(height: 14),
-                    _kartuBatas(),
-                    const SizedBox(height: 14),
-                    _kartuJaminan(),
-                  ],
-                ),
-              ),
+              child: _isLoadingData
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: ListShimmerLoading(count: 3),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        children: [
+                          _kartuFoto(),
+                          const SizedBox(height: 14),
+                          _kartuNama(),
+                          const SizedBox(height: 14),
+                          _kartuKategori(),
+                          const SizedBox(height: 14),
+                          _kartuHarga(),
+                          const SizedBox(height: 14),
+                          _kartuStok(),
+                          const SizedBox(height: 14),
+                          _kartuBatas(),
+                          const SizedBox(height: 14),
+                          _kartuJaminan(),
+                        ],
+                      ),
+                    ),
             ),
             _barBawah(),
           ],
@@ -380,53 +350,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                 fontSize: 11, fontWeight: FontWeight.w800, color: warnaTeks),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _bannerTemplate() {
-    return InkWell(
-      onTap: _pakaiTemplate,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _Warna.primaryDark,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_fix_high,
-                  color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('GUNAKAN TEMPLATE',
-                      style: AppColors.body(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: _Warna.primaryDark)),
-                  Text(
-                    'Salin dari: ${_template!['nama'] ?? ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppColors.heading(fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.bolt, color: _Warna.primaryDark),
-          ],
-        ),
       ),
     );
   }

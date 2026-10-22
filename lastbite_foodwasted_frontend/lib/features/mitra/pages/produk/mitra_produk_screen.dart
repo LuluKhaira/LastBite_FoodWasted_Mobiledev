@@ -4,6 +4,7 @@ import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/mitra_dashboard_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/widgets/mitra_bottom_nav.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 
 enum _Status { tayang, terjadwal, habis }
 
@@ -321,7 +322,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
-              if (_isLoading) const LinearProgressIndicator(minHeight: 3),
               _buildHeader(),
 
               Row(
@@ -487,7 +487,10 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
               ),
               const SizedBox(height: 16),
 
-              if (daftar.isEmpty)
+              // LOGIKA SHIMMER LOADING DI SINI
+              if (_isLoading)
+                const ListShimmerLoading(count: 3)
+              else if (daftar.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   child: Column(
@@ -742,8 +745,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
     );
   }
 }
-
-// ================= Widget kecil =================
 
 class _Pill extends StatelessWidget {
   final String label;

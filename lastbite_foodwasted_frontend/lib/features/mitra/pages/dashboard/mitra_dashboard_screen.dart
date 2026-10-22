@@ -4,6 +4,7 @@ import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_produk_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'widgets/mitra_bottom_nav.dart';
 
 import 'widgets/kartu_info_toko.dart';
@@ -119,61 +120,57 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                     _buildHeader(),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 12),
-                          KartuInfoToko(
-                            namaToko: _namaToko,
-                            isTokoBuka: _isTokoBuka,
-                            onStatusChanged: _ubahStatusToko,
-                          ),
-                          const SizedBox(height: 12),
-                          if (_showWarningBanner) _buildWarningBanner(),
-                          const SizedBox(height: 16),
-                          const AksiCepat(),
-                          const SizedBox(height: 20),
-                          RingkasanSection(
-                            pesananHariIni: _pesananHariIni,
-                            pesananAktif: _pesananAktif,
-                            pendapatan: _pendapatan,
-                            porsi: _porsi,
-                            co2Kg: _co2Kg,
-                          ),
-                          const SizedBox(height: 20),
-                          SurplusSection(
-                            items: _surplus,
-                            onProductTap: (_) async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MitraProdukScreen(
-                                    phoneNumber: widget.phoneNumber,
-                                    namaToko: _namaToko,
-                                  ),
+                      child: _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.only(top: 20),
+                              child: ListShimmerLoading(count: 3),
+                            )
+                          : Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                KartuInfoToko(
+                                  namaToko: _namaToko,
+                                  isTokoBuka: _isTokoBuka,
+                                  onStatusChanged: _ubahStatusToko,
                                 ),
-                              );
-                              _muatDashboard();
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildTipsBanner(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+                                const SizedBox(height: 12),
+                                if (_showWarningBanner) _buildWarningBanner(),
+                                const SizedBox(height: 16),
+                                const AksiCepat(),
+                                const SizedBox(height: 20),
+                                RingkasanSection(
+                                  pesananHariIni: _pesananHariIni,
+                                  pesananAktif: _pesananAktif,
+                                  pendapatan: _pendapatan,
+                                  porsi: _porsi,
+                                  co2Kg: _co2Kg,
+                                ),
+                                const SizedBox(height: 20),
+                                SurplusSection(
+                                  items: _surplus,
+                                  onProductTap: (_) async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MitraProdukScreen(
+                                          phoneNumber: widget.phoneNumber,
+                                          namaToko: _namaToko,
+                                        ),
+                                      ),
+                                    );
+                                    _muatDashboard();
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildTipsBanner(),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
                     ),
                   ],
                 ),
               ),
             ),
-
-            if (_isLoading)
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(minHeight: 3),
-              ),
-
             Positioned(
               right: 16,
               bottom: 76,

@@ -82,5 +82,3 @@ class ProdukMitraController extends Controller
         return response()->json(['ok' => true, 'message' => 'Status berhasil diubah']);
     }
 }
-
-}
