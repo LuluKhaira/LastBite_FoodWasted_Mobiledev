@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import '../core/config/api_config.dart';
 
 class ApiService {
@@ -14,14 +15,16 @@ class ApiService {
     final url = Uri.parse('$baseUrl/mitra/register-phone');
     debugPrint('--> POST $url (phone: $phoneNumber)');
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'phone': phoneNumber}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'phone': phoneNumber}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       debugPrint('<-- [${response.statusCode}] $url: ${response.body}');
 
@@ -30,15 +33,18 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          lastErrorMessage = data['message'] ?? 'Server error [${response.statusCode}]';
+          lastErrorMessage =
+              data['message'] ?? 'Server error [${response.statusCode}]';
         } catch (_) {
-          lastErrorMessage = 'Server error [${response.statusCode}]: ${response.body}';
+          lastErrorMessage =
+              'Server error [${response.statusCode}]: ${response.body}';
         }
         return false;
       }
     } catch (e, stack) {
       debugPrint('Error registerWhatsApp: $e\n$stack');
-      lastErrorMessage = 'Gagal terhubung ($e). Pastikan server aktif di $baseUrl';
+      lastErrorMessage =
+          'Gagal terhubung ($e). Pastikan server aktif di $baseUrl';
       return false;
     }
   }
@@ -283,7 +289,9 @@ class ApiService {
         request.fields['gambar_lama'] = gambarLama;
       }
       if (fotoBytes != null) {
-        var namaFile = (fotoNama == null || fotoNama.isEmpty) ? 'foto.jpg' : fotoNama;
+        var namaFile = (fotoNama == null || fotoNama.isEmpty)
+            ? 'foto.jpg'
+            : fotoNama;
         if (!namaFile.contains('.')) namaFile = '$namaFile.jpg';
         request.files.add(
           http.MultipartFile.fromBytes('foto', fotoBytes, filename: namaFile),
@@ -295,7 +303,10 @@ class ApiService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final b = jsonDecode(response.body);
-        return {'ok': true, 'message': '${b['message'] ?? 'Berhasil disimpan.'}'};
+        return {
+          'ok': true,
+          'message': '${b['message'] ?? 'Berhasil disimpan.'}',
+        };
       }
       debugPrint('tambahProduk gagal: ${response.statusCode} ${response.body}');
       return {'ok': false, 'message': _pesanError(response)};
@@ -364,14 +375,18 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        final dynamic raw = decoded is Map ? (decoded['data'] ?? decoded) : decoded;
+        final dynamic raw = decoded is Map
+            ? (decoded['data'] ?? decoded)
+            : decoded;
         if (raw is List) {
           return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
         return [];
       }
 
-      debugPrint('getMitraProduk gagal: ${response.statusCode} ${response.body}');
+      debugPrint(
+        'getMitraProduk gagal: ${response.statusCode} ${response.body}',
+      );
       return null;
     } catch (e) {
       debugPrint('Error getMitraProduk: $e');
@@ -414,12 +429,117 @@ class ApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'phone': phoneNumber, 'id': idProduk, 'aktif': aktif}),
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'id': idProduk,
+          'aktif': aktif,
+        }),
       );
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('Error setProdukAktif: $e');
       return false;
+    }
+  }
+
+  // --- FUNGSI TAMBAH PRODUK (DIPERBARUI) ---
+  static Future<Map<String, dynamic>> tambahProdukLengkap({
+    required String phoneNumber,
+    required String nama,
+    required String deskripsi,
+    required String tipe, // 'dimakan' atau 'kompos'
+    required String kategori,
+    required int hargaAsli,
+    required int harga,
+    required int stok,
+    required String waktuMulai, // "HH:mm"
+    required String waktuSelesai, // "HH:mm"
+    required bool terbit,
+    Uint8List? fotoBytes,
+    String? fotoNama,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/mitra/produk'),
+      );
+      request.headers['Accept'] = 'application/json';
+
+      request.fields.addAll({
+        'phone': phoneNumber,
+        'nama': nama,
+        'deskripsi': deskripsi,
+        'tipe': tipe,
+        'kategori': kategori,
+        'harga_asli': '$hargaAsli',
+        'harga': '$harga',
+        'stok': '$stok',
+        'kuota': '$stok', // Set kuota awal sama dengan stok
+        'waktu_mulai': waktuMulai,
+        'waktu_selesai': waktuSelesai,
+        'terbit': terbit ? '1' : '0',
+      });
+
+      if (fotoBytes != null) {
+        var namaFile = (fotoNama == null || fotoNama.isEmpty)
+            ? 'foto.jpg'
+            : fotoNama;
+        if (!namaFile.contains('.')) namaFile = '$namaFile.jpg';
+        request.files.add(
+          http.MultipartFile.fromBytes('foto', fotoBytes, filename: namaFile),
+        );
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final b = jsonDecode(response.body);
+        return {
+          'ok': true,
+          'message': '${b['message'] ?? 'Berhasil disimpan.'}',
+        };
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
+    }
+  }
+
+  // --- FUNGSI EDIT PRODUK (BARU) ---
+  static Future<Map<String, dynamic>> updateProdukLengkap({
+    required String phoneNumber,
+    required int idProduk,
+    required String nama,
+    required String deskripsi,
+    required int hargaAsli,
+    required int harga,
+    required int stok,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/update'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'id': idProduk,
+          'nama': nama,
+          'deskripsi': deskripsi,
+          'harga_asli': hargaAsli,
+          'harga': harga,
+          'stok': stok,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return {'ok': true, 'message': 'Produk berhasil diperbarui'};
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
     }
   }
 }

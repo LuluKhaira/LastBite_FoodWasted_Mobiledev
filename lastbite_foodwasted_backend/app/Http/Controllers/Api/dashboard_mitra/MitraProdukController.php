@@ -12,8 +12,12 @@ use Illuminate\Validation\ValidationException;
 
 class MitraProdukController extends Controller
 {
+    // KATEGORI DIPERBARUI SESUAI FLUTTER
     private const KATEGORI = [
-        'Roti & Bakery', 'Dessert', 'Makanan Berat', 'Bahan Olahan', 'Pakan Ternak',
+        // Kategori Manusia
+        'Roti & Pastry', 'Roti Tawar', 'Siap Santap', 'Sayur & Buah', 'Bahan & Olahan Dapur',
+        // Kategori Pakan/Kompos
+        'Bahan Kompos & Pupuk', 'Pakan Ternak & Ikan', 'Ampas Kelapa & Kopi', 'Limbah Organik'
     ];
 
     /** POST /api/mitra/produk : simpan produk (terbit) atau draf */
@@ -28,20 +32,24 @@ class MitraProdukController extends Controller
             return response()->json(['success' => false, 'message' => 'Akun mitra belum disetujui admin.'], 403);
         }
 
+        // VALIDASI DIPERBARUI (Menambahkan deskripsi, tipe, kuota, waktu_mulai)
         $data = $request->validate([
             'phone'         => 'required|string',
-            'nama'          => 'required|string|max:50',
+            'nama'          => 'required|string|max:255',
+            'deskripsi'     => 'nullable|string',
+            'tipe'          => 'required|string|in:dimakan,kompos',
             'kategori'      => ['required', Rule::in(self::KATEGORI)],
             'harga_asli'    => 'required|integer|min:1|max:99999999',
             'harga'         => 'required|integer|min:0|lt:harga_asli',
             'stok'          => 'required|integer|min:1|max:999',
+            'kuota'         => 'required|integer|min:1|max:999',
+            'waktu_mulai'   => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i',
             'terbit'        => 'required|boolean',
             'foto'          => 'nullable|image|max:5120',
             'gambar_lama'   => 'nullable|string|max:255',
         ], [
             'nama.required'      => 'Nama produk wajib diisi.',
-            'nama.max'           => 'Nama produk maksimal 50 karakter.',
             'kategori.required'  => 'Pilih kategori produk.',
             'kategori.in'        => 'Kategori tidak valid.',
             'harga_asli.required' => 'Harga asli wajib diisi.',
@@ -69,10 +77,12 @@ class MitraProdukController extends Controller
         }
 
         if ($terbit) {
+            // Foto wajib ada jika diterbitkan (kecuali pakai gambar lama)
             if (! $request->hasFile('foto') && ! $gambarLama) {
                 throw ValidationException::withMessages(['foto' => ['Foto makanan wajib diunggah.']]);
             }
 
+            // Cek jam batas pengambilan
             $batas = Carbon::today('Asia/Jakarta')->setTimeFromTimeString($data['waktu_selesai']);
             if ($batas->lessThanOrEqualTo(now('Asia/Jakarta'))) {
                 throw ValidationException::withMessages([
@@ -86,16 +96,20 @@ class MitraProdukController extends Controller
             $gambar = $request->file('foto')->store('produk', 'public');
         }
 
+        // SIMPAN KE DATABASE (Menambahkan kolom yang sebelumnya hilang)
         $id = DB::table('produks')->insertGetId([
             'id_mitra'      => $mitra->id_mitra,
             'nama'          => trim($data['nama']),
+            'deskripsi'     => $data['deskripsi'] ?? null,
+            'tipe'          => $data['tipe'],
             'kategori'      => $data['kategori'],
             'gambar'        => $gambar,
             'harga'         => (int) $data['harga'],
             'harga_asli'    => (int) $data['harga_asli'],
             'satuan'        => '/paket',
             'stok'          => (int) $data['stok'],
-            'waktu_mulai'   => now('Asia/Jakarta')->format('H:i:s'),
+            'kuota'         => (int) $data['kuota'],
+            'waktu_mulai'   => $data['waktu_mulai'] . ':00',
             'waktu_selesai' => $data['waktu_selesai'] . ':00',
             'aktif'         => $terbit ? 1 : 0,
             'created_at'    => now(),

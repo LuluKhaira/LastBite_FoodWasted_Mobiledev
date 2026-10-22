@@ -33,6 +33,8 @@ Route::post('/mitra/check-status', [\App\Http\Controllers\Api\MitraStatusControl
 Route::post('/mitra/produk/list', [ProdukMitraController::class, 'index']);
 Route::post('/mitra/produk/stok', [ProdukMitraController::class, 'updateStok']);
 Route::post('/mitra/produk/aktif', [ProdukMitraController::class, 'updateAktif']);
+Route::post('/mitra/produk', [ProdukController::class, 'tambah']);
+Route::post('/mitra/produk/update', [ProdukController::class, 'update']);
 
 // ============================================================
 // PELANGGAN (publik)

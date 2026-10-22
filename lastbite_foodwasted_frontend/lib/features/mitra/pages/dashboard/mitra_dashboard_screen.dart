@@ -5,8 +5,9 @@ import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
-import 'widgets/mitra_bottom_nav.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 
+import 'widgets/mitra_bottom_nav.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
 import 'widgets/ringkasan_section.dart';
@@ -198,7 +199,12 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
         ),
         onScan: () => _info('Pindai QR pengambilan pesanan'),
         onPesanan: () => _info('Halaman Pesanan belum dibuat'),
-        onProfil: () => _info('Halaman Profil belum dibuat'),
+        onProfil: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraProfilScreen(phoneNumber: widget.phoneNumber),
+          ),
+        ),
         pesananBadge: _pesananAktif,
       ),
     );
