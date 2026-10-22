@@ -7,6 +7,9 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 
+// IMPORT BOTTOM SHEET KAMU DI SINI
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
+
 import 'widgets/mitra_bottom_nav.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
@@ -197,7 +200,15 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
             ),
           ),
         ),
-        onScan: () => _info('Pindai QR pengambilan pesanan'),
+        // UBAH BAGIAN INI: LANGSUNG TAMPILKAN BOTTOM SHEET
+        onScan: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
+          );
+        },
         onPesanan: () => _info('Halaman Pesanan belum dibuat'),
         onProfil: () => Navigator.pushReplacement(
           context,

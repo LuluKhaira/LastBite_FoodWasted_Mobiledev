@@ -12,25 +12,29 @@ class AppColors {
     double fontSize = 20,
     FontWeight fontWeight = FontWeight.w700,
     Color color = textDark,
-    double? height, // <-- TAMBAHAN
+    double? height, 
+    double? letterSpacing, // <--- TAMBAHKAN INI
   }) =>
       GoogleFonts.poppins(
         fontSize: fontSize, 
         fontWeight: fontWeight, 
-        color: color,
+        color: color, 
         height: height,
+        letterSpacing: letterSpacing, // <--- TAMBAHKAN INI
       );
 
   static TextStyle body({
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.w400,
     Color color = textDark,
-    double? height, // <-- TAMBAHAN
+    double? height,
+    double? letterSpacing, // <--- TAMBAHKAN INI
   }) =>
       GoogleFonts.nunito(
         fontSize: fontSize, 
         fontWeight: fontWeight, 
-        color: color,
+        color: color, 
         height: height,
+        letterSpacing: letterSpacing, // <--- TAMBAHKAN INI
       );
 }

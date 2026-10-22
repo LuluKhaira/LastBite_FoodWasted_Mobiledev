@@ -30,6 +30,7 @@ class ProdukMitraController extends Controller
 
         // 3. Terjemahkan data agar sesuai dengan format yang dibaca Flutter
         $data = $produks->map(function ($p) {
+            $img = $p->gambar ? url('storage/' . $p->gambar) : null;
             return [
                 'id' => $p->id,
                 'nama' => $p->nama,
@@ -42,7 +43,9 @@ class ProdukMitraController extends Controller
                 'jam' => $p->waktu_selesai ? date('H:i', strtotime($p->waktu_selesai)) : '-',
                 'status' => ($p->aktif == 1 && $p->stok > 0) ? 'tayang' : 'habis',
                 'aktif' => $p->aktif == 1,
-                'image_url' => $p->gambar ? url('storage/' . $p->gambar) : null,
+                // Return both keys so that both front‑ends can consume the image
+                'image_url' => $img,
+                'gambar' => $img,
             ];
         });
 

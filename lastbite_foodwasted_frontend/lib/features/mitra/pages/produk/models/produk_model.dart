@@ -48,7 +48,7 @@ class Produk {
     const String baseUrlImage = 'http://10.0.2.2:8000'; // <--- GANTI DI SINI KALAU PERLU
     
     String? imgUrl;
-    if (j['gambar'] != null && j['gambar'].toString().isNotEmpty) {
+    if ((j['gambar'] != null && j['gambar'].toString().isNotEmpty) || (j['image_url'] != null && j['image_url'].toString().isNotEmpty)) {
       final String gambarPath = j['gambar'].toString();
       
       if (gambarPath.startsWith('http')) {

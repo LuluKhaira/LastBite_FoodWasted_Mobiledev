@@ -7,14 +7,19 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/widgets/mitra_bottom_nav.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 
-import 'detail_produk_screen.dart'; 
-import 'models/produk_model.dart'; 
+// IMPORT BOTTOM SHEET KAMU DI SINI
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
+
+import 'detail_produk_screen.dart';
+import 'models/produk_model.dart';
 
 class _UI {
   static Color get primary => AppColors.primary;
   static Color get orange => AppColors.orange;
-  static Color get primaryText => HSLColor.fromColor(AppColors.primary).withLightness(0.28).toColor();
-  static Color get orangeText => HSLColor.fromColor(AppColors.orange).withLightness(0.35).toColor();
+  static Color get primaryText =>
+      HSLColor.fromColor(AppColors.primary).withLightness(0.28).toColor();
+  static Color get orangeText =>
+      HSLColor.fromColor(AppColors.orange).withLightness(0.35).toColor();
   static Color get primaryBg => AppColors.primary.withValues(alpha: 0.1);
   static Color get orangeBg => AppColors.orange.withValues(alpha: 0.1);
   static Color get textSoft => const Color(0xFF6B6B6B);
@@ -35,7 +40,11 @@ class MitraProdukScreen extends StatefulWidget {
   final String phoneNumber;
   final String? namaToko;
 
-  const MitraProdukScreen({super.key, required this.phoneNumber, this.namaToko});
+  const MitraProdukScreen({
+    super.key,
+    required this.phoneNumber,
+    this.namaToko,
+  });
 
   @override
   State<MitraProdukScreen> createState() => _MitraProdukScreenState();
@@ -49,10 +58,15 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
 
   bool _isLoading = true;
   bool _isTokoBuka = true;
-  List<Produk> _produk = []; 
+  List<Produk> _produk = [];
   String _namaToko = 'Holland Bakery – Batam Center';
 
-  List<String> get _kategoriList => ['Semua Paket', 'Bakery & Pastry', 'Roti Manis', 'Pakan & Olahan'];
+  List<String> get _kategoriList => [
+    'Semua Paket',
+    'Bakery & Pastry',
+    'Roti Manis',
+    'Pakan & Olahan',
+  ];
 
   @override
   void initState() {
@@ -79,7 +93,7 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
     }
     setState(() {
       _isLoading = false;
-      _produk = data.map(Produk.fromJson).toList(); 
+      _produk = data.map(Produk.fromJson).toList();
     });
   }
 
@@ -96,14 +110,21 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
   List<Produk> get _tampil {
     return _produk.where((p) {
       final cocokTab = p.statusUI == _tab;
-      final cocokKategori = _kategori == 'Semua Paket' || p.kategori == _kategori;
-      final cocokCari = p.nama.toLowerCase().contains(_query.trim().toLowerCase());
+      final cocokKategori =
+          _kategori == 'Semua Paket' || p.kategori == _kategori;
+      final cocokCari = p.nama.toLowerCase().contains(
+        _query.trim().toLowerCase(),
+      );
       return cocokTab && cocokKategori && cocokCari;
     }).toList();
   }
 
-  int get _totalKuota => _produk.where((p) => p.statusUI == StatusProduk.tayang).fold(0, (a, p) => a + p.kuota);
-  int get _totalTerjual => _produk.where((p) => p.statusUI == StatusProduk.tayang).fold(0, (a, p) => a + (p.kuota - p.stok));
+  int get _totalKuota => _produk
+      .where((p) => p.statusUI == StatusProduk.tayang)
+      .fold(0, (a, p) => a + p.kuota);
+  int get _totalTerjual => _produk
+      .where((p) => p.statusUI == StatusProduk.tayang)
+      .fold(0, (a, p) => a + (p.kuota - p.stok));
   int get _totalSisa => _totalKuota - _totalTerjual;
 
   void _info(String pesan) {
@@ -120,12 +141,16 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
   Future<void> _ubahStok(Produk p, int delta) async {
     final stokBaru = (p.stok + delta).clamp(0, p.kuota);
     if (stokBaru == p.stok) return;
-    
-    final ok = await ApiService.updateStokProduk(widget.phoneNumber, p.id, stokBaru);
+
+    final ok = await ApiService.updateStokProduk(
+      widget.phoneNumber,
+      p.id,
+      stokBaru,
+    );
     if (!mounted) return;
-    
+
     if (ok) {
-      await _muatProduk(); 
+      await _muatProduk();
     } else {
       _info('Gagal menyimpan stok. Coba lagi.');
     }
@@ -134,7 +159,9 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
   Future<void> _bukaTambahProduk() async {
     final berhasil = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => TambahProdukScreen(phoneNumber: widget.phoneNumber)),
+      MaterialPageRoute(
+        builder: (_) => TambahProdukScreen(phoneNumber: widget.phoneNumber),
+      ),
     );
     if (berhasil == true && mounted) {
       await _muatProduk();
@@ -157,11 +184,31 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
       ),
       bottomNavigationBar: MitraBottomNav(
         currentIndex: 1,
-        onDashboard: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MitraDashboardScreen(phoneNumber: widget.phoneNumber))),
+        onDashboard: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                MitraDashboardScreen(phoneNumber: widget.phoneNumber),
+          ),
+        ),
         onProduk: () {},
-        onScan: () => _info('Pindai QR pengambilan pesanan'),
+        // UBAH BAGIAN INI: LANGSUNG TAMPILKAN BOTTOM SHEET
+        onScan: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) =>
+                ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
+          );
+        },
         onPesanan: () => _info('Halaman Pesanan belum dibuat'),
-        onProfil: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MitraProfilScreen(phoneNumber: widget.phoneNumber))),
+        onProfil: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraProfilScreen(phoneNumber: widget.phoneNumber),
+          ),
+        ),
         pesananBadge: 3,
       ),
       body: SafeArea(
@@ -237,11 +284,18 @@ class _HeaderSection extends StatelessWidget {
       children: [
         Text('Produk Saya', style: AppColors.heading(fontSize: 20)),
         Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(color: _UI.primaryBg, shape: BoxShape.circle, border: Border.all(color: _UI.primary.withValues(alpha: 0.3))),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: _UI.primaryBg,
+            shape: BoxShape.circle,
+            border: Border.all(color: _UI.primary.withValues(alpha: 0.3)),
+          ),
           child: Center(
             child: Text(
-              namaToko.isNotEmpty ? namaToko.substring(0, 2).toUpperCase() : 'HB',
+              namaToko.isNotEmpty
+                  ? namaToko.substring(0, 2).toUpperCase()
+                  : 'HB',
               style: AppColors.heading(fontSize: 14, color: _UI.primaryText),
             ),
           ),
@@ -257,44 +311,116 @@ class _StoreSummaryCard extends StatelessWidget {
   final ValueChanged<bool> onUbahStatusToko;
   final int totalKuota, totalTerjual, totalSisa;
 
-  const _StoreSummaryCard({required this.namaToko, required this.isTokoBuka, required this.onUbahStatusToko, required this.totalKuota, required this.totalTerjual, required this.totalSisa});
+  const _StoreSummaryCard({
+    required this.namaToko,
+    required this.isTokoBuka,
+    required this.onUbahStatusToko,
+    required this.totalKuota,
+    required this.totalTerjual,
+    required this.totalSisa,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: _UI.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _UI.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Row(
             children: [
-              Container(width: 42, height: 42, decoration: BoxDecoration(color: _UI.primaryBg, borderRadius: BorderRadius.circular(12)), child: Icon(Icons.storefront_rounded, color: _UI.primaryText, size: 24)),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _UI.primaryBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.storefront_rounded,
+                  color: _UI.primaryText,
+                  size: 24,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(namaToko, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppColors.heading(fontSize: 14)),
+                    Text(
+                      namaToko,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppColors.heading(fontSize: 14),
+                    ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Container(width: 6, height: 6, decoration: BoxDecoration(color: isTokoBuka ? _UI.primaryText : _UI.orangeText, shape: BoxShape.circle)),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: isTokoBuka
+                                ? _UI.primaryText
+                                : _UI.orangeText,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                         const SizedBox(width: 6),
-                        Text(isTokoBuka ? 'Etalase Terbuka' : 'Etalase Tutup', style: AppColors.body(fontSize: 11, fontWeight: FontWeight.w800, color: isTokoBuka ? _UI.primaryText : _UI.orangeText)),
+                        Text(
+                          isTokoBuka ? 'Etalase Terbuka' : 'Etalase Tutup',
+                          style: AppColors.body(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isTokoBuka
+                                ? _UI.primaryText
+                                : _UI.orangeText,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              Switch(value: isTokoBuka, onChanged: onUbahStatusToko, activeColor: Colors.white, activeTrackColor: _UI.primaryText, inactiveThumbColor: Colors.white, inactiveTrackColor: _UI.textSoft.withValues(alpha: 0.3)),
+              Switch(
+                value: isTokoBuka,
+                onChanged: onUbahStatusToko,
+                activeColor: Colors.white,
+                activeTrackColor: _UI.primaryText,
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: _UI.textSoft.withValues(alpha: 0.3),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildStatBox(title: 'Total Kuota', value: '$totalKuota', sub: 'Paket', icon: Icons.inventory_2_outlined, iconColor: _UI.primaryText),
+              _buildStatBox(
+                title: 'Total Kuota',
+                value: '$totalKuota',
+                sub: 'Paket',
+                icon: Icons.inventory_2_outlined,
+                iconColor: _UI.primaryText,
+              ),
               const SizedBox(width: 12),
-              _buildStatBox(title: 'Terjual', value: '$totalTerjual', sub: 'Sisa $totalSisa', icon: Icons.shopping_bag_outlined, iconColor: _UI.orangeText),
+              _buildStatBox(
+                title: 'Terjual',
+                value: '$totalTerjual',
+                sub: 'Sisa $totalSisa',
+                icon: Icons.shopping_bag_outlined,
+                iconColor: _UI.orangeText,
+              ),
             ],
           ),
         ],
@@ -302,26 +428,50 @@ class _StoreSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox({required String title, required String value, required String sub, required IconData icon, required Color iconColor}) {
+  Widget _buildStatBox({
+    required String title,
+    required String value,
+    required String sub,
+    required IconData icon,
+    required Color iconColor,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppColors.body(fontSize: 11, color: _UI.textSoft)),
+                  Text(
+                    title,
+                    style: AppColors.body(fontSize: 11, color: _UI.textSoft),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text(value, style: AppColors.heading(fontSize: 18, color: AppColors.textDark)),
+                      Text(
+                        value,
+                        style: AppColors.heading(
+                          fontSize: 18,
+                          color: AppColors.textDark,
+                        ),
+                      ),
                       const SizedBox(width: 4),
-                      Text(sub, style: AppColors.body(fontSize: 11, color: _UI.textSoft)),
+                      Text(
+                        sub,
+                        style: AppColors.body(
+                          fontSize: 11,
+                          color: _UI.textSoft,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -341,18 +491,38 @@ class _SurpriseBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: _UI.primaryBg, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: _UI.primaryBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_outline_rounded, color: _UI.primaryText, size: 20),
+          Icon(
+            Icons.lightbulb_outline_rounded,
+            color: _UI.primaryText,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
               TextSpan(
                 children: [
-                  TextSpan(text: 'Konsep Surprise Box: ', style: AppColors.body(fontSize: 12, fontWeight: FontWeight.w800, color: _UI.primaryText)),
-                  TextSpan(text: 'Cukup sediakan kuota tanpa perlu memilih roti satu per satu saat jam sibuk.', style: AppColors.body(fontSize: 12, color: AppColors.textDark)),
+                  TextSpan(
+                    text: 'Konsep Surprise Box: ',
+                    style: AppColors.body(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: _UI.primaryText,
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'Cukup sediakan kuota tanpa perlu memilih roti satu per satu saat jam sibuk.',
+                    style: AppColors.body(
+                      fontSize: 12,
+                      color: AppColors.textDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -368,7 +538,11 @@ class _SearchAndFilterBar extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onFilterTap;
 
-  const _SearchAndFilterBar({required this.searchFocus, required this.onSearchChanged, required this.onFilterTap});
+  const _SearchAndFilterBar({
+    required this.searchFocus,
+    required this.onSearchChanged,
+    required this.onFilterTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -377,13 +551,21 @@ class _SearchAndFilterBar extends StatelessWidget {
         Expanded(
           child: Container(
             height: 46,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: _UI.border)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _UI.border),
+            ),
             child: TextField(
               focusNode: searchFocus,
               onChanged: onSearchChanged,
               style: AppColors.body(fontSize: 14),
               decoration: InputDecoration(
-                prefixIcon: Icon(Icons.search_rounded, color: _UI.textSoft, size: 22),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: _UI.textSoft,
+                  size: 22,
+                ),
                 hintText: 'Cari nama paket kejutan...',
                 hintStyle: AppColors.body(fontSize: 13, color: _UI.textSoft),
                 border: InputBorder.none,
@@ -395,7 +577,16 @@ class _SearchAndFilterBar extends StatelessWidget {
         const SizedBox(width: 10),
         GestureDetector(
           onTap: onFilterTap,
-          child: Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: _UI.border)), child: Icon(Icons.tune_rounded, color: _UI.textSoft, size: 22)),
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _UI.border),
+            ),
+            child: Icon(Icons.tune_rounded, color: _UI.textSoft, size: 22),
+          ),
         ),
       ],
     );
@@ -407,13 +598,23 @@ class _StatusTabs extends StatelessWidget {
   final int hitungTayang, hitungTerjadwal, hitungHabis;
   final ValueChanged<StatusProduk> onTabChanged;
 
-  const _StatusTabs({required this.currentTab, required this.hitungTayang, required this.hitungTerjadwal, required this.hitungHabis, required this.onTabChanged});
+  const _StatusTabs({
+    required this.currentTab,
+    required this.hitungTayang,
+    required this.hitungTerjadwal,
+    required this.hitungHabis,
+    required this.onTabChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _UI.border)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _UI.border),
+      ),
       child: Row(
         children: [
           _buildTabItem('Tayang', StatusProduk.tayang, hitungTayang),
@@ -432,16 +633,36 @@ class _StatusTabs extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(color: isActive ? _UI.primaryBg : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: isActive ? _UI.primaryBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(label, style: AppColors.heading(fontSize: 12, color: isActive ? _UI.primaryText : _UI.textSoft)),
+              Text(
+                label,
+                style: AppColors.heading(
+                  fontSize: 12,
+                  color: isActive ? _UI.primaryText : _UI.textSoft,
+                ),
+              ),
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: isActive ? _UI.primaryText : _UI.textSoft.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                child: Text('$count', style: AppColors.heading(fontSize: 10, color: isActive ? Colors.white : _UI.textSoft)),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? _UI.primaryText
+                      : _UI.textSoft.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: AppColors.heading(
+                    fontSize: 10,
+                    color: isActive ? Colors.white : _UI.textSoft,
+                  ),
+                ),
               ),
             ],
           ),
@@ -456,7 +677,11 @@ class _CategoryFilters extends StatelessWidget {
   final String selectedCategory;
   final ValueChanged<String> onCategorySelected;
 
-  const _CategoryFilters({required this.categories, required this.selectedCategory, required this.onCategorySelected});
+  const _CategoryFilters({
+    required this.categories,
+    required this.selectedCategory,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -477,15 +702,28 @@ class _CategoryFilters extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isActive ? _UI.primaryText : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isActive ? _UI.primaryText : _UI.border),
+                border: Border.all(
+                  color: isActive ? _UI.primaryText : _UI.border,
+                ),
               ),
               child: Row(
                 children: [
                   if (i == 0) ...[
-                    Icon(Icons.grid_view_rounded, size: 14, color: isActive ? Colors.white : _UI.textSoft),
+                    Icon(
+                      Icons.grid_view_rounded,
+                      size: 14,
+                      color: isActive ? Colors.white : _UI.textSoft,
+                    ),
                     const SizedBox(width: 6),
                   ],
-                  Text(k, style: AppColors.body(fontSize: 12.5, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600, color: isActive ? Colors.white : _UI.textSoft)),
+                  Text(
+                    k,
+                    style: AppColors.body(
+                      fontSize: 12.5,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                      color: isActive ? Colors.white : _UI.textSoft,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -497,14 +735,14 @@ class _CategoryFilters extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  final Produk produk; 
+  final Produk produk;
   final String phoneNumber;
   final Function(Produk, int) onUbahStok;
   final VoidCallback onRefresh;
 
   const _ProductCard({
-    required this.produk, 
-    required this.phoneNumber, 
+    required this.produk,
+    required this.phoneNumber,
     required this.onUbahStok,
     required this.onRefresh,
   });
@@ -519,7 +757,8 @@ class _ProductCard extends StatelessWidget {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DetailProdukScreen(produk: produk, phoneNumber: phoneNumber),
+            builder: (_) =>
+                DetailProdukScreen(produk: produk, phoneNumber: phoneNumber),
           ),
         );
         if (result == true) {
@@ -529,7 +768,18 @@ class _ProductCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: _UI.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _UI.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             Row(
@@ -540,17 +790,37 @@ class _ProductCard extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child: SizedBox(
-                        width: 90, height: 90,
-                        child: produk.gambar != null ? Image.network(produk.gambar!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fotoKosong()) : _fotoKosong(),
+                        width: 90,
+                        height: 90,
+                        child: produk.gambar != null
+                            ? Image.network(
+                                produk.gambar!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _fotoKosong(),
+                              )
+                            : _fotoKosong(),
                       ),
                     ),
                     if (produk.adaDiskon)
                       Positioned(
-                        top: 6, left: 6,
+                        top: 6,
+                        left: 6,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: _UI.orangeText, borderRadius: BorderRadius.circular(8)),
-                          child: Text('-${produk.diskon}%', style: AppColors.heading(fontSize: 10, color: Colors.white)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _UI.orangeText,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '-${produk.diskon}%',
+                            style: AppColors.heading(
+                              fontSize: 10,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                   ],
@@ -562,27 +832,70 @@ class _ProductCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          _buildBadgeMini('Tayang', _UI.primaryBg, _UI.primaryText, true),
+                          _buildBadgeMini(
+                            'Tayang',
+                            _UI.primaryBg,
+                            _UI.primaryText,
+                            true,
+                          ),
                           const SizedBox(width: 6),
                           if (isWarning)
-                            _buildBadgeMini('Cepat Habis', _UI.orangeBg, _UI.orangeText, false)
+                            _buildBadgeMini(
+                              'Cepat Habis',
+                              _UI.orangeBg,
+                              _UI.orangeText,
+                              false,
+                            )
                           else
-                            _buildBadgeMini(produk.kategori, AppColors.bg, _UI.textSoft, false),
+                            _buildBadgeMini(
+                              produk.kategori,
+                              AppColors.bg,
+                              _UI.textSoft,
+                              false,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(produk.nama, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppColors.heading(fontSize: 15)),
+                      Text(
+                        produk.nama,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppColors.heading(fontSize: 15),
+                      ),
                       const SizedBox(height: 2),
-                      Text(produk.deskripsi, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppColors.body(fontSize: 12, color: _UI.textSoft)),
+                      Text(
+                        produk.deskripsi,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppColors.body(
+                          fontSize: 12,
+                          color: _UI.textSoft,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(_rp(produk.harga), style: AppColors.heading(fontSize: 16, color: _UI.primaryText)),
+                          Text(
+                            _rp(produk.harga),
+                            style: AppColors.heading(
+                              fontSize: 16,
+                              color: _UI.primaryText,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           if (produk.adaDiskon)
-                            Text(_rp(produk.hargaAsli), style: AppColors.body(fontSize: 12, color: _UI.textSoft).copyWith(decoration: TextDecoration.lineThrough)),
+                            Text(
+                              _rp(produk.hargaAsli),
+                              style:
+                                  AppColors.body(
+                                    fontSize: 12,
+                                    color: _UI.textSoft,
+                                  ).copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                            ),
                         ],
                       ),
                     ],
@@ -593,7 +906,10 @@ class _ProductCard extends StatelessWidget {
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 children: [
                   Row(
@@ -601,18 +917,43 @@ class _ProductCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(isWarning ? Icons.local_fire_department_rounded : Icons.inventory_2_outlined, size: 16, color: progressColor),
+                          Icon(
+                            isWarning
+                                ? Icons.local_fire_department_rounded
+                                : Icons.inventory_2_outlined,
+                            size: 16,
+                            color: progressColor,
+                          ),
                           const SizedBox(width: 6),
-                          Text('Tersisa ${produk.stok} dari ${produk.kuota} ${produk.satuan.replaceAll('/', '')}', style: AppColors.body(fontSize: 12, fontWeight: FontWeight.w700, color: progressColor)),
+                          Text(
+                            'Tersisa ${produk.stok} dari ${produk.kuota} ${produk.satuan.replaceAll('/', '')}',
+                            style: AppColors.body(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: progressColor,
+                            ),
+                          ),
                         ],
                       ),
-                      Text('${produk.persen}%', style: AppColors.body(fontSize: 12, fontWeight: FontWeight.w800, color: progressColor)),
+                      Text(
+                        '${produk.persen}%',
+                        style: AppColors.body(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: progressColor,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(value: produk.rasio.clamp(0.0, 1.0), minHeight: 6, backgroundColor: _UI.textSoft.withValues(alpha: 0.1), valueColor: AlwaysStoppedAnimation(progressColor)),
+                    child: LinearProgressIndicator(
+                      value: produk.rasio.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: _UI.textSoft.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation(progressColor),
+                    ),
                   ),
                 ],
               ),
@@ -623,19 +964,55 @@ class _ProductCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded, size: 16, color: _UI.textSoft),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 16,
+                      color: _UI.textSoft,
+                    ),
                     const SizedBox(width: 6),
-                    Text('Ambil: ${produk.jamAmbil}', style: AppColors.body(fontSize: 12, color: _UI.textSoft, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Ambil: ${produk.jamAmbil}',
+                      style: AppColors.body(
+                        fontSize: 12,
+                        color: _UI.textSoft,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 Container(
                   height: 36,
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _UI.border)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _UI.border),
+                  ),
                   child: Row(
                     children: [
-                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36), icon: Icon(Icons.remove_rounded, size: 18, color: _UI.textSoft), onPressed: () => onUbahStok(produk, -1)),
-                      Text('${produk.stok} ${produk.satuan.replaceAll('/', '')}', style: AppColors.heading(fontSize: 13)),
-                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36), icon: Icon(Icons.add_rounded, size: 18, color: _UI.primaryText), onPressed: () => onUbahStok(produk, 1)),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36),
+                        icon: Icon(
+                          Icons.remove_rounded,
+                          size: 18,
+                          color: _UI.textSoft,
+                        ),
+                        onPressed: () => onUbahStok(produk, -1),
+                      ),
+                      Text(
+                        '${produk.stok} ${produk.satuan.replaceAll('/', '')}',
+                        style: AppColors.heading(fontSize: 13),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36),
+                        icon: Icon(
+                          Icons.add_rounded,
+                          size: 18,
+                          color: _UI.primaryText,
+                        ),
+                        onPressed: () => onUbahStok(produk, 1),
+                      ),
                     ],
                   ),
                 ),
@@ -650,22 +1027,43 @@ class _ProductCard extends StatelessWidget {
   Widget _buildBadgeMini(String text, Color bg, Color fg, bool showDot) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showDot) ...[
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+            ),
             const SizedBox(width: 6),
           ],
-          Text(text, style: AppColors.body(fontSize: 10, fontWeight: FontWeight.w800, color: fg)),
+          Text(
+            text,
+            style: AppColors.body(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: fg,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _fotoKosong() {
-    return Container(color: _UI.primaryBg, child: Icon(Icons.fastfood_rounded, color: _UI.primary.withValues(alpha: 0.5), size: 32));
+    return Container(
+      color: _UI.primaryBg,
+      child: Icon(
+        Icons.fastfood_rounded,
+        color: _UI.primary.withValues(alpha: 0.5),
+        size: 32,
+      ),
+    );
   }
 }
 
@@ -676,9 +1074,27 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: _UI.primaryBg, shape: BoxShape.circle), child: Icon(Icons.inventory_2_outlined, size: 48, color: _UI.primaryText)),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _UI.primaryBg,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: _UI.primaryText,
+            ),
+          ),
           const SizedBox(height: 16),
-          Text('Belum ada produk di sini', style: AppColors.body(fontSize: 14, color: _UI.textSoft, fontWeight: FontWeight.w600)),
+          Text(
+            'Belum ada produk di sini',
+            style: AppColors.body(
+              fontSize: 14,
+              color: _UI.textSoft,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
