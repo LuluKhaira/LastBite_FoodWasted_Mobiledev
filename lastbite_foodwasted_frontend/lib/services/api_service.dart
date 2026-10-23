@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import '../core/config/api_config.dart';
 
 class ApiService {
@@ -14,14 +15,16 @@ class ApiService {
     final url = Uri.parse('$baseUrl/mitra/register-phone');
     debugPrint('--> POST $url (phone: $phoneNumber)');
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'phone': phoneNumber}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'phone': phoneNumber}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       debugPrint('<-- [${response.statusCode}] $url: ${response.body}');
 
@@ -30,15 +33,18 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          lastErrorMessage = data['message'] ?? 'Server error [${response.statusCode}]';
+          lastErrorMessage =
+              data['message'] ?? 'Server error [${response.statusCode}]';
         } catch (_) {
-          lastErrorMessage = 'Server error [${response.statusCode}]: ${response.body}';
+          lastErrorMessage =
+              'Server error [${response.statusCode}]: ${response.body}';
         }
         return false;
       }
     } catch (e, stack) {
       debugPrint('Error registerWhatsApp: $e\n$stack');
-      lastErrorMessage = 'Gagal terhubung ($e). Pastikan server aktif di $baseUrl';
+      lastErrorMessage =
+          'Gagal terhubung ($e). Pastikan server aktif di $baseUrl';
       return false;
     }
   }
@@ -120,8 +126,7 @@ class ApiService {
     }
   }
 
-  // Membaca file dari path (mobile/desktop) atau blob URL (web) sebagai bytes,
-  // sehingga aman dipakai di semua platform.
+  // Membaca file dari path (mobile/desktop) atau blob URL (web) sebagai bytes
   static Future<http.MultipartFile> _filePart(String field, String path) async {
     final xfile = XFile(path);
     final bytes = await xfile.readAsBytes();
@@ -149,26 +154,18 @@ class ApiService {
       request.headers['Accept'] = 'application/json';
       request.fields['phone'] = phoneNumber;
 
-      // Lampirkan file KTP (Wajib)
       if (ktpPath.isNotEmpty) {
         request.files.add(await _filePart('foto_ktp', ktpPath));
       }
-
-      // Lampirkan file NPWP (Opsional)
       if (npwpPath != null && npwpPath.isNotEmpty) {
         request.files.add(await _filePart('foto_npwp', npwpPath));
       }
-
-      // Lampirkan file Sertifikat Halal (Opsional)
       if (halalPath != null && halalPath.isNotEmpty) {
         request.files.add(await _filePart('sertifikat_halal', halalPath));
       }
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-
-      debugPrint('Response Status: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
@@ -177,7 +174,6 @@ class ApiService {
     }
   }
 
-  // Membaca status verifikasi mitra yang diputuskan admin di dashboard Laravel
   static Future<Map<String, dynamic>?> checkStatus(String phoneNumber) async {
     try {
       final response = await http.post(
@@ -200,8 +196,6 @@ class ApiService {
     }
   }
 
-  // Mengambil data dashboard mitra (info toko, status buka, jumlah pesanan, dll)
-  // Rute Laravel-nya POST, jadi harus dipanggil dengan http.post (bukan get).
   static Future<Map<String, dynamic>?> getMitraDashboard(
     String phoneNumber,
   ) async {
@@ -221,10 +215,6 @@ class ApiService {
         if (data is Map) return Map<String, dynamic>.from(data);
         return null;
       }
-
-      debugPrint(
-        'getMitraDashboard gagal: ${response.statusCode} ${response.body}',
-      );
       return null;
     } catch (e) {
       debugPrint('Error getMitraDashboard: $e');
@@ -232,7 +222,6 @@ class ApiService {
     }
   }
 
-  // Mengambil pesan error pertama dari respons Laravel (422/403/dll)
   static String _pesanError(http.Response r) {
     try {
       final b = jsonDecode(r.body);
@@ -248,64 +237,6 @@ class ApiService {
     return 'Terjadi kesalahan (kode ${r.statusCode}).';
   }
 
-  // Menyimpan produk baru. terbit=true -> tayang, terbit=false -> draf.
-  // Mengembalikan {'ok': bool, 'message': String}
-  static Future<Map<String, dynamic>> tambahProduk({
-    required String phoneNumber,
-    required String nama,
-    required String kategori,
-    required int hargaAsli,
-    required int harga,
-    required int stok,
-    required String waktuSelesai, // format "HH:mm"
-    required bool terbit,
-    Uint8List? fotoBytes,
-    String? fotoNama,
-    String? gambarLama,
-  }) async {
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/mitra/produk'),
-      );
-      request.headers['Accept'] = 'application/json';
-      request.fields.addAll({
-        'phone': phoneNumber,
-        'nama': nama,
-        'kategori': kategori,
-        'harga_asli': '$hargaAsli',
-        'harga': '$harga',
-        'stok': '$stok',
-        'waktu_selesai': waktuSelesai,
-        'terbit': terbit ? '1' : '0',
-      });
-      if (gambarLama != null && gambarLama.isNotEmpty) {
-        request.fields['gambar_lama'] = gambarLama;
-      }
-      if (fotoBytes != null) {
-        var namaFile = (fotoNama == null || fotoNama.isEmpty) ? 'foto.jpg' : fotoNama;
-        if (!namaFile.contains('.')) namaFile = '$namaFile.jpg';
-        request.files.add(
-          http.MultipartFile.fromBytes('foto', fotoBytes, filename: namaFile),
-        );
-      }
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final b = jsonDecode(response.body);
-        return {'ok': true, 'message': '${b['message'] ?? 'Berhasil disimpan.'}'};
-      }
-      debugPrint('tambahProduk gagal: ${response.statusCode} ${response.body}');
-      return {'ok': false, 'message': _pesanError(response)};
-    } catch (e) {
-      debugPrint('Error tambahProduk: $e');
-      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
-    }
-  }
-
-  // Produk terakhir mitra, dipakai untuk fitur "Salin dari" di form produk
   static Future<Map<String, dynamic>?> getTemplateProduk(
     String phoneNumber,
   ) async {
@@ -329,7 +260,6 @@ class ApiService {
     }
   }
 
-  // Menyimpan status toko (buka/tutup) dari tombol di dashboard
   static Future<bool> setTokoStatus(String phoneNumber, bool buka) async {
     try {
       final response = await http.post(
@@ -349,7 +279,6 @@ class ApiService {
   }
 
   // ---------- MANAJEMEN PESANAN MITRA ----------
-  /// Mengambil daftar pesanan mitra (tab: baru | siap | riwayat)
   static Future<Map<String, dynamic>> getMitraPesanan(
     String phoneNumber, {
     String tab = 'baru',
@@ -380,7 +309,6 @@ class ApiService {
     }
   }
 
-  /// Mitra menandai pesanan telah disiapkan dan siap diambil (status -> siap)
   static Future<Map<String, dynamic>> tandaiPesananSiap(
     String phoneNumber,
     String kode,
@@ -411,7 +339,6 @@ class ApiService {
     }
   }
 
-  /// Mitra memverifikasi kode pengambilan unik (LB-XXXXXX) atau QR scan
   static Future<Map<String, dynamic>> verifikasiPengambilan(
     String phoneNumber,
     String pickupCode, {
@@ -448,7 +375,6 @@ class ApiService {
     }
   }
 
-  /// Mitra menolak pesanan baru masuk
   static Future<Map<String, dynamic>> tolakPesanan(
     String phoneNumber,
     String kode,
@@ -471,6 +397,182 @@ class ApiService {
     } catch (e) {
       debugPrint('Error tolakPesanan: $e');
       return {'ok': false, 'message': 'Gagal menolak pesanan.'};
+    }
+  }
+
+  // ---------- MANAJEMEN PRODUK MITRA ----------
+  static Future<List<Map<String, dynamic>>?> getMitraProduk(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/list'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final dynamic raw = decoded is Map
+            ? (decoded['data'] ?? decoded)
+            : decoded;
+        if (raw is List) {
+          return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        return [];
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getMitraProduk: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> updateStokProduk(
+    String phoneNumber,
+    int idProduk,
+    int stok,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/stok'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'id': idProduk, 'stok': stok}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error updateStokProduk: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> setProdukAktif(
+    String phoneNumber,
+    int idProduk,
+    bool aktif,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/aktif'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'id': idProduk,
+          'aktif': aktif,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error setProdukAktif: $e');
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> tambahProdukLengkap({
+    required String phoneNumber,
+    required String nama,
+    required String deskripsi,
+    required String tipe,
+    required String kategori,
+    required int hargaAsli,
+    required int harga,
+    required int stok,
+    required String waktuMulai,
+    required String waktuSelesai,
+    required bool terbit,
+    Uint8List? fotoBytes,
+    String? fotoNama,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/mitra/produk'),
+      );
+      request.headers['Accept'] = 'application/json';
+
+      request.fields.addAll({
+        'phone': phoneNumber,
+        'nama': nama,
+        'deskripsi': deskripsi,
+        'tipe': tipe,
+        'kategori': kategori,
+        'harga_asli': '$hargaAsli',
+        'harga': '$harga',
+        'stok': '$stok',
+        'kuota': '$stok',
+        'waktu_mulai': waktuMulai,
+        'waktu_selesai': waktuSelesai,
+        'terbit': terbit ? '1' : '0',
+      });
+
+      if (fotoBytes != null) {
+        var namaFile = (fotoNama == null || fotoNama.isEmpty)
+            ? 'foto.jpg'
+            : fotoNama;
+        if (!namaFile.contains('.')) namaFile = '$namaFile.jpg';
+        request.files.add(
+          http.MultipartFile.fromBytes('foto', fotoBytes, filename: namaFile),
+        );
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final b = jsonDecode(response.body);
+        return {
+          'ok': true,
+          'message': '${b['message'] ?? 'Berhasil disimpan.'}',
+        };
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateProdukLengkap({
+    required String phoneNumber,
+    required int idProduk,
+    required String nama,
+    required String deskripsi,
+    required int hargaAsli,
+    required int harga,
+    required int stok,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/update'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'id': idProduk,
+          'nama': nama,
+          'deskripsi': deskripsi,
+          'harga_asli': hargaAsli,
+          'harga': harga,
+          'stok': stok,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return {'ok': true, 'message': 'Produk berhasil diperbarui'};
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
     }
   }
 }

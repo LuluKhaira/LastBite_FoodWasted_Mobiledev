@@ -36,18 +36,18 @@ class MitraPesananController extends Controller
     }
 
     private function pesananMilik(Request $r, string $kode): Pesanan
-{
-    $mitra = $this->resolveMitra($r);
-    if (!$mitra) {
-        abort(404, 'Mitra tidak ditemukan.');
-    }
+    {
+        $mitra = $this->resolveMitra($r);
+        if (!$mitra) {
+            abort(404, 'Mitra tidak ditemukan.');
+        }
 
-    return Pesanan::where(function ($query) use ($kode) {
-            $query->where('kode', $kode)->orWhere('id', $kode);
-        })
-        ->where('id_mitra', $mitra->id_mitra)
-        ->firstOrFail();
-}
+        return Pesanan::where(function ($query) use ($kode) {
+                $query->where('kode', $kode)->orWhere('id', $kode);
+            })
+            ->where('id_mitra', $mitra->id_mitra)
+            ->firstOrFail();
+    }
 
     /**
      * POST /api/mitra/pesanan
@@ -74,7 +74,6 @@ class MitraPesananController extends Controller
 
         $orders = $q->latest()->get()->map(function (Pesanan $p) use ($tab) {
             $data = $p->toApi();
-            // Pada tab siap, tampilkan juga kode_ambil untuk kemudahan mitra memverifikasi jika pembeli menyebutkan kode
             $data['kode_ambil_display'] = $p->status === 'siap' ? $p->kode_ambil : null;
             return $data;
         });
@@ -94,7 +93,6 @@ class MitraPesananController extends Controller
     /**
      * POST /api/mitra/pesanan/{kode}/siap
      * POST /api/partner/orders/{order_id}/ready
-     * Aksi Mitra - "Siap": Generate kode ambil LB-XXXXXX, ubah status ke READY_FOR_PICKUP
      */
     public function siap(Request $r, string $kode): JsonResponse
     {
@@ -107,13 +105,12 @@ class MitraPesananController extends Controller
             ], 422);
         }
 
-        // Generate kode unik pengambilan format: LB-XXXXXX (6 digit unik)
         do {
             $kodeAmbil = 'LB-' . str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
         } while (Pesanan::where('kode_ambil', $kodeAmbil)->where('status', 'siap')->exists());
 
         $p->update([
-            'status'      => 'siap', // READY_FOR_PICKUP
+            'status'      => 'siap',
             'kode_ambil'  => $kodeAmbil,
             'siap_at'     => now(),
             'batas_ambil' => now()->addHours(2),
@@ -133,13 +130,11 @@ class MitraPesananController extends Controller
     /**
      * POST /api/mitra/pesanan/{kode}/ambil
      * POST /api/partner/orders/verify-pickup
-     * Payload: { "pickup_code": "LB-XXXXXX" } atau { "kode_ambil": "..." } atau scan QR string
      */
     public function ambil(Request $r, ?string $kode = null): JsonResponse
     {
         $inputCode = trim((string) ($r->pickup_code ?? $r->kode_ambil ?? $r->code ?? ''));
 
-        // Jika QR code mengirim format "LB-YYMMDD-XXXX|LB-XXXXXX"
         if (str_contains($inputCode, '|')) {
             $parts = explode('|', $inputCode);
             if (!$kode && !empty($parts[0])) {
@@ -148,13 +143,11 @@ class MitraPesananController extends Controller
             $inputCode = trim($parts[1] ?? $parts[0]);
         }
 
-        // Standarisasi format LB-XXXXXX
         if (preg_match('/^\d{6}$/', $inputCode)) {
             $inputCode = 'LB-' . $inputCode;
         }
         $inputCode = strtoupper($inputCode);
 
-        // Cari pesanan berdasarkan kode pesanan atau kode pengambilan
         $q = Pesanan::with(['mitra', 'produk', 'user']);
         if ($kode) {
             $q->where(function ($query) use ($kode) {
@@ -174,7 +167,6 @@ class MitraPesananController extends Controller
             ], 404);
         }
 
-        // Verifikasi Mitra pemilik jika request membawa id_mitra / phone
         $mitra = $this->resolveMitra($r);
         if ($mitra && $p->id_mitra !== $mitra->id_mitra) {
             return response()->json([
@@ -183,7 +175,6 @@ class MitraPesananController extends Controller
             ], 403);
         }
 
-        // Validasi status: hanya pesanan berstatus 'siap' (READY_FOR_PICKUP) yang bisa diambil
         if ($p->status !== 'siap') {
             return response()->json([
                 'success' => false,
@@ -191,7 +182,6 @@ class MitraPesananController extends Controller
             ], 422);
         }
 
-        // Validasi kecocokan kode pengambilan
         if (!hash_equals((string) $p->kode_ambil, $inputCode)) {
             return response()->json([
                 'success' => false,
@@ -202,13 +192,11 @@ class MitraPesananController extends Controller
         $pendapatanToko = $p->qty * $p->harga_satuan;
 
         DB::transaction(function () use ($p, $pendapatanToko) {
-            // Ubah status ke 'selesai' (COMPLETED)
             $p->update([
                 'status'    => 'selesai',
                 'diambil_at' => now(),
             ]);
 
-            // Tambahkan saldo mitra (Wallet Mitra += Harga Pesanan - Komisi App)
             Mitra::where('id_mitra', $p->id_mitra)->increment('saldo', $pendapatanToko);
         });
 
@@ -227,7 +215,6 @@ class MitraPesananController extends Controller
 
     /**
      * POST /api/mitra/pesanan/{kode}/tolak
-     * Menolak pesanan saat baru masuk, restock produk, proses refund
      */
     public function tolak(Request $r, string $kode): JsonResponse
     {
@@ -255,6 +242,4 @@ class MitraPesananController extends Controller
             'data'    => $p->fresh(['mitra', 'produk', 'user'])->toApi(),
         ]);
     }
-}
-
 }

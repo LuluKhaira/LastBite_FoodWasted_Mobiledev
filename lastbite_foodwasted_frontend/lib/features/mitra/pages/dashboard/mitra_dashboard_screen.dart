@@ -3,16 +3,21 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_produk_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
-import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_scan_pengambilan_screen.dart';
+
+// IMPORT BOTTOM SHEET SCAN
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
+
+import 'widgets/mitra_bottom_nav.dart';
 import 'widgets/kartu_info_toko.dart';
 import 'widgets/aksi_cepat.dart';
 import 'widgets/ringkasan_section.dart';
 import 'widgets/surplus_section.dart';
 
-
 class MitraDashboardScreen extends StatefulWidget {
-  // Nomor WhatsApp mitra, dipakai untuk mengambil data miliknya dari server
   final String phoneNumber;
 
   const MitraDashboardScreen({super.key, required this.phoneNumber});
@@ -39,7 +44,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     _muatDashboard();
   }
 
-  // Ambil data terbaru dari server (dipanggil saat layar dibuka & saat layar ditarik ke bawah)
   Future<void> _muatDashboard() async {
     setState(() => _isLoading = true);
     final data = await ApiService.getMitraDashboard(widget.phoneNumber);
@@ -49,7 +53,9 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Gagal memuat data dashboard. Tarik layar ke bawah untuk mencoba lagi.'),
+          content: Text(
+            'Gagal memuat data dashboard. Tarik layar ke bawah untuk mencoba lagi.',
+          ),
         ),
       );
       return;
@@ -60,7 +66,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
       _isLoading = false;
       _namaToko = (toko['nama'] ?? 'Mitra Dashboard').toString();
       _isTokoBuka = toko['buka'] == true;
-      // Banner muncul hanya kalau jam operasional belum diisi
       _showWarningBanner = data['jam_operasional_lengkap'] != true;
       _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
 
@@ -75,7 +80,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     });
   }
 
-  // Buka form tambah produk; kalau berhasil disimpan, muat ulang dashboard
   Future<void> _bukaTambahProduk() async {
     final berhasil = await Navigator.push<bool>(
       context,
@@ -88,7 +92,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     }
   }
 
-  // Simpan status buka/tutup ke server; kalau gagal, kembalikan tombolnya
   Future<void> _ubahStatusToko(bool buka) async {
     setState(() => _isTokoBuka = buka);
     final berhasil = await ApiService.setTokoStatus(widget.phoneNumber, buka);
@@ -98,35 +101,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Gagal mengubah status toko. Coba lagi.')),
     );
-  }
-
-  // Buka halaman manajemen pesanan mitra
-  Future<void> _bukaPesanan({int initialTab = 0}) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MitraPesananScreen(
-          phoneNumber: widget.phoneNumber,
-          initialTab: initialTab,
-        ),
-      ),
-    );
-    await _muatDashboard();
-  }
-
-  // Buka scanner QR & input manual kode pengambilan
-  Future<void> _bukaScanQR() async {
-    final berhasil = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MitraScanPengambilanScreen(
-          phoneNumber: widget.phoneNumber,
-        ),
-      ),
-    );
-    if (berhasil == true) {
-      await _muatDashboard();
-    }
   }
 
   @override
@@ -140,62 +114,64 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
               onRefresh: _muatDashboard,
               color: AppColors.primary,
               child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 90),
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        KartuInfoToko(
-                          namaToko: _namaToko,
-                          isTokoBuka: _isTokoBuka,
-                          onStatusChanged: _ubahStatusToko,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_showWarningBanner) _buildWarningBanner(),
-                        const SizedBox(height: 16),
-                        AksiCepat(
-                          onScanQR: _bukaScanQR,
-                          onRiwayat: () => _bukaPesanan(initialTab: 3),
-                          onBantuan: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Pusat Bantuan Mitra: Hubungi support@lastbite.id')),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        RingkasanSection(
-                          pesananHariIni: _pesananHariIni,
-                          pesananAktif: _pesananAktif,
-                          pendapatan: _pendapatan,
-                          porsi: _porsi,
-                          co2Kg: _co2Kg,
-                        ),
-                        const SizedBox(height: 20),
-                        SurplusSection(items: _surplus),
-                        const SizedBox(height: 16),
-                        _buildTipsBanner(),
-                        const SizedBox(height: 16),
-                      ],
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 90),
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.only(top: 20),
+                              child: ListShimmerLoading(count: 3),
+                            )
+                          : Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                KartuInfoToko(
+                                  namaToko: _namaToko,
+                                  isTokoBuka: _isTokoBuka,
+                                  onStatusChanged: _ubahStatusToko,
+                                ),
+                                const SizedBox(height: 12),
+                                if (_showWarningBanner) _buildWarningBanner(),
+                                const SizedBox(height: 16),
+                                const AksiCepat(),
+                                const SizedBox(height: 20),
+                                RingkasanSection(
+                                  pesananHariIni: _pesananHariIni,
+                                  pesananAktif: _pesananAktif,
+                                  pendapatan: _pendapatan,
+                                  porsi: _porsi,
+                                  co2Kg: _co2Kg,
+                                ),
+                                const SizedBox(height: 20),
+                                SurplusSection(
+                                  items: _surplus,
+                                  onProductTap: (_) async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MitraProdukScreen(
+                                          phoneNumber: widget.phoneNumber,
+                                          namaToko: _namaToko,
+                                        ),
+                                      ),
+                                    );
+                                    _muatDashboard();
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildTipsBanner(),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            ),
-
-            if (_isLoading)
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(minHeight: 3),
-              ),
-            
             Positioned(
               right: 16,
               bottom: 76,
@@ -209,7 +185,36 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: MitraBottomNav(
+        currentIndex: 0,
+        onDashboard: () {},
+        onProduk: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraProdukScreen(
+              phoneNumber: widget.phoneNumber,
+              namaToko: _namaToko,
+            ),
+          ),
+        ),
+        onScan: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
+          );
+        },
+        onProfil: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraProfilScreen(
+              phoneNumber: widget.phoneNumber,
+            ),
+          ),
+        ),
+        pesananBadge: _pesananAktif,
+      ),
     );
   }
 
@@ -224,9 +229,15 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+              ),
             ),
-            child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 22),
+            child: const Icon(
+              Icons.storefront_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -245,7 +256,10 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                     ),
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(12),
@@ -275,7 +289,11 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
             children: [
               IconButton(
                 onPressed: () {},
-                icon: const Icon(Icons.notifications_none, color: AppColors.textDark, size: 26),
+                icon: const Icon(
+                  Icons.notifications_none,
+                  color: AppColors.textDark,
+                  size: 26,
+                ),
               ),
               Positioned(
                 right: 12,
@@ -310,7 +328,11 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.access_time_filled, color: AppColors.textDark, size: 20),
+              const Icon(
+                Icons.access_time_filled,
+                color: AppColors.textDark,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -328,7 +350,11 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                     _showWarningBanner = false;
                   });
                 },
-                child: const Icon(Icons.close, color: AppColors.textSoft, size: 18),
+                child: const Icon(
+                  Icons.close,
+                  color: AppColors.textSoft,
+                  size: 18,
+                ),
               ),
             ],
           ),
@@ -353,7 +379,10 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                 backgroundColor: AppColors.orange,
                 foregroundColor: AppColors.textDark,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -389,7 +418,11 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.lightbulb_outline, color: AppColors.textDark, size: 20),
+            child: const Icon(
+              Icons.lightbulb_outline,
+              color: AppColors.textDark,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -417,65 +450,6 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppColors.textDark,
-      unselectedItemColor: AppColors.textSoft,
-      selectedLabelStyle: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700),
-      unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w500),
-      currentIndex: 0,
-      onTap: (i) {
-        if (i == 1) {
-          _bukaTambahProduk();
-        } else if (i == 2) {
-          _bukaScanQR();
-        } else if (i == 3) {
-          _bukaPesanan(initialTab: 0);
-        } else if (i == 4) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil Toko Mitra')),
-          );
-        }
-      },
-      items: [
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.grid_view_rounded),
-          label: 'Dashboard',
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.inventory_2_outlined),
-          label: 'Produk',
-        ),
-        BottomNavigationBarItem(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 20),
-          ),
-          label: 'Scan QR',
-        ),
-        BottomNavigationBarItem(
-          icon: Badge(
-            isLabelVisible: _pesananAktif > 0,
-            label: Text('$_pesananAktif'),
-            backgroundColor: AppColors.orange,
-            child: const Icon(Icons.assignment_outlined),
-          ),
-          label: 'Pesanan',
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.storefront_outlined),
-          label: 'Profil',
-        ),
-      ],
     );
   }
 }

@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\EmailOtpController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\PembayaranController;
 use App\Http\Controllers\Api\dashboard_mitra\MitraPesananController;
+use App\Http\Controllers\Api\dashboard_mitra\ProdukMitraController;
 
 // MITRA
 // ============================================================
@@ -29,6 +30,12 @@ Route::post('/mitra/set-documents', [MitraRegisterController::class, 'setDocumen
 // MitraStatusController belum di-import & belum ada di daftar controller-mu;
 // baris ini tetap ada seperti semula, tapi akan error bila dipanggil.
 Route::post('/mitra/check-status', [\App\Http\Controllers\Api\MitraStatusController::class, 'check']);
+//mitra produk
+Route::post('/mitra/produk/list', [ProdukMitraController::class, 'index']);
+Route::post('/mitra/produk/stok', [ProdukMitraController::class, 'updateStok']);
+Route::post('/mitra/produk/aktif', [ProdukMitraController::class, 'updateAktif']);
+Route::post('/mitra/produk', [ProdukController::class, 'tambah']);
+Route::post('/mitra/produk/update', [ProdukController::class, 'update']);
 
 // ============================================================
 // PELANGGAN (publik)

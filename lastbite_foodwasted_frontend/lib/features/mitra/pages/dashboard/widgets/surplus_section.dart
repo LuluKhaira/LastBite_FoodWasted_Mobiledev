@@ -1,11 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
 class SurplusSection extends StatelessWidget {
   final List<Map<String, dynamic>> items;
+  final void Function(Map<String, dynamic>)? onProductTap;
 
-  const SurplusSection({super.key, this.items = const []});
+  const SurplusSection({
+    super.key,
+    this.items = const [],
+    this.onProductTap,
+  });
 
   static String _rupiah(dynamic v) {
     final n = num.tryParse('$v') ?? 0;
@@ -93,104 +98,108 @@ class SurplusSection extends StatelessWidget {
     final stok = int.tryParse('${p['stok']}') ?? 0;
     final adaAsli = (num.tryParse('${p['harga_asli']}') ?? 0) > 0;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: AppColors.orange.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.bakery_dining,
-                size: 36, color: AppColors.textDark),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        onTap: onProductTap != null ? () => onProductTap!(p) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.bakery_dining,
+                    size: 36, color: AppColors.textDark),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (stok <= 3)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Cepat Habis',
-                          style: GoogleFonts.nunito(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textDark,
+                    Row(
+                      children: [
+                        if (stok <= 3)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.orange.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Cepat Habis',
+                              style: GoogleFonts.nunito(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textDark,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    if (batas != null)
-                      Text(
-                        'Batas $batas',
-                        style: GoogleFonts.nunito(
-                            fontSize: 10.5, color: AppColors.textSoft),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${p['nama_produk'] ?? '-'}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
+                        if (batas != null)
+                          Text(
+                            'Batas $batas',
+                            style: GoogleFonts.nunito(
+                                fontSize: 10.5, color: AppColors.textSoft),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      _rupiah(p['harga_diskon']),
+                      '${p['nama_produk'] ?? '-'}',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textDark,
                       ),
                     ),
-                    if (adaAsli) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        _rupiah(p['harga_asli']),
-                        style: GoogleFonts.nunito(
-                          fontSize: 11,
-                          color: AppColors.textSoft,
-                          decoration: TextDecoration.lineThrough,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          _rupiah(p['harga_diskon']),
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
                         ),
+                        if (adaAsli) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            _rupiah(p['harga_asli']),
+                            style: GoogleFonts.nunito(
+                              fontSize: 11,
+                              color: AppColors.textSoft,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Sisa stok: $stok',
+                      style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
                       ),
-                    ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Sisa stok: $stok',
-                  style: GoogleFonts.nunito(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
