@@ -208,7 +208,15 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
                 ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
           );
         },
-        onPesanan: () => _info('Halaman Pesanan belum dibuat'),
+        onPesanan: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraPesananScreen(
+              phoneNumber: widget.phoneNumber,
+              namaToko: _namaToko,
+            ),
+          ),
+        ),
         onProfil: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(

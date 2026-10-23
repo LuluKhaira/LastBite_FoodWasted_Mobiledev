@@ -139,9 +139,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // pembayaran via Midtrans
     Route::post('/pesanan/{kode}/bayar', [PembayaranController::class, 'buat']);
     Route::get('/pesanan/{kode}/cek-bayar', [PembayaranController::class, 'cek']);
-    Route::post('/mitra/pesanan', [MitraPesananController::class, 'index']);
-    Route::post('/mitra/pesanan/{kode}/siap', [MitraPesananController::class, 'siap']);
-    Route::post('/mitra/pesanan/{kode}/ambil', [MitraPesananController::class, 'ambil']);
-    Route::post('/mitra/pesanan/{kode}/tolak', [MitraPesananController::class, 'tolak']);
 // ============================================================
 });
