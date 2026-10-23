@@ -12,11 +12,13 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widge
 class MitraPesananScreen extends StatefulWidget {
   final String phoneNumber;
   final int initialTab;
+  final String namaToko;
 
   const MitraPesananScreen({
     super.key,
     required this.phoneNumber,
     this.initialTab = 0,
+    this.namaToko = 'Toko Saya',
   });
 
   @override
@@ -24,10 +26,26 @@ class MitraPesananScreen extends StatefulWidget {
 }
 
 class _MitraPesananScreenState extends State<MitraPesananScreen> {
+  // Index item "Pesanan" di MitraBottomNav. Sesuaikan dengan urutan di widget-nya.
+  static const int _navIndexPesanan = 3;
+
+  // Status yang dianggap sudah tidak aktif (tidak dihitung di badge).
+  // Sesuaikan dengan nilai status yang dikirim backend.
+  static const List<String> _statusSelesai = [
+    'selesai',
+    'ditolak',
+    'dibatalkan',
+    'batal',
+    'kedaluwarsa',
+  ];
+
   int _tab = 0; // 0: Semua, 1: Baru, 2: Siap, 3: Selesai/Riwayat
   bool _loading = true;
   List<Map<String, dynamic>> _data = [];
   Timer? _timer;
+
+  int _pesananAktif = 0;
+  String get _namaToko => widget.namaToko;
 
   final List<String> _tabLabels = ['Semua', 'Baru', 'Siap Diambil', 'Selesai'];
 
@@ -36,7 +54,11 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     super.initState();
     _tab = widget.initialTab;
     _muatData();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) => _muatData(diam: true));
+    _muatBadge();
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+      _muatData(diam: true);
+      _muatBadge();
+    });
   }
 
   @override
@@ -45,15 +67,26 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     super.dispose();
   }
 
-  Future<void> _muatData({bool diam = false}) async {
-    if (!diam) setState(() => _loading = true);
-    
-    String tabParam = 'semua';
-    if (_tab == 1) tabParam = 'baru';
-    if (_tab == 2) tabParam = 'siap';
-    if (_tab == 3) tabParam = 'riwayat';
+  String get _tabParam {
+    switch (_tab) {
+      case 1:
+        return 'baru';
+      case 2:
+        return 'siap';
+      case 3:
+        return 'riwayat';
+      default:
+        return 'semua';
+    }
+  }
 
-    final res = await ApiService.getMitraPesanan(widget.phoneNumber, tab: tabParam);
+  Future<void> _muatData({bool diam = false}) async {
+    if (!diam && mounted) setState(() => _loading = true);
+
+    final res = await ApiService.getMitraPesanan(
+      widget.phoneNumber,
+      tab: _tabParam,
+    );
     if (!mounted) return;
 
     if (res['ok'] == true) {
@@ -67,6 +100,29 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         _snack(res['message'] ?? 'Gagal memuat pesanan');
       }
     }
+  }
+
+  // Hitung jumlah pesanan aktif untuk badge, terpisah dari tab yang dibuka.
+  Future<void> _muatBadge() async {
+    final res = await ApiService.getMitraPesanan(
+      widget.phoneNumber,
+      tab: 'semua',
+    );
+    if (!mounted || res['ok'] != true) return;
+
+    final list = List<Map<String, dynamic>>.from(res['data'] ?? []);
+    final aktif = list.where((p) {
+      final s = (p['status'] ?? '').toString().toLowerCase();
+      return !_statusSelesai.contains(s);
+    }).length;
+
+    if (aktif != _pesananAktif) {
+      setState(() => _pesananAktif = aktif);
+    }
+  }
+
+  Future<void> _refreshSemua() async {
+    await Future.wait([_muatData(diam: true), _muatBadge()]);
   }
 
   void _snack(String msg) {
@@ -86,49 +142,41 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
       appBar: AppBar(
         title: Text(
           'Pesanan Masuk',
-          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            onPressed: () => _muatData(),
+            onPressed: () => _refreshSemua(),
           ),
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => _muatData(),
-          color: AppColors.primary,
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              _buildTabSelector(),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                    : _data.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Belum ada pesanan',
-                              style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSoft),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _data.length,
-                            itemBuilder: (ctx, i) => _buildKartuPesanan(_data[i]),
-                          ),
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            _buildTabSelector(),
+            const SizedBox(height: 12),
+            Expanded(child: _buildIsi()),
+          ],
         ),
       ),
       bottomNavigationBar: MitraBottomNav(
-        currentIndex: 0,
-        onDashboard: () {},
+        currentIndex: _navIndexPesanan,
+        onDashboard: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MitraDashboardScreen(
+              phoneNumber: widget.phoneNumber,
+            ),
+          ),
+        ),
         onProduk: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -143,17 +191,11 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
+            builder: (context) =>
+                ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
           );
         },
-        onPesanan: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MitraPesananScreen(
-              phoneNumber: widget.phoneNumber,
-            ),
-          ),
-        ),
+        onPesanan: () {}, // sudah di halaman ini
         onProfil: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -164,6 +206,42 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         ),
         pesananBadge: _pesananAktif,
       ),
+    );
+  }
+
+  Widget _buildIsi() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshSemua,
+      color: AppColors.primary,
+      child: _data.isEmpty
+          // ListView supaya pull-to-refresh tetap jalan saat data kosong
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                Center(
+                  child: Text(
+                    'Belum ada pesanan',
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      color: AppColors.textSoft,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: _data.length,
+              itemBuilder: (ctx, i) => _buildKartuPesanan(_data[i]),
+            ),
     );
   }
 
@@ -187,7 +265,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                 color: sel ? Colors.white : AppColors.textDark,
               ),
               onSelected: (val) {
-                if (val) {
+                if (val && _tab != i) {
                   setState(() => _tab = i);
                   _muatData();
                 }
@@ -220,23 +298,47 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('#$kode', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(
+                '#$kode',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   status.toString().toUpperCase(),
-                  style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                  style: GoogleFonts.nunito(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('$qty x $produk', style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600)),
-          Text('Total: Rp $total', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+          Text(
+            '$qty x $produk',
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            'Total: Rp $total',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
         ],
       ),
     );

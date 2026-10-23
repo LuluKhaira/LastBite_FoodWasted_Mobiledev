@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../beranda/beranda_widgets.dart';
-import '../beranda/pesanan_model.dart' show lbRp;
+import '../pesanan/pesanan_model.dart' show lbRp;
 import 'model_favorit.dart';
 
 /// Kartu satu toko di halaman Favorit.

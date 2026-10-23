@@ -1,7 +1,24 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'pesanan_model.dart' show lbRp;
+import '../pesanan/pesanan_model.dart' show lbRp;
 
+// File ini sekarang hanya "pintu masuk" (barrel).
+// Isinya sudah dipecah ke file-file kecil. Semua import lama
+// (import 'beranda_widgets.dart') tetap jalan tanpa diubah.
+export '../../../core/tema/tema_lb.dart';
+export '../../../core/komponen/navbar_bawah.dart';
+export 'model_bahan.dart';
+export 'tata_letak_beranda.dart';
+export 'widgets/gambar_jaringan.dart';
+export 'widgets/logo_lb.dart';
+export 'widgets/header_beranda.dart';
+export 'widgets/baris_lokasi.dart';
+export 'widgets/bilah_pencarian.dart';
+export 'widgets/banner_misi.dart';
+export 'widgets/toggle_tipe.dart';
+export 'widgets/bilah_kategori.dart';
+export 'widgets/judul_seksi.dart';
+export 'widgets/kartu_paket.dart';
 
 // ============================================================
 // WARNA LASTBITE

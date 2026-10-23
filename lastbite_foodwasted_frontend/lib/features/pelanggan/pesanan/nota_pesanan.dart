@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'beranda_widgets.dart';
+import '../beranda/beranda_widgets.dart';
 import 'pesanan_model.dart';
 
 /// Tampilkan nota sebagai bottom sheet.

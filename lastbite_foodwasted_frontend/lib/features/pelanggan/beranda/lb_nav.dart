@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'halaman_beranda.dart';
-import 'halaman_pesanan.dart';
+import '../pesanan/halaman_pesanan.dart';
 import '../favorit/halaman_favorit.dart';
 import '../profil/halaman_profil.dart';
 

@@ -7,7 +7,7 @@ import 'halaman_keamanan.dart';
 import 'halaman_tentang.dart';
 import 'halaman_ulasan.dart';
 import '../beranda/lb_nav.dart';
-import '../beranda/pesanan_model.dart' show lbRp;
+import '../pesanan/pesanan_model.dart' show lbRp;
 
 const String kVersiAplikasi = 'v2.4.1';
 
