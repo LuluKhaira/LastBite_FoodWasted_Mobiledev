@@ -8,7 +8,7 @@ class ApiConfig {
   static const bool isEmulator = false;
 
   /// IP LAN laptop tempat backend Laravel aktif
-  static const String lanIp = '192.168.1.203';
+  static const String lanIp = '192.168.1.10';
   static const String port = '8000';
 
   static String get baseUrl {

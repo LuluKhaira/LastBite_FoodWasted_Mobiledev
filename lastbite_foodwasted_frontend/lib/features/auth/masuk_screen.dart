@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+// ApiService MITRA (lib/services). Dipakai hanya untuk loginMitra.
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+// ApiService PEMBELI: login() menyimpan token ke SharedPreferences ('token').
+import 'package:lastbite_foodwasted_mobiledev/features/pelanggan/beranda/api_service.dart'
+    as pembeli_api;
+import 'package:lastbite_foodwasted_mobiledev/features/pelanggan/beranda/halaman_beranda.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/mitra_dashboard_screen.dart';
 import 'widgets/auth_ui.dart';
 import 'daftar_screen.dart';
 
@@ -29,20 +35,67 @@ class _MasukScreenState extends State<MasukScreen> {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
 
-    // Memanggil API login yang terhubung ke backend Laravel (/api/login-mitra)
-    final result = await ApiService.loginMitra(
-      _id.text.trim(),
-      _sandi.text.trim(),
-    );
+    final identifier = _id.text.trim();
+    final sandi = _sandi.text.trim();
 
+    // 1) Coba sebagai PEMBELI (tabel users) -> POST /api/login.
+    //    login() menyimpan token, jadi Favorit/Pesanan/Profil tidak lagi 401.
+    String? pesanPembeli;
+    try {
+      await pembeli_api.ApiService.login(identifier, sandi);
+      if (!mounted) return;
+      setState(() => _loading = false);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const BerandaScreen()),
+        (_) => false,
+      );
+      return;
+    } catch (e) {
+      pesanPembeli = e.toString();
+      // Server tidak terjangkau: tampilkan itu, jangan lanjut menebak akun mitra.
+      if (pesanPembeli.contains('Tidak bisa terhubung')) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        authSnack(context, pesanPembeli.replaceFirst('Exception: ', ''),
+            error: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+
+    // 2) Tidak cocok sebagai pembeli -> coba sebagai MITRA (tabel mitras) -> POST /api/login-mitra
+    final mitra = await ApiService.loginMitra(identifier, sandi);
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (result['ok']) {
-      authSnack(context, result['message']);
-      // TODO: Tambahkan navigasi ke halaman dashboard/beranda di sini setelah berhasil login
+    if (mitra['ok'] == true) {
+      final data = mitra['data'];
+      final noWa = (data is Map && data['mitra'] is Map)
+          ? (data['mitra']['no_whatsapp'] ?? identifier).toString()
+          : identifier;
+      // TODO: simpan token dari data['token'] bila diperlukan
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MitraDashboardScreen(phoneNumber: noWa),
+        ),
+        (_) => false,
+      );
+      return;
+    }
+
+    // 3) Dua-duanya gagal. Kalau akun mitra ada tapi belum disetujui, tampilkan pesan itu;
+    //    selain itu tampilkan pesan umum.
+    final pesanMitra = '${mitra['message'] ?? ''}';
+    if (pesanMitra.contains('belum disetujui')) {
+      authSnack(context, pesanMitra, error: true);
     } else {
-      authSnack(context, result['message']);
+      authSnack(
+        context,
+        'Nomor/email atau kata sandi salah.',
+        error: true,
+      );
     }
   }
 

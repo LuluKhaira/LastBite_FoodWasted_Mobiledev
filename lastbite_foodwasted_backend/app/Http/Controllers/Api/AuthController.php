@@ -113,10 +113,6 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => ['Email sudah dipakai akun lain.']]);
         }
 
-        if (!empty($data['password']) && empty($data['email'])) {
-            throw ValidationException::withMessages(['email' => ['Isi email dulu untuk memakai kata sandi.']]);
-        }
-
         // Email & sandi baru disimpan setelah nomor terbukti milik pendaftar (anti pengambilalihan akun)
         $pending = [
             'name'     => $data['name'],

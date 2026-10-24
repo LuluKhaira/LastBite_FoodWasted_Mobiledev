@@ -2,6 +2,7 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/auth/masuk_screen.dart';
 import '../beranda/halaman_beranda.dart';
 import '../widgets/auth_widgets.dart';
 
@@ -37,28 +38,66 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       return;
     }
     setState(() => _loading = true);
-    try {
-      await ApiService.verifikasiOtp(widget.phone, code, widget.purpose);
+
+    if (widget.purpose == 'register') {
+      // DAFTAR: akun dibuat di server setelah OTP benar, lalu kembali ke layar Masuk.
+      final res = await ApiService.verifikasiOtpPembeli(
+        widget.phone,
+        code,
+        widget.purpose,
+      );
       if (!mounted) return;
+      setState(() => _loading = false);
+
+      if (res['ok'] == true) {
+        showLbSnack(context, 'Akun berhasil dibuat. Silakan masuk.');
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MasukScreen()),
+          (_) => false,
+        );
+      } else {
+        showLbSnack(context, '${res['message']}', error: true);
+      }
+      return;
+    }
+
+    // MASUK (alur lama): hanya lanjut ke beranda kalau OTP benar.
+    final ok = await ApiService.verifikasiOtp(widget.phone, code, widget.purpose);
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (ok) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const BerandaScreen()),
         (_) => false,
       );
-    } catch (e) {
-      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    } else {
+      showLbSnack(context, 'Kode OTP salah atau tidak valid.', error: true);
     }
   }
 
   Future<void> _kirimUlang() async {
-    try {
-      await ApiService.kirimUlangOtp(widget.phone, widget.purpose);
-      if (mounted) showLbSnack(context, 'Kode baru sudah dikirim.');
-    } catch (e) {
-      if (mounted) showLbSnack(context, lbPesanError(e), error: true);
+    if (widget.purpose == 'register') {
+      final ok = await ApiService.kirimUlangOtpPembeli(widget.phone, widget.purpose);
+      if (!mounted) return;
+      showLbSnack(
+        context,
+        ok
+            ? 'Kode baru sudah dikirim.'
+            : (ApiService.lastErrorMessage ?? 'Gagal mengirim ulang kode.'),
+        error: !ok,
+      );
+      return;
     }
+    final ok = await ApiService.kirimUlangOtp(widget.phone, widget.purpose);
+    if (!mounted) return;
+    showLbSnack(
+      context,
+      ok ? 'Kode baru sudah dikirim.' : 'Gagal mengirim ulang kode.',
+      error: !ok,
+    );
   }
 
   @override
@@ -177,7 +216,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                         )
                       : Text(
-                          'Verifikasi & Masuk',
+                          widget.purpose == 'login' ? 'Verifikasi & Masuk' : 'Verifikasi',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 15,

@@ -731,4 +731,119 @@ class ApiService {
       return false;
     }
   }
+
+  // ======================================================================
+  // AUTH PEMBELI (WhatsApp OTP) -> endpoint /auth/* (AuthController)
+  // Terpisah dari alur mitra (/mitra/*) supaya data masuk ke tabel users.
+  // ======================================================================
+  static const Map<String, String> _jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  /// Kirim OTP pendaftaran pembeli. Akun dibuat di server SETELAH OTP benar.
+  static Future<bool> registerPhonePembeli({
+    required String name,
+    required String phone,
+    String? password,
+  }) async {
+    lastErrorMessage = null;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register-phone'),
+        headers: _jsonHeaders,
+        body: jsonEncode({
+          'name': name,
+          'phone': phone,
+          if (password != null && password.isNotEmpty) 'password': password,
+        }),
+      );
+      debugPrint('<-- [${response.statusCode}] register-phone: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) return true;
+      lastErrorMessage = _pesanError(response);
+      return false;
+    } catch (e) {
+      debugPrint('Error registerPhonePembeli: $e');
+      lastErrorMessage = 'Gagal terhubung ke server. Pastikan backend aktif.';
+      return false;
+    }
+  }
+
+  /// Verifikasi OTP pembeli. Mengembalikan {'ok': bool, 'message': String, 'data': ...}
+  static Future<Map<String, dynamic>> verifikasiOtpPembeli(
+    String phone,
+    String code,
+    String purpose,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-otp'),
+        headers: _jsonHeaders,
+        body: jsonEncode({'phone': phone, 'code': code, 'purpose': purpose}),
+      );
+      debugPrint('<-- [${response.statusCode}] auth/verify-otp: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {
+          'ok': true,
+          'data': data,
+          'message': (data is Map ? data['message'] : null) ?? 'Berhasil',
+        };
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error verifikasiOtpPembeli: $e');
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
+      };
+    }
+  }
+
+  /// Kirim ulang OTP pembeli (purpose: 'register' atau 'login').
+  static Future<bool> kirimUlangOtpPembeli(String phone, String purpose) async {
+    lastErrorMessage = null;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/resend-otp'),
+        headers: _jsonHeaders,
+        body: jsonEncode({'phone': phone, 'purpose': purpose}),
+      );
+      debugPrint('<-- [${response.statusCode}] auth/resend-otp: ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) return true;
+      lastErrorMessage = _pesanError(response);
+      return false;
+    } catch (e) {
+      debugPrint('Error kirimUlangOtpPembeli: $e');
+      lastErrorMessage = 'Gagal terhubung ke server. Pastikan backend aktif.';
+      return false;
+    }
+  }
+
+  /// Login PEMBELI (nomor HP atau email + kata sandi) -> POST /login (tabel users).
+  /// Mengembalikan {'ok': bool, 'message': String, 'data': {user, token}}
+  static Future<Map<String, dynamic>> loginPembeli(
+    String identifier,
+    String password,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: _jsonHeaders,
+        body: jsonEncode({'identifier': identifier, 'password': password}),
+      );
+      debugPrint('<-- [${response.statusCode}] login: ${response.body}');
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'ok': true, 'data': data, 'message': 'Login berhasil'};
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error loginPembeli: $e');
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
+      };
+    }
+  }
 }

@@ -70,7 +70,11 @@ class _DaftarScreenState extends State<DaftarScreen> {
       }
     } else {
       // Pendaftaran menggunakan Nomor HP (Fonnte / WhatsApp OTP)
-      final success = await ApiService.registerWhatsApp(inputId);
+      final success = await ApiService.registerPhonePembeli(
+        name: _nama.text.trim(),
+        phone: inputId,
+        password: _sandi.text.trim(),
+      );
 
       if (!mounted) return;
       setState(() => _loading = false);
