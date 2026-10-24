@@ -50,4 +50,5 @@ class Produk extends Model
         $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
         return 2 * $r * asin(sqrt($a));
     }
+    
 }

@@ -26,4 +26,9 @@ class Mitra extends Model
         'status_verifikasi',
         'saldo',
     ];
+
+    public function pesanan()
+    {
+        return $this->hasMany(Pesanan::class, 'id_mitra', 'id_mitra');
+    }
 }
