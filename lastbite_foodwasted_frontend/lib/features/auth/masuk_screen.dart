@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'widgets/auth_ui.dart';
 import 'daftar_screen.dart';
 
@@ -28,13 +29,21 @@ class _MasukScreenState extends State<MasukScreen> {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
 
-    // TODO: panggil API login (email/HP + kata sandi), simpan sesi,
-    // lalu arahkan ke beranda pelanggan.
-    await Future.delayed(const Duration(milliseconds: 800));
+    // Memanggil API login yang terhubung ke backend Laravel (/api/login-mitra)
+    final result = await ApiService.loginMitra(
+      _id.text.trim(),
+      _sandi.text.trim(),
+    );
 
     if (!mounted) return;
     setState(() => _loading = false);
-    authSnack(context, 'Form valid. Sambungkan ke API login di _masuk().');
+
+    if (result['ok']) {
+      authSnack(context, result['message']);
+      // TODO: Tambahkan navigasi ke halaman dashboard/beranda di sini setelah berhasil login
+    } else {
+      authSnack(context, result['message']);
+    }
   }
 
   @override

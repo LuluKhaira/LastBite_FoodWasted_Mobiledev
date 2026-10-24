@@ -575,4 +575,39 @@ class ApiService {
       return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
     }
   }
+  // ---------- LOGIN MITRA / PELANGGAN ----------
+  static Future<Map<String, dynamic>> loginMitra(String id, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login-mitra'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'login': id, // Bisa berupa email atau nomor HP sesuai input form
+          'password': password,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'ok': true,
+          'data': data,
+          'message': data['message'] ?? 'Login berhasil',
+        };
+      }
+      return {
+        'ok': false,
+        'message': data['message'] ?? _pesanError(response),
+      };
+    } catch (e) {
+      debugPrint('Error loginMitra: $e');
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
+      };
+    }
+  }
 }
