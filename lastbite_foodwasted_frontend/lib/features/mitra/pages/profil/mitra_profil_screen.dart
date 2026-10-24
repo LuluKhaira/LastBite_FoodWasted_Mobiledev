@@ -8,6 +8,15 @@ import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_s
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
 
+import 'jam_buka_screen.dart';
+import 'rekening_screen.dart';
+import 'ulasan_screen.dart';
+import 'edit_profil_toko_screen.dart';
+import 'pin_sandi_screen.dart';
+import 'notifikasi_pengaturan_screen.dart';
+import 'riwayat_transaksi_screen.dart';
+import 'paket_terselamatkan_screen.dart';
+
 class _UI {
   static Color get primary => AppColors.primary;
   static Color get primaryText => AppColors.zaitun;
@@ -77,6 +86,128 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
 
     setState(() => _isTokoBuka = !buka);
     _info('Gagal mengubah status toko.');
+  }
+
+  void _buka(Widget halaman) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => halaman),
+    );
+  }
+
+  Future<void> _editProfil() async {
+    final hasil = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfilTokoScreen(
+          namaToko: _namaToko,
+          alamat: _alamat,
+          phoneNumber: widget.phoneNumber,
+        ),
+      ),
+    );
+    if (hasil != null && mounted) {
+      setState(() {
+        _namaToko = hasil['nama'] ?? _namaToko;
+        _alamat = hasil['alamat'] ?? _alamat;
+      });
+    }
+  }
+
+  Future<void> _keluar() async {
+    final ya = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.merahMuda,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: AppColors.merah, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Keluar dari akun toko?',
+                textAlign: TextAlign.center,
+                style: AppColors.heading(fontSize: 17),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Kamu perlu masuk lagi untuk mengelola pesanan dan produk tokomu.',
+                textAlign: TextAlign.center,
+                style: AppColors.body(
+                  fontSize: 13,
+                  color: _UI.textSoft,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        side: BorderSide(color: _UI.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: AppColors.heading(fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.merah,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        'Ya, Keluar',
+                        style: AppColors.heading(
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ya != true || !mounted) return;
+
+    // TODO: hapus sesi/token login di sini, lalu arahkan ke halaman login, mis.:
+    // Navigator.of(context).pushAndRemoveUntil(
+    //   MaterialPageRoute(builder: (_) => const LoginScreen()),
+    //   (route) => false,
+    // );
+    _info('Berhasil keluar dari akun toko');
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _info(String pesan) {
@@ -299,6 +430,9 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
                   color: Colors.amber,
                   value: _rating,
                   label: _ulasan,
+                  onTap: () => _buka(
+                    UlasanScreen(rating: _rating, jumlahUlasan: _ulasan),
+                  ),
                 ),
               ),
               Container(
@@ -312,6 +446,9 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
                   color: _UI.primaryText,
                   value: '$_paketTerselamatkan',
                   label: 'Paket Terselamatkan',
+                  onTap: () => _buka(
+                    PaketTerselamatkanScreen(total: _paketTerselamatkan),
+                  ),
                 ),
               ),
             ],
@@ -326,8 +463,12 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
     required Color color,
     required String value,
     required String label,
+    VoidCallback? onTap,
   }) {
-    return Column(
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -346,6 +487,7 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
           style: AppColors.body(fontSize: 11, color: _UI.textSoft),
         ),
       ],
+      ),
     );
   }
 
@@ -357,17 +499,17 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
         _buildGridItem(
           icon: Icons.access_time_rounded,
           label: 'Jam Buka',
-          onTap: () => _info('Pengaturan Jam Operasional'),
+          onTap: () => _buka(const JamBukaScreen()),
         ),
         _buildGridItem(
           icon: Icons.account_balance_outlined,
           label: 'Rekening',
-          onTap: () => _info('Pengaturan Rekening'),
+          onTap: () => _buka(RekeningScreen(namaToko: _namaToko)),
         ),
         _buildGridItem(
           icon: Icons.chat_bubble_outline,
           label: 'Ulasan',
-          onTap: () => _info('Lihat Ulasan'),
+          onTap: () => _buka(UlasanScreen(rating: _rating, jumlahUlasan: _ulasan)),
         ),
         _buildGridItem(
           icon: Icons.shopping_bag_outlined,
@@ -428,25 +570,25 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
           _buildMenuItem(
             icon: Icons.person_outline,
             title: 'Edit Profil Toko',
-            onTap: () => _info('Edit Profil Toko'),
+            onTap: _editProfil,
           ),
           _buildDivider(),
           _buildMenuItem(
             icon: Icons.lock_outline,
             title: 'PIN & Kata Sandi',
-            onTap: () => _info('Ubah PIN'),
+            onTap: () => _buka(const PinSandiScreen()),
           ),
           _buildDivider(),
           _buildMenuItem(
             icon: Icons.notifications_none,
             title: 'Notifikasi',
-            onTap: () => _info('Pengaturan Notifikasi'),
+            onTap: () => _buka(const NotifikasiPengaturanScreen()),
           ),
           _buildDivider(),
           _buildMenuItem(
             icon: Icons.receipt_long_outlined,
             title: 'Riwayat Transaksi',
-            onTap: () => _info('Riwayat Transaksi'),
+            onTap: () => _buka(const RiwayatTransaksiScreen()),
           ),
           _buildDivider(),
           _buildMenuItem(
@@ -490,7 +632,7 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
       width: double.infinity,
       height: 48,
       child: ElevatedButton.icon(
-        onPressed: () => _info('Berhasil keluar dari akun toko'),
+        onPressed: _keluar,
         icon: const Icon(Icons.logout, color: AppColors.merah, size: 20),
         label: Text(
           'Keluar dari Akun Toko',

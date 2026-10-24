@@ -1,0 +1,227 @@
+import 'package:flutter/material.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'widgets/profil_ui.dart';
+
+class _Hari {
+  final String nama;
+  bool buka;
+  TimeOfDay mulai;
+  TimeOfDay tutup;
+
+  _Hari(this.nama)
+      : buka = true,
+        mulai = const TimeOfDay(hour: 8, minute: 0),
+        tutup = const TimeOfDay(hour: 21, minute: 0);
+}
+
+class JamBukaScreen extends StatefulWidget {
+  const JamBukaScreen({super.key});
+
+  @override
+  State<JamBukaScreen> createState() => _JamBukaScreenState();
+}
+
+class _JamBukaScreenState extends State<JamBukaScreen> {
+  final List<_Hari> _hari = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu',
+  ].map(_Hari.new).toList();
+
+  String _fmt(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  int _menit(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  Future<void> _pilih(_Hari h, bool mulai) async {
+    final hasil = await showTimePicker(
+      context: context,
+      initialTime: mulai ? h.mulai : h.tutup,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: AppColors.textDark,
+            surface: Colors.white,
+            onSurface: AppColors.textDark,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    final baruMulai = mulai ? hasil : h.mulai;
+    final baruTutup = mulai ? h.tutup : hasil;
+    if (_menit(baruTutup) <= _menit(baruMulai)) {
+      profilSnack(context, 'Jam tutup harus setelah jam buka', error: true);
+      return;
+    }
+    setState(() {
+      h.mulai = baruMulai;
+      h.tutup = baruTutup;
+    });
+  }
+
+  void _samakanSemua() {
+    final acuan = _hari.first;
+    setState(() {
+      for (final h in _hari) {
+        h.buka = acuan.buka;
+        h.mulai = acuan.mulai;
+        h.tutup = acuan.tutup;
+      }
+    });
+    profilSnack(context, 'Semua hari disamakan dengan hari Senin');
+  }
+
+  void _simpan() {
+    if (_hari.every((h) => !h.buka)) {
+      profilSnack(context, 'Minimal satu hari harus buka', error: true);
+      return;
+    }
+    // TODO: sambungkan ke API untuk menyimpan jam operasional.
+    profilSnack(context, 'Jam operasional disimpan');
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ProfilSubScaffold(
+      title: 'Jam Buka',
+      bottom: ProfilButton(
+        label: 'Simpan Jam Operasional',
+        icon: Icons.check_rounded,
+        onPressed: _simpan,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.hijauMuda,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 20, color: AppColors.textDark),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Batas pengambilan pesanan tidak akan melewati jam tutup toko.',
+                        style: AppColors.body(fontSize: 12.5, height: 1.4),
+                      ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: _samakanSemua,
+                        child: Text(
+                          'Samakan semua hari dengan Senin',
+                          style: AppColors.body(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ).copyWith(decoration: TextDecoration.underline),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          ..._hari.map(_kartuHari),
+        ],
+      ),
+    );
+  }
+
+  Widget _kartuHari(_Hari h) {
+    return ProfilCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(h.nama, style: AppColors.heading(fontSize: 14)),
+              ),
+              Text(
+                h.buka ? 'Buka' : 'Tutup',
+                style: AppColors.body(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: h.buka ? AppColors.textDark : ProfilUI.textSoft,
+                ),
+              ),
+              const SizedBox(width: 6),
+              ProfilSwitch(
+                value: h.buka,
+                onChanged: (v) => setState(() => h.buka = v),
+              ),
+            ],
+          ),
+          if (h.buka) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _kotakWaktu('Jam buka', _fmt(h.mulai),
+                      () => _pilih(h, true)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _kotakWaktu('Jam tutup', _fmt(h.tutup),
+                      () => _pilih(h, false)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _kotakWaktu(String label, String waktu, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.hijauMuda,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.access_time_rounded,
+                size: 18, color: AppColors.textDark),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppColors.body(
+                    fontSize: 10.5,
+                    color: ProfilUI.textSoft,
+                  ),
+                ),
+                Text(waktu, style: AppColors.heading(fontSize: 15)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
