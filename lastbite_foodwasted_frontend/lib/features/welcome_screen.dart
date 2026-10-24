@@ -1,234 +1,260 @@
 ﻿// ============================================================
-// LastBite - lib/features/pelanggan/halaman/welcome_screen.dart
+// LastBite - lib/features/welcome_screen.dart
+// Welcome: logo di atas, panel berwarna dengan tombol Masuk / Daftar di bawah.
 // ============================================================
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
-import '../core/theme/app_colors.dart';
-import 'pelanggan/masuk/halaman_masuk.dart';
-
+import 'auth/daftar_screen.dart';
+import 'auth/masuk_screen.dart';
+import 'auth/widgets/auth_ui.dart';
 import 'mitra/pages/register/mitra_register_screen.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _masuk = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..forward();
+
+  late final AnimationController _ambang = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _masuk.dispose();
+    _ambang.dispose();
+    super.dispose();
+  }
+
+  Widget _bola(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+
+  @override
   Widget build(BuildContext context) {
+    final bawah = MediaQuery.of(context).padding.bottom;
+    final panel = _masuk.drive(
+      CurveTween(curve: const Interval(0, 0.6, curve: Curves.easeOutCubic)),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Badge Atas
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.textDark,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'LASTBITE BATAM',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textDark,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Bagian Tengah: Judul & Ilustrasi Logo
-              Column(
+      body: Column(
+        children: [
+          // Area logo (melayang pelan)
+          Expanded(
+            child: SafeArea(
+              bottom: false,
+              child: Stack(
                 children: [
-                  Text(
-                    'Setiap sisa punya\nkesempatan kedua.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                      height: 1.25,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    child: Text(
-                      'Temukan makanan hemat, pakan ternak, dan bahan pupuk dari usaha terdekat di Batam.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.nunito(
-                        fontSize: 13.5,
-                        color: AppColors.textSoft,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Ilustrasi / Logo Bumi & Apel Digigit
-                  
-                Image.asset(
-                  'assets/images/lastbite_logo.png',
-                  width: 450,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Text(
-                      'Logo gagal dimuat',
-                      style: TextStyle(color: Colors.red),
-                    );
-                  },
-                ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-
-              // Bagian Tombol Bawah
-              Column(
-                children: [
-                  // Tombol Utama (Dark Forest / Hijau Gelap)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.textDark,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
+                  Positioned(
+                    top: -10,
+                    left: -50,
+                    child: AnimatedBuilder(
+                      animation: _ambang,
+                      builder: (_, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          8 * math.sin(_ambang.value * math.pi),
                         ),
-                        elevation: 2,
-                        shadowColor: Colors.black.withValues(alpha: 0.1),
+                        child: child,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UserLoginScreen(),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            '→',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Mulai Selamatkan',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      child: _bola(
+                        110,
+                        AppColors.primary.withValues(alpha: 0.18),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  // Tombol HP / Email
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.textDark,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
+                  Positioned(
+                    top: 30,
+                    right: 36,
+                    child: AnimatedBuilder(
+                      animation: _ambang,
+                      builder: (_, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          -8 * math.sin(_ambang.value * math.pi),
                         ),
-                        elevation: 0,
+                        child: child,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UserLoginScreen(),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.mail_outline_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Lanjutkan dengan HP / Email',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      child: _bola(
+                        18,
+                        AppColors.orange.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Teks Bawah
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MitraRegisterScreen(),
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _ambang,
+                      builder: (_, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          -8 * Curves.easeInOut.transform(_ambang.value),
                         ),
-                      );
-                    },
-                    child: Text(
-                      'Masuk sebagai Mitra Toko / Penjual →',
-                      style: GoogleFonts.poppins(
-                        color: AppColors.textDark,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        child: child,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Dengan melanjutkan, kamu menyetujui Syarat & Ketentuan serta\nKebijakan Privasi Lastbite.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.nunito(
-                      fontSize: 10.5,
-                      color: AppColors.textSoft,
+                      child: const LastBiteLogo(width: 260),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+
+          // Panel berwarna di bawah
+          SlideTransition(
+            position: panel.drive(
+              Tween<Offset>(begin: const Offset(0, 0.6), end: Offset.zero),
+            ),
+            child: FadeTransition(
+              opacity: panel,
+              child: Container(
+                width: double.infinity,
+                clipBehavior: Clip.antiAlias,
+                padding: EdgeInsets.fromLTRB(28, 32, 28, 16 + bawah),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(40)),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -60,
+                      top: -70,
+                      child: _bola(
+                        150,
+                        Colors.white.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    Positioned(
+                      left: -50,
+                      bottom: -60,
+                      child: _bola(
+                        120,
+                        AppColors.orange.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AuthReveal(
+                          animation: _masuk,
+                          begin: 0.25,
+                          end: 0.55,
+                          child: Text(
+                            'Selamat Datang',
+                            style: AppColors.heading(fontSize: 26),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        AuthReveal(
+                          animation: _masuk,
+                          begin: 0.32,
+                          end: 0.62,
+                          child: Text(
+                            'Setiap sisa punya kesempatan kedua. Temukan makanan hemat, pakan ternak, dan bahan pupuk dari usaha terdekat di Batam.',
+                            style: AppColors.body(
+                              fontSize: 13.5,
+                              height: 1.45,
+                              color: AppColors.textDark.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        AuthReveal(
+                          animation: _masuk,
+                          begin: 0.45,
+                          end: 0.8,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: AuthButton(
+                                  label: 'Masuk',
+                                  color: Colors.white,
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    authRoute(const MasukScreen()),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: AuthButton(
+                                  label: 'Daftar',
+                                  color: AppColors.orange,
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    authRoute(const DaftarScreen()),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        AuthReveal(
+                          animation: _masuk,
+                          begin: 0.6,
+                          end: 1,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: Column(
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const MitraRegisterScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Masuk sebagai Mitra Toko / Penjual →',
+                                    style: AppColors.heading(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'Dengan melanjutkan, kamu menyetujui Syarat & Ketentuan serta\nKebijakan Privasi Lastbite.',
+                                  textAlign: TextAlign.center,
+                                  style: AppColors.body(
+                                    fontSize: 10.5,
+                                    color: AppColors.textDark
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
