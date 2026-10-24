@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
@@ -7,14 +7,9 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
-
-// IMPORT BOTTOM SHEET SCAN
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
 
 import 'widgets/mitra_bottom_nav.dart';
-import 'widgets/kartu_info_toko.dart';
-import 'widgets/aksi_cepat.dart';
-import 'widgets/ringkasan_section.dart';
 import 'widgets/surplus_section.dart';
 
 class MitraDashboardScreen extends StatefulWidget {
@@ -27,15 +22,11 @@ class MitraDashboardScreen extends StatefulWidget {
 }
 
 class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
-  bool _isTokoBuka = true;
   bool _showWarningBanner = false;
   bool _isLoading = true;
   String _namaToko = 'Mitra Dashboard';
   int _pesananAktif = 0;
   int _pesananHariIni = 0;
-  double _pendapatan = 0;
-  int _porsi = 0;
-  double _co2Kg = 0;
   List<Map<String, dynamic>> _surplus = [];
 
   @override
@@ -44,6 +35,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     _muatDashboard();
   }
 
+  // --- FUNGSI DATABASE ---
   Future<void> _muatDashboard() async {
     setState(() => _isLoading = true);
     final data = await ApiService.getMitraDashboard(widget.phoneNumber);
@@ -51,13 +43,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
 
     if (data == null) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Gagal memuat data dashboard. Tarik layar ke bawah untuk mencoba lagi.',
-          ),
-        ),
-      );
+      _showSnackBar('Gagal memuat data dashboard.');
       return;
     }
 
@@ -65,15 +51,10 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     setState(() {
       _isLoading = false;
       _namaToko = (toko['nama'] ?? 'Mitra Dashboard').toString();
-      _isTokoBuka = toko['buka'] == true;
       _showWarningBanner = data['jam_operasional_lengkap'] != true;
       _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
-
-      final r = Map<String, dynamic>.from(data['ringkasan'] ?? {});
-      _pesananHariIni = int.tryParse('${r['pesanan_hari_ini']}') ?? 0;
-      _pendapatan = double.tryParse('${r['pendapatan_hari_ini']}') ?? 0;
-      _porsi = int.tryParse('${r['porsi_terselamatkan']}') ?? 0;
-      _co2Kg = double.tryParse('${r['co2_kg']}') ?? 0;
+      _pesananHariIni =
+          int.tryParse('${data['ringkasan']?['pesanan_hari_ini']}') ?? 0;
       _surplus = ((data['surplus'] ?? []) as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
@@ -87,19 +68,30 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
         builder: (_) => TambahProdukScreen(phoneNumber: widget.phoneNumber),
       ),
     );
-    if (berhasil == true) {
-      await _muatDashboard();
-    }
+    if (berhasil == true) await _muatDashboard();
   }
 
-  Future<void> _ubahStatusToko(bool buka) async {
-    setState(() => _isTokoBuka = buka);
-    final berhasil = await ApiService.setTokoStatus(widget.phoneNumber, buka);
-    if (!mounted || berhasil) return;
-
-    setState(() => _isTokoBuka = !buka);
+  void _showSnackBar(String pesan) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gagal mengubah status toko. Coba lagi.')),
+      SnackBar(content: Text(pesan)),
+    );
+  }
+
+  // --- NAVIGASI ---
+  void _navigateTo(Widget screen) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
+  }
+
+  void _showScanBottomsheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) =>
+          ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
     );
   }
 
@@ -107,220 +99,388 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            RefreshIndicator(
-              onRefresh: _muatDashboard,
-              color: AppColors.primary,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 90),
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _isLoading
-                          ? const Padding(
-                              padding: EdgeInsets.only(top: 20),
-                              child: ListShimmerLoading(count: 3),
-                            )
-                          : Column(
-                              children: [
-                                const SizedBox(height: 12),
-                                KartuInfoToko(
-                                  namaToko: _namaToko,
-                                  isTokoBuka: _isTokoBuka,
-                                  onStatusChanged: _ubahStatusToko,
-                                ),
-                                const SizedBox(height: 12),
-                                if (_showWarningBanner) _buildWarningBanner(),
-                                const SizedBox(height: 16),
-                                const AksiCepat(),
-                                const SizedBox(height: 20),
-                                RingkasanSection(
-                                  pesananHariIni: _pesananHariIni,
-                                  pesananAktif: _pesananAktif,
-                                  pendapatan: _pendapatan,
-                                  porsi: _porsi,
-                                  co2Kg: _co2Kg,
-                                ),
-                                const SizedBox(height: 20),
-                                SurplusSection(
-                                  items: _surplus,
-                                  onProductTap: (_) async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => MitraProdukScreen(
-                                          phoneNumber: widget.phoneNumber,
-                                          namaToko: _namaToko,
-                                        ),
-                                      ),
-                                    );
-                                    _muatDashboard();
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                _buildTipsBanner(),
-                                const SizedBox(height: 16),
-                              ],
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              right: 16,
-              bottom: 76,
-              child: FloatingActionButton(
-                onPressed: _bukaTambahProduk,
-                backgroundColor: AppColors.primary,
-                elevation: 3,
-                child: const Icon(Icons.add, color: Colors.white, size: 28),
-              ),
-            ),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _muatDashboard,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildHeader(),
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: ListShimmerLoading(count: 3),
+                )
+              else
+                _buildKonten(),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: MitraBottomNav(
         currentIndex: 0,
         onDashboard: () {},
-        onProduk: () => Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MitraProdukScreen(
-              phoneNumber: widget.phoneNumber,
-              namaToko: _namaToko,
-            ),
-          ),
-        ),
-        onScan: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => ScanPesananBottomSheet(phoneNumber: widget.phoneNumber),
-          );
-        },
-        onProfil: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MitraProfilScreen(
-              phoneNumber: widget.phoneNumber,
-            ),
-          ),
-        ),
+        onProduk: () => _navigateTo(MitraProdukScreen(
+          phoneNumber: widget.phoneNumber,
+          namaToko: _namaToko,
+        )),
+        onScan: _showScanBottomsheet,
+        onPesanan: () => _navigateTo(MitraPesananScreen(
+          phoneNumber: widget.phoneNumber,
+          namaToko: _namaToko,
+        )),
+        onProfil: () => _navigateTo(MitraProfilScreen(
+          phoneNumber: widget.phoneNumber,
+        )),
         pesananBadge: _pesananAktif,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _bukaTambahProduk,
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }
 
+  // --- HEADER (blok hijau segar / primary, layout tetap) ---
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
+      padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-              ),
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: AppColors.primary,
-              size: 22,
+          Text(
+            'Lokasi Toko',
+            style: AppColors.body(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark.withValues(alpha: 0.65),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              const Icon(Icons.location_on,
+                  color: AppColors.textDark, size: 18),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  _namaToko,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppColors.heading(
+                    fontSize: 16,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down,
+                  color: AppColors.textDark, size: 20),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TextField(
+              onTap: () => _navigateTo(MitraProdukScreen(
+                phoneNumber: widget.phoneNumber,
+                namaToko: _namaToko,
+              )),
+              readOnly: true,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                icon: const Icon(Icons.search, color: AppColors.textSoft),
+                hintText: 'Cari produk surplusmu...',
+                hintStyle: AppColors.body(
+                  color: AppColors.textSoft,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // KARTU PESANAN HARI INI
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Stack(
               children: [
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'LastBite',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
+                      'Pesanan Hari Ini',
+                      style: AppColors.body(
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
+                        color: AppColors.textSoft,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '$_pesananHariIni',
+                          style: AppColors.heading(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Pesanan',
+                          style: AppColors.heading(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.hijauMuda,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        'Mitra Toko',
-                        style: GoogleFonts.nunito(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textDark,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: _pesananHariIni > 0
+                                  ? AppColors.orange
+                                  : AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _pesananHariIni > 0
+                                ? 'Ada pesanan masuk'
+                                : 'Belum ada pesanan masuk',
+                            style: AppColors.body(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                Text(
-                  _namaToko,
-                  style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    color: AppColors.textSoft,
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.textDark,
+                      size: 28,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          Stack(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.notifications_none,
-                  color: AppColors.textDark,
-                  size: 26,
-                ),
-              ),
-              Positioned(
-                right: 12,
-                top: 12,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
+  // --- KONTEN UTAMA ---
+  Widget _buildKonten() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_showWarningBanner) ...[
+            _buildWarningBanner(),
+            const SizedBox(height: 16),
+          ],
+
+          // Grid Menu Cepat
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Menu Cepat',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                'Lihat semua',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.5,
+            children: [
+              _menuKategori(
+                icon: Icons.qr_code_scanner,
+                title: 'Scan QR',
+                onTap: _showScanBottomsheet,
+              ),
+              _menuKategori(
+                icon: Icons.history,
+                title: 'Riwayat',
+                onTap: () => _showSnackBar('Fitur segera hadir'),
+              ),
+              _menuKategori(
+                icon: Icons.headset_mic,
+                title: 'Bantuan',
+                onTap: () => _showSnackBar('Fitur segera hadir'),
+              ),
+              _menuKategori(
+                icon: Icons.inventory_2,
+                title: 'Stok',
+                onTap: () => _navigateTo(MitraProdukScreen(
+                  phoneNumber: widget.phoneNumber,
+                  namaToko: _namaToko,
+                )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Surplus Section (List Vertikal)
+          SurplusSection(
+            items: _surplus,
+            onProductTap: (_) async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MitraProdukScreen(
+                    phoneNumber: widget.phoneNumber,
+                    namaToko: _namaToko,
+                  ),
+                ),
+              );
+              _muatDashboard();
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _menuKategori({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.hijauMuda,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppColors.textDark, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right,
+                size: 16, color: AppColors.textSoft),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWarningBanner() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.orange.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.orange.withValues(alpha: 0.4)),
+        color: AppColors.orange.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,28 +488,45 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.access_time_filled,
-                color: AppColors.textDark,
-                size: 20,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.access_time_filled,
+                  color: AppColors.textDark,
+                  size: 18,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Lengkapi Jam Operasional Dulu, Yuk',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lengkapi Jam Operasional Dulu, Yuk',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kami butuh jam bukamu supaya batas pengambilan pesanan tidak kelewat jam tutup toko.',
+                      style: GoogleFonts.nunito(
+                        fontSize: 12,
+                        color: AppColors.textSoft,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _showWarningBanner = false;
-                  });
-                },
+                onTap: () => setState(() => _showWarningBanner = false),
                 child: const Icon(
                   Icons.close,
                   color: AppColors.textSoft,
@@ -358,94 +535,31 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.only(left: 28),
-            child: Text(
-              'Kami butuh jam bukamu supaya batas pengambilan pesanan tidak kelewat jam tutup toko.',
-              style: GoogleFonts.nunito(
-                fontSize: 11.5,
-                color: AppColors.textSoft,
-                height: 1.3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.only(left: 28),
-            child: ElevatedButton(
+            padding: const EdgeInsets.only(left: 44),
+            child: ElevatedButton.icon(
               onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.orange,
-                foregroundColor: AppColors.textDark,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
+              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+              label: Text(
                 'Isi Sekarang',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTipsBanner() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.lightbulb_outline,
-              color: AppColors.textDark,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tips Jitu Mitra',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.orange,
+                foregroundColor: AppColors.textDark,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
                 ),
-                Text(
-                  'Makanan yang diunggah sebelum jam 17.00 rata-rata laku dalam 35 menit! Coba upload produk lebih awal untuk penjualan maksimal.',
-                  style: GoogleFonts.nunito(
-                    fontSize: 10.5,
-                    color: AppColors.textSoft,
-                    height: 1.3,
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ],
+              ),
             ),
           ),
         ],

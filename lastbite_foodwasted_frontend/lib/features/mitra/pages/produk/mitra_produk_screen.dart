@@ -7,8 +7,6 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/widgets/mitra_bottom_nav.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
-
-// IMPORT BOTTOM SHEET KAMU DI SINI
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
 
 import 'detail_produk_screen.dart';
@@ -17,11 +15,10 @@ import 'models/produk_model.dart';
 class _UI {
   static Color get primary => AppColors.primary;
   static Color get orange => AppColors.orange;
-  static Color get primaryText =>
-      HSLColor.fromColor(AppColors.primary).withLightness(0.28).toColor();
+  static Color get primaryText => AppColors.zaitun;
   static Color get orangeText =>
       HSLColor.fromColor(AppColors.orange).withLightness(0.35).toColor();
-  static Color get primaryBg => AppColors.primary.withValues(alpha: 0.1);
+  static Color get primaryBg => AppColors.hijauMuda;
   static Color get orangeBg => AppColors.orange.withValues(alpha: 0.1);
   static Color get textSoft => const Color(0xFF6B6B6B);
   static Color get border => AppColors.textSoft.withValues(alpha: 0.15);
@@ -62,6 +59,8 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
   List<Produk> _produk = [];
   String _namaToko = 'Holland Bakery – Batam Center';
 
+  int _pesananAktif = 0;
+
   List<String> get _kategoriList => [
     'Semua Paket',
     'Bakery & Pastry',
@@ -74,6 +73,7 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
     super.initState();
     if (widget.namaToko != null) _namaToko = widget.namaToko!;
     _muatProduk();
+    _muatJumlahPesanan();
   }
 
   @override
@@ -98,6 +98,15 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
     });
   }
 
+  Future<void> _muatJumlahPesanan() async {
+    final data = await ApiService.getMitraDashboard(widget.phoneNumber);
+    if (data != null && mounted) {
+      setState(() {
+        _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
+      });
+    }
+  }
+
   Future<void> _ubahStatusToko(bool buka) async {
     setState(() => _isTokoBuka = buka);
     final ok = await ApiService.setTokoStatus(widget.phoneNumber, buka);
@@ -119,14 +128,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
       return cocokTab && cocokKategori && cocokCari;
     }).toList();
   }
-
-  int get _totalKuota => _produk
-      .where((p) => p.statusUI == StatusProduk.tayang)
-      .fold(0, (a, p) => a + p.kuota);
-  int get _totalTerjual => _produk
-      .where((p) => p.statusUI == StatusProduk.tayang)
-      .fold(0, (a, p) => a + (p.kuota - p.stok));
-  int get _totalSisa => _totalKuota - _totalTerjual;
 
   void _info(String pesan) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -178,13 +179,13 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
       backgroundColor: AppColors.bg,
       floatingActionButton: FloatingActionButton(
         onPressed: _bukaTambahProduk,
-        backgroundColor: _UI.primaryText,
+        backgroundColor: AppColors.primary,
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
       ),
       bottomNavigationBar: MitraBottomNav(
-        currentIndex: 4,
+        currentIndex: 1,
         onDashboard: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -192,13 +193,7 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
                 MitraDashboardScreen(phoneNumber: widget.phoneNumber),
           ),
         ),
-        onProduk: () => Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MitraProdukScreen(phoneNumber: widget.phoneNumber),
-          ),
-        ),
-        // UBAH BAGIAN INI: LANGSUNG TAMPILKAN BOTTOM SHEET
+        onProduk: () {},
         onScan: () {
           showModalBottomSheet(
             context: context,
@@ -223,538 +218,227 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
             builder: (_) => MitraProfilScreen(phoneNumber: widget.phoneNumber),
           ),
         ),
-        pesananBadge: 3,
+        pesananBadge: _pesananAktif,
       ),
       body: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _muatProduk,
-          color: _UI.primaryText,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-            children: [
-              _HeaderSection(namaToko: _namaToko),
-              const SizedBox(height: 16),
-              _StoreSummaryCard(
-                namaToko: _namaToko,
-                isTokoBuka: _isTokoBuka,
-                onUbahStatusToko: _ubahStatusToko,
-                totalKuota: _totalKuota,
-                totalTerjual: _totalTerjual,
-                totalSisa: _totalSisa,
-              ),
-              const SizedBox(height: 12),
-              const _SurpriseBanner(),
-              const SizedBox(height: 16),
-              _SearchAndFilterBar(
-                searchFocus: _searchFocus,
-                onSearchChanged: (v) => setState(() => _query = v),
-                onFilterTap: () => _info('Filter Kategori'),
-              ),
-              const SizedBox(height: 16),
-              _StatusTabs(
-                currentTab: _tab,
-                hitungTayang: _hitung(StatusProduk.tayang),
-                hitungTerjadwal: _hitung(StatusProduk.terjadwal),
-                hitungHabis: _hitung(StatusProduk.habis),
-                onTabChanged: (val) => setState(() => _tab = val),
-              ),
-              const SizedBox(height: 12),
-              _CategoryFilters(
-                categories: _kategoriList,
-                selectedCategory: _kategori,
-                onCategorySelected: (val) => setState(() => _kategori = val),
-              ),
-              const SizedBox(height: 16),
-              if (_isLoading)
-                const ListShimmerLoading(count: 3)
-              else if (daftar.isEmpty)
-                _EmptyState()
-              else
-                for (final p in daftar)
-                  _ProductCard(
-                    produk: p,
-                    phoneNumber: widget.phoneNumber,
-                    onUbahStok: _ubahStok,
-                    onRefresh: _muatProduk,
-                  ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderSection extends StatelessWidget {
-  final String namaToko;
-  const _HeaderSection({required this.namaToko});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text('Produk Saya', style: AppColors.heading(fontSize: 20)),
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: _UI.primaryBg,
-            shape: BoxShape.circle,
-            border: Border.all(color: _UI.primary.withValues(alpha: 0.3)),
-          ),
-          child: Center(
-            child: Text(
-              namaToko.isNotEmpty
-                  ? namaToko.substring(0, 2).toUpperCase()
-                  : 'HB',
-              style: AppColors.heading(fontSize: 14, color: _UI.primaryText),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StoreSummaryCard extends StatelessWidget {
-  final String namaToko;
-  final bool isTokoBuka;
-  final ValueChanged<bool> onUbahStatusToko;
-  final int totalKuota, totalTerjual, totalSisa;
-
-  const _StoreSummaryCard({
-    required this.namaToko,
-    required this.isTokoBuka,
-    required this.onUbahStatusToko,
-    required this.totalKuota,
-    required this.totalTerjual,
-    required this.totalSisa,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _UI.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _UI.primaryBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.storefront_rounded,
-                  color: _UI.primaryText,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      namaToko,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppColors.heading(fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: isTokoBuka
-                                ? _UI.primaryText
-                                : _UI.orangeText,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isTokoBuka ? 'Etalase Terbuka' : 'Etalase Tutup',
-                          style: AppColors.body(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: isTokoBuka
-                                ? _UI.primaryText
-                                : _UI.orangeText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: isTokoBuka,
-                onChanged: onUbahStatusToko,
-                activeColor: Colors.white,
-                activeTrackColor: _UI.primaryText,
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: _UI.textSoft.withValues(alpha: 0.3),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildStatBox(
-                title: 'Total Kuota',
-                value: '$totalKuota',
-                sub: 'Paket',
-                icon: Icons.inventory_2_outlined,
-                iconColor: _UI.primaryText,
-              ),
-              const SizedBox(width: 12),
-              _buildStatBox(
-                title: 'Terjual',
-                value: '$totalTerjual',
-                sub: 'Sisa $totalSisa',
-                icon: Icons.shopping_bag_outlined,
-                iconColor: _UI.orangeText,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatBox({
-    required String title,
-    required String value,
-    required String sub,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.bg,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
+        child: Column(
           children: [
+            _buildHeaderTabs(),
+            _buildKategoriFilter(),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppColors.body(fontSize: 11, color: _UI.textSoft),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        value,
-                        style: AppColors.heading(
-                          fontSize: 18,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        sub,
-                        style: AppColors.body(
-                          fontSize: 11,
-                          color: _UI.textSoft,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await _muatProduk();
+                  await _muatJumlahPesanan();
+                },
+                color: _UI.primaryText,
+                child: _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: ListShimmerLoading(count: 3),
+                      )
+                    : daftar.isEmpty
+                        ? _EmptyState()
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                            itemCount: daftar.length,
+                            itemBuilder: (context, i) {
+                              final p = daftar[i];
+                              return _ProductCardRef(
+                                produk: p,
+                                phoneNumber: widget.phoneNumber,
+                                onUbahStok: _ubahStok,
+                                onRefresh: _muatProduk,
+                              );
+                            },
+                          ),
               ),
             ),
-            Icon(icon, color: iconColor, size: 24),
           ],
         ),
       ),
     );
   }
-}
 
-class _SurpriseBanner extends StatelessWidget {
-  const _SurpriseBanner();
-  @override
-  Widget build(BuildContext context) {
+  // --- HEADER: blok hijau segar (primary) + tab pill ---
+  Widget _buildHeaderTabs() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: _UI.primaryBg,
-        borderRadius: BorderRadius.circular(14),
+      padding: const EdgeInsets.only(top: 20, bottom: 0),
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Icon(
-            Icons.lightbulb_outline_rounded,
-            color: _UI.primaryText,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Konsep Surprise Box: ',
-                    style: AppColors.body(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: _UI.primaryText,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'Cukup sediakan kuota tanpa perlu memilih roti satu per satu saat jam sibuk.',
-                    style: AppColors.body(
-                      fontSize: 12,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: Text(
+                'Produk Saya',
+                style: AppColors.heading(fontSize: 18, color: AppColors.textDark),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SearchAndFilterBar extends StatelessWidget {
-  final FocusNode searchFocus;
-  final ValueChanged<String> onSearchChanged;
-  final VoidCallback onFilterTap;
-
-  const _SearchAndFilterBar({
-    required this.searchFocus,
-    required this.onSearchChanged,
-    required this.onFilterTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 46,
+          const SizedBox(height: 14),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _UI.border),
             ),
-            child: TextField(
-              focusNode: searchFocus,
-              onChanged: onSearchChanged,
-              style: AppColors.body(fontSize: 14),
-              decoration: InputDecoration(
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: _UI.textSoft,
-                  size: 22,
-                ),
-                hintText: 'Cari nama paket kejutan...',
-                hintStyle: AppColors.body(fontSize: 13, color: _UI.textSoft),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+            child: Row(
+              children: [
+                _buildTabItem('Tayang', StatusProduk.tayang),
+                _buildTabItem('Terjadwal', StatusProduk.terjadwal),
+                _buildTabItem('Habis', StatusProduk.habis),
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: onFilterTap,
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _UI.border),
-            ),
-            child: Icon(Icons.tune_rounded, color: _UI.textSoft, size: 22),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusTabs extends StatelessWidget {
-  final StatusProduk currentTab;
-  final int hitungTayang, hitungTerjadwal, hitungHabis;
-  final ValueChanged<StatusProduk> onTabChanged;
-
-  const _StatusTabs({
-    required this.currentTab,
-    required this.hitungTayang,
-    required this.hitungTerjadwal,
-    required this.hitungHabis,
-    required this.onTabChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _UI.border),
-      ),
-      child: Row(
-        children: [
-          _buildTabItem('Tayang', StatusProduk.tayang, hitungTayang),
-          _buildTabItem('Terjadwal', StatusProduk.terjadwal, hitungTerjadwal),
-          _buildTabItem('Habis', StatusProduk.habis, hitungHabis),
+          const SizedBox(height: 18),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(String label, StatusProduk status, int count) {
-    final isActive = currentTab == status;
+  Widget _buildTabItem(String label, StatusProduk status) {
+    final isActive = _tab == status;
+    final count = _hitung(status);
+
     return Expanded(
       child: GestureDetector(
-        onTap: () => onTabChanged(status),
+        onTap: () => setState(() => _tab = status),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
-            color: isActive ? _UI.primaryBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            color: isActive ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                label,
-                style: AppColors.heading(
-                  fontSize: 12,
-                  color: isActive ? _UI.primaryText : _UI.textSoft,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? _UI.primaryText
-                      : _UI.textSoft.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              Flexible(
                 child: Text(
-                  '$count',
-                  style: AppColors.heading(
-                    fontSize: 10,
-                    color: isActive ? Colors.white : _UI.textSoft,
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppColors.body(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isActive
+                        ? AppColors.textDark
+                        : AppColors.textDark.withValues(alpha: 0.7),
                   ),
                 ),
               ),
+              if (count > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.orange
+                        : Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: AppColors.body(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
-}
 
-class _CategoryFilters extends StatelessWidget {
-  final List<String> categories;
-  final String selectedCategory;
-  final ValueChanged<String> onCategorySelected;
+  Widget _buildKategoriFilter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      color: AppColors.bg,
+      child: SizedBox(
+        height: 40,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: _kategoriList.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, i) {
+            final k = _kategoriList[i];
+            final isActive = k == _kategori;
 
-  const _CategoryFilters({
-    required this.categories,
-    required this.selectedCategory,
-    required this.onCategorySelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final k = categories[i];
-          final isActive = k == selectedCategory;
-          return GestureDetector(
-            onTap: () => onCategorySelected(k),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isActive ? _UI.primaryText : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? _UI.primaryText : _UI.border,
+            return GestureDetector(
+              onTap: () => setState(() => _kategori = k),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isActive ? AppColors.primary : _UI.border,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (i == 0) ...[
+                      Icon(
+                        Icons.grid_view_rounded,
+                        size: 16,
+                        color: isActive ? AppColors.textDark : _UI.textSoft,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      k,
+                      style: AppColors.body(
+                        fontSize: 12.5,
+                        fontWeight:
+                            isActive ? FontWeight.w800 : FontWeight.w600,
+                        color: isActive ? AppColors.textDark : _UI.textSoft,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  if (i == 0) ...[
-                    Icon(
-                      Icons.grid_view_rounded,
-                      size: 14,
-                      color: isActive ? Colors.white : _UI.textSoft,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Text(
-                    k,
-                    style: AppColors.body(
-                      fontSize: 12.5,
-                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                      color: isActive ? Colors.white : _UI.textSoft,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class _ProductCard extends StatelessWidget {
+// --- KARTU PRODUK (OVERFLOW DIPERBAIKI) ---
+class _ProductCardRef extends StatelessWidget {
   final Produk produk;
   final String phoneNumber;
   final Function(Produk, int) onUbahStok;
   final VoidCallback onRefresh;
 
-  const _ProductCard({
+  const _ProductCardRef({
     required this.produk,
     required this.phoneNumber,
     required this.onUbahStok,
@@ -764,7 +448,8 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWarning = produk.cepatHabis;
-    final progressColor = isWarning ? _UI.orangeText : _UI.primaryText;
+    final barColor = isWarning ? AppColors.orange : AppColors.primary;
+    final labelColor = isWarning ? _UI.orangeText : AppColors.textDark;
 
     return GestureDetector(
       onTap: () async {
@@ -775,141 +460,158 @@ class _ProductCard extends StatelessWidget {
                 DetailProdukScreen(produk: produk, phoneNumber: phoneNumber),
           ),
         );
-        if (result == true) {
-          onRefresh();
-        }
+        if (result == true) onRefresh();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _UI.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: SizedBox(
-                        width: 90,
-                        height: 90,
-                        child: produk.gambar != null
-                            ? Image.network(
-                                produk.gambar!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _fotoKosong(),
-                              )
-                            : _fotoKosong(),
-                      ),
-                    ),
-                    if (produk.adaDiskon)
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _UI.orangeText,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '-${produk.diskon}%',
-                            style: AppColors.heading(
-                              fontSize: 10,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    width: 90,
+                    height: 90,
+                    child: produk.gambar != null
+                        ? Image.network(
+                            produk.gambar!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fotoKosong(),
+                          )
+                        : _fotoKosong(),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          _buildBadgeMini(
-                            'Tayang',
-                            _UI.primaryBg,
-                            _UI.primaryText,
-                            true,
-                          ),
-                          const SizedBox(width: 6),
-                          if (isWarning)
-                            _buildBadgeMini(
-                              'Cepat Habis',
-                              _UI.orangeBg,
-                              _UI.orangeText,
-                              false,
-                            )
-                          else
-                            _buildBadgeMini(
-                              produk.kategori,
-                              AppColors.bg,
-                              _UI.textSoft,
-                              false,
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isWarning
+                                      ? AppColors.orange.withValues(alpha: 0.18)
+                                      : AppColors.hijauMuda,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '#${produk.id} • ${produk.kategori}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppColors.body(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: isWarning
+                                        ? _UI.orangeText
+                                        : AppColors.textDark,
+                                  ),
+                                ),
+                              ),
                             ),
+                          ),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: barColor.withValues(alpha: 0.6),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${produk.persen}%',
+                                style: AppColors.heading(
+                                  fontSize: 10,
+                                  color: labelColor,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(
                         produk.nama,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppColors.heading(fontSize: 15),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        produk.deskripsi,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppColors.body(
-                          fontSize: 12,
-                          color: _UI.textSoft,
-                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(
-                            _rp(produk.harga),
-                            style: AppColors.heading(
-                              fontSize: 16,
-                              color: _UI.primaryText,
+                          Flexible(
+                            child: Text(
+                              _rp(produk.harga),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppColors.heading(
+                                  fontSize: 15, color: AppColors.textDark),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           if (produk.adaDiskon)
-                            Text(
-                              _rp(produk.hargaAsli),
-                              style:
-                                  AppColors.body(
-                                    fontSize: 12,
-                                    color: _UI.textSoft,
-                                  ).copyWith(
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
+                            Flexible(
+                              child: Text(
+                                _rp(produk.hargaAsli),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppColors.body(
+                                  fontSize: 11,
+                                  color: _UI.textSoft,
+                                ).copyWith(
+                                    decoration: TextDecoration.lineThrough),
+                              ),
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: _UI.textSoft,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              produk.jamAmbil,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppColors.body(
+                                fontSize: 11,
+                                color: _UI.textSoft,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -929,44 +631,36 @@ class _ProductCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            isWarning
-                                ? Icons.local_fire_department_rounded
-                                : Icons.inventory_2_outlined,
-                            size: 16,
-                            color: progressColor,
+                      Flexible(
+                        child: Text(
+                          'Tersisa ${produk.stok} dari ${produk.kuota}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppColors.body(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: labelColor,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Tersisa ${produk.stok} dari ${produk.kuota} ${produk.satuan.replaceAll('/', '')}',
-                            style: AppColors.body(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: progressColor,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       Text(
                         '${produk.persen}%',
                         style: AppColors.body(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: progressColor,
+                          color: labelColor,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
                       value: produk.rasio.clamp(0.0, 1.0),
                       minHeight: 6,
                       backgroundColor: _UI.textSoft.withValues(alpha: 0.1),
-                      valueColor: AlwaysStoppedAnimation(progressColor),
+                      valueColor: AlwaysStoppedAnimation(barColor),
                     ),
                   ),
                 ],
@@ -976,56 +670,53 @@ class _ProductCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 16,
-                      color: _UI.textSoft,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Ambil: ${produk.jamAmbil}',
-                      style: AppColors.body(
-                        fontSize: 12,
-                        color: _UI.textSoft,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: Text(
+                    produk.deskripsi,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppColors.body(fontSize: 11, color: _UI.textSoft),
+                  ),
                 ),
                 Container(
-                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: _UI.border),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 36),
-                        icon: Icon(
-                          Icons.remove_rounded,
-                          size: 18,
-                          color: _UI.textSoft,
+                      InkWell(
+                        onTap: () => onUbahStok(produk, -1),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.remove_rounded,
+                            size: 16,
+                            color: _UI.textSoft,
+                          ),
                         ),
-                        onPressed: () => onUbahStok(produk, -1),
                       ),
-                      Text(
-                        '${produk.stok} ${produk.satuan.replaceAll('/', '')}',
-                        style: AppColors.heading(fontSize: 13),
-                      ),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 36),
-                        icon: Icon(
-                          Icons.add_rounded,
-                          size: 18,
-                          color: _UI.primaryText,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          '${produk.stok}',
+                          style: AppColors.heading(fontSize: 12),
                         ),
-                        onPressed: () => onUbahStok(produk, 1),
+                      ),
+                      InkWell(
+                        onTap: () => onUbahStok(produk, 1),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: _UI.primaryText,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1034,37 +725,6 @@ class _ProductCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBadgeMini(String text, Color bg, Color fg, bool showDot) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showDot) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            text,
-            style: AppColors.body(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: fg,
-            ),
-          ),
-        ],
       ),
     );
   }

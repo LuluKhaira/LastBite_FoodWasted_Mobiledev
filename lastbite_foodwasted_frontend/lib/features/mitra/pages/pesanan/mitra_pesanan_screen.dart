@@ -14,6 +14,18 @@ import 'mitra_pesanan_detail_screen.dart';
 import 'pesanan_ui.dart';
 import 'widgets/order_status_tracker.dart';
 
+class _UI {
+  static Color get primary => AppColors.primary;
+  static Color get orange => AppColors.orange;
+  static Color get primaryText => AppColors.zaitun;
+  static Color get orangeText =>
+      HSLColor.fromColor(AppColors.orange).withLightness(0.35).toColor();
+  static Color get primaryBg => AppColors.hijauMuda;
+  static Color get orangeBg => AppColors.orange.withValues(alpha: 0.1);
+  static Color get textSoft => const Color(0xFF6B6B6B);
+  static Color get border => AppColors.textSoft.withValues(alpha: 0.15);
+}
+
 class MitraPesananScreen extends StatefulWidget {
   final String phoneNumber;
   final int initialTab;
@@ -31,7 +43,6 @@ class MitraPesananScreen extends StatefulWidget {
 }
 
 class _MitraPesananScreenState extends State<MitraPesananScreen> {
-  // Index item "Pesanan" di MitraBottomNav.
   static const int _navIndexPesanan = 3;
 
   final List<String> _tabLabels = ['Semua', 'Baru', 'Siap Diambil', 'Selesai'];
@@ -43,7 +54,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
 
   int _jmlBaru = 0;
   int _jmlSiap = 0;
-  String? _sedangProses; // kode pesanan yang sedang dikirim aksinya
+  String? _sedangProses;
 
   String get _namaToko => widget.namaToko;
   int get _pesananAktif => _jmlBaru + _jmlSiap;
@@ -99,7 +110,6 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     }
   }
 
-  // Hitung jumlah per fase untuk badge tab & bottom nav.
   Future<void> _muatBadge() async {
     final res = await ApiService.getMitraPesanan(
       widget.phoneNumber,
@@ -123,7 +133,6 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     await Future.wait([_muatData(diam: true), _muatBadge()]);
   }
 
-  // POST /mitra/pesanan/{kode}/{aksi}  (aksi: siap | tolak)
   Future<void> _kirimAksi(String kode, String aksi) async {
     final r = await http
         .post(
@@ -141,12 +150,13 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     String msg = 'Terjadi kesalahan (${r.statusCode})';
     try {
       final body = jsonDecode(r.body);
-      if (body is Map && body['message'] != null) msg = body['message'].toString();
+      if (body is Map && body['message'] != null) {
+        msg = body['message'].toString();
+      }
     } catch (_) {}
     throw Exception(msg);
   }
 
-  /// Dipakai kartu dan layar detail. Mengembalikan true kalau berhasil.
   Future<bool> _aksi(String kode, String aksi) async {
     setState(() => _sedangProses = kode);
     try {
@@ -201,38 +211,43 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(msg, style: AppColors.body(color: Colors.white)),
-          backgroundColor: error ? AppColors.merah : AppColors.hijauTua,
+          backgroundColor: error ? AppColors.merah : AppColors.textDark,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
   }
 
-  // ───────────────────────── BUILD ─────────────────────────
+  String _formatRupiah(dynamic value) {
+    final v = int.tryParse('$value') ?? 0;
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return 'Rp $buf';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        automaticallyImplyLeading: false, // tombol back dihapus
-        centerTitle: false,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        title: Text('Pesanan Masuk', style: AppColors.heading(fontSize: 18)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            onPressed: _refreshSemua,
-          ),
-        ],
-      ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            _buildTabBar(),
-            Expanded(child: _buildIsi()),
+            // HEADER DENGAN TAB (tanpa panah back)
+            _buildHeaderTabs(),
+
+            // LIST PESANAN
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refreshSemua,
+                color: _UI.primaryText,
+                child: _buildIsi(),
+              ),
+            ),
           ],
         ),
       ),
@@ -241,7 +256,8 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         onDashboard: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => MitraDashboardScreen(phoneNumber: widget.phoneNumber),
+            builder: (_) =>
+                MitraDashboardScreen(phoneNumber: widget.phoneNumber),
           ),
         ),
         onProduk: () => Navigator.pushReplacement(
@@ -254,7 +270,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
           ),
         ),
         onScan: () => _scan(null),
-        onPesanan: () {}, // sudah di halaman ini
+        onPesanan: () {},
         onProfil: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -266,70 +282,116 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     );
   }
 
-  // Tab ala Shopee: teks + garis bawah.
-  Widget _buildTabBar() {
-    final counts = [0, _jmlBaru, _jmlSiap, 0];
+  // --- HEADER: blok hijau segar (primary) + tab pill ---
+  Widget _buildHeaderTabs() {
     return Container(
-      color: Colors.white,
-      child: Row(
-        children: List.generate(_tabLabels.length, (i) {
-          final sel = _tab == i;
-          return Expanded(
-            child: InkWell(
-              onTap: () {
-                if (_tab != i) {
-                  setState(() => _tab = i);
-                  _muatData();
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.only(top: 14, bottom: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: sel ? AppColors.orange : Colors.transparent,
-                      width: 3,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _tabLabels[i],
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                          color: sel ? AppColors.orange : AppColors.textSoft,
-                        ),
-                      ),
-                    ),
-                    if (counts[i] > 0) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${counts[i]}',
-                          style: GoogleFonts.nunito(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+      padding: const EdgeInsets.only(top: 20, bottom: 0),
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: Text(
+                'Pesanan Masuk',
+                style: AppColors.heading(fontSize: 18, color: AppColors.textDark),
               ),
             ),
-          );
-        }),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: List.generate(_tabLabels.length, (i) {
+                final isActive = _tab == i;
+                final count = i == 1
+                    ? _jmlBaru
+                    : i == 2
+                        ? _jmlSiap
+                        : 0;
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                                      if (_tab != i) {
+                                        setState(() => _tab = i);
+                                        _muatData();
+                                      }
+                                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: isActive ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _tabLabels[i],
+                              overflow: TextOverflow.ellipsis,
+                              style: AppColors.body(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: isActive
+                                    ? AppColors.textDark
+                                    : AppColors.textDark.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                          if (count > 0) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? AppColors.orange
+                                    : Colors.white.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: AppColors.body(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
       ),
     );
   }
@@ -341,35 +403,35 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _refreshSemua,
-      color: AppColors.primary,
-      child: _data.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                Icon(Icons.receipt_long_outlined,
-                    size: 56, color: AppColors.textSoft.withValues(alpha: 0.5)),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    'Belum ada pesanan',
-                    style: AppColors.body(fontSize: 15, color: AppColors.textSoft),
+    return _data.isEmpty
+        ? ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 56,
+                color: AppColors.textSoft.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  'Belum ada pesanan',
+                  style: AppColors.body(
+                    fontSize: 15,
+                    color: AppColors.textSoft,
                   ),
                 ),
-              ],
-            )
-          : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-              itemCount: _data.length,
-              itemBuilder: (_, i) => _buildKartuPesanan(_data[i]),
-            ),
-    );
+              ),
+            ],
+          )
+        : ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+            itemCount: _data.length,
+            itemBuilder: (_, i) => _buildKartuPesanan(_data[i]),
+          );
   }
-
-  // ───────────────────────── KARTU ─────────────────────────
 
   Widget _buildKartuPesanan(Map<String, dynamic> p) {
     final kode = (p['kode'] ?? '').toString();
@@ -379,113 +441,143 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     final fase = faseDari(p);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _UI.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => _bukaDetail(p),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Pembeli + status
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$pembeli • #$kode',
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
-                        ),
-                      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Baris Atas: ID & Status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '#$kode',
+                    style: AppColors.body(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _UI.textSoft,
                     ),
-                    Text(
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: fase.warna.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
                       fase.label,
-                      style: GoogleFonts.nunito(
-                        fontSize: 12.5,
+                      style: AppColors.body(
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: fase.warna,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Isi pesanan
-                Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.takeout_dining_rounded,
-                          color: AppColors.hijauTua, size: 26),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            produk,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppColors.body(
-                                fontSize: 15, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            '$qty porsi • ${rp(p['total'] ?? 0)}',
-                            style: AppColors.body(
-                                fontSize: 13, color: AppColors.textSoft),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSoft),
-                  ],
-                ),
-
-                // Garis proses dengan ikon
-                if (fase != PesananFase.batal && fase != PesananFase.bayar) ...[
-                  const SizedBox(height: 18),
-                  OrderStatusTracker(fase: fase),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
 
-                ..._buildAksi(p, fase, kode),
+              // Isi Pesanan
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: _UI.primaryBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.takeout_dining_rounded,
+                      color: AppColors.textDark,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          produk,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppColors.heading(fontSize: 15),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$qty porsi • ${_formatRupiah(p['total'] ?? 0)}',
+                          style: AppColors.body(
+                            fontSize: 12,
+                            color: _UI.textSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: _UI.textSoft,
+                  ),
+                ],
+              ),
+
+              // Pembeli
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 14, color: _UI.textSoft),
+                  const SizedBox(width: 6),
+                  Text(
+                    pembeli,
+                    style: AppColors.body(fontSize: 12, color: _UI.textSoft),
+                  ),
+                ],
+              ),
+
+              // Status Tracker
+              if (fase != PesananFase.batal && fase != PesananFase.bayar) ...[
+                const SizedBox(height: 18),
+                OrderStatusTracker(fase: fase),
               ],
-            ),
+
+              // Tombol Aksi
+              ..._buildAksi(p, fase, kode),
+            ],
           ),
         ),
       ),
     );
   }
 
-  List<Widget> _buildAksi(Map<String, dynamic> p, PesananFase fase, String kode) {
+  List<Widget> _buildAksi(
+    Map<String, dynamic> p,
+    PesananFase fase,
+    String kode,
+  ) {
     final loading = _sedangProses == kode;
 
     if (fase == PesananFase.baru) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -495,15 +587,21 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                 child: OutlinedButton(
                   onPressed: loading ? null : () => _tolakDariKartu(kode),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppColors.merah.withValues(alpha: 0.6)),
+                    side: BorderSide(
+                      color: AppColors.merah.withValues(alpha: 0.6),
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                  child: Text('Tolak',
-                      style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.merah)),
+                  child: Text(
+                    'Tolak',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.merah,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -515,22 +613,29 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                 child: ElevatedButton(
                   onPressed: loading ? null : () => _aksi(kode, 'siap'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.orange,
+                    backgroundColor: AppColors.primary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: loading
                       ? const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text('Tandai Siap',
+                            color: AppColors.textDark,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Tandai Siap',
                           style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white)),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -541,24 +646,31 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
 
     if (fase == PesananFase.siap) {
       return [
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           height: 52,
           child: ElevatedButton.icon(
             onPressed: () => _scan(p),
-            icon: const Icon(Icons.qr_code_scanner_rounded,
-                color: Colors.white, size: 24),
-            label: Text('Scan QR Pengambilan',
-                style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
+            icon: const Icon(
+              Icons.qr_code_scanner_rounded,
+              color: AppColors.textDark,
+              size: 24,
+            ),
+            label: Text(
+              'Scan QR Pengambilan',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.orange,
+              backgroundColor: AppColors.primary,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ),
@@ -566,11 +678,14 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         Center(
           child: TextButton(
             onPressed: () => _scan(p, manual: true),
-            child: Text('Atau masukkan kode manual',
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.hijauTua)),
+            child: Text(
+              'Atau masukkan kode manual',
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textDark,
+              ),
+            ),
           ),
         ),
       ];

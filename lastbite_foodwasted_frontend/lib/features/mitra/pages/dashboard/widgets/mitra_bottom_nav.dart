@@ -89,51 +89,47 @@ class MitraBottomNav extends StatelessWidget {
     final aktif = currentIndex == index;
     final warna = aktif ? AppColors.textDark : AppColors.textSoft;
     return Expanded(
-      // Ini bagian pentingnya: InkWell harus dibungkus Material
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, color: warna, size: 26),
-                  if (badge > 0)
-                    Positioned(
-                      right: -8,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '$badge',
-                          style: AppColors.body(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textDark,
-                          ),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: warna, size: 26),
+                if (badge > 0)
+                  Positioned(
+                    right: -8,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$badge',
+                        style: AppColors.body(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
                         ),
                       ),
                     ),
-                ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: AppColors.body(
+                fontSize: 11.5,
+                fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
+                color: warna,
               ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: AppColors.body(
-                  fontSize: 11.5,
-                  fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
-                  color: warna,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
