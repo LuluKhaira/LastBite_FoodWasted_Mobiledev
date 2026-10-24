@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,7 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/mit
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/widgets/mitra_bottom_nav.dart';
+
 import 'mitra_pesanan_detail_screen.dart';
 import 'pesanan_ui.dart';
 import 'widgets/order_status_tracker.dart';
@@ -213,7 +215,9 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
           content: Text(msg, style: AppColors.body(color: Colors.white)),
           backgroundColor: error ? AppColors.merah : AppColors.textDark,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
   }
@@ -237,7 +241,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         bottom: false,
         child: Column(
           children: [
-            // HEADER DENGAN TAB (tanpa panah back)
+            // HEADER DENGAN TAB
             _buildHeaderTabs(),
 
             // LIST PESANAN
@@ -300,7 +304,10 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
             child: Center(
               child: Text(
                 'Pesanan Masuk',
-                style: AppColors.heading(fontSize: 18, color: AppColors.textDark),
+                style: AppColors.heading(
+                  fontSize: 18,
+                  color: AppColors.textDark,
+                ),
               ),
             ),
           ),
@@ -318,17 +325,17 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                 final count = i == 1
                     ? _jmlBaru
                     : i == 2
-                        ? _jmlSiap
-                        : 0;
+                    ? _jmlSiap
+                    : 0;
 
                 return Expanded(
                   child: GestureDetector(
                     onTap: () {
-                                      if (_tab != i) {
-                                        setState(() => _tab = i);
-                                        _muatData();
-                                      }
-                                    },
+                      if (_tab != i) {
+                        setState(() => _tab = i);
+                        _muatData();
+                      }
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 9),
@@ -364,8 +371,10 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                           if (count > 0) ...[
                             const SizedBox(width: 4),
                             Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: isActive
                                     ? AppColors.orange
@@ -476,8 +485,10 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: fase.warna.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
@@ -533,10 +544,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                       ],
                     ),
                   ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: _UI.textSoft,
-                  ),
+                  Icon(Icons.chevron_right_rounded, color: _UI.textSoft),
                 ],
               ),
 
@@ -553,7 +561,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                 ],
               ),
 
-              // Status Tracker
+              // Status tracker pesanan
               if (fase != PesananFase.batal && fase != PesananFase.bayar) ...[
                 const SizedBox(height: 18),
                 OrderStatusTracker(fase: fase),
@@ -568,6 +576,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
     );
   }
 
+  // ───────────────────────── TATA LETAK TOMBOL BARU (CLEAN) ─────────────────────────
   List<Widget> _buildAksi(
     Map<String, dynamic> p,
     PesananFase fase,
@@ -580,6 +589,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
+            // Tombol Tolak (Outline / Clean)
             Expanded(
               flex: 2,
               child: SizedBox(
@@ -588,24 +598,27 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                   onPressed: loading ? null : () => _tolakDariKartu(kode),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
-                      color: AppColors.merah.withValues(alpha: 0.6),
+                      color: Colors.grey.shade300, // Abu-abu halus
+                      width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    backgroundColor: Colors.white,
                   ),
                   child: Text(
                     'Tolak',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.merah,
+                      color: _UI.textSoft,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
+            // Tombol Tandai Siap (Solid Hijau / Clean)
             Expanded(
               flex: 3,
               child: SizedBox(
@@ -616,7 +629,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                     backgroundColor: AppColors.primary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: loading
@@ -624,7 +637,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                            color: AppColors.textDark,
+                            color: Colors.white,
                             strokeWidth: 2,
                           ),
                         )
@@ -633,7 +646,7 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
+                            color: Colors.white, // Teks Putih
                           ),
                         ),
                 ),
@@ -646,47 +659,59 @@ class _MitraPesananScreenState extends State<MitraPesananScreen> {
 
     if (fase == PesananFase.siap) {
       return [
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: () => _scan(p),
-            icon: const Icon(
-              Icons.qr_code_scanner_rounded,
-              color: AppColors.textDark,
-              size: 24,
-            ),
-            label: Text(
-              'Scan QR Pengambilan',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            // Tombol kode manual di sebelah kiri
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () => _scan(p, manual: true),
+                  icon: const Icon(Icons.keyboard_alt_outlined, size: 19),
+                  label: Text(
+                    'Kode Manual',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.55),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+            const SizedBox(width: 10),
+            // Tombol QR berbentuk ikon di sebelah kanan
+            SizedBox(
+              width: 50,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => _scan(p),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  size: 23,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Center(
-          child: TextButton(
-            onPressed: () => _scan(p, manual: true),
-            child: Text(
-              'Atau masukkan kode manual',
-              style: GoogleFonts.nunito(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-              ),
-            ),
-          ),
+          ],
         ),
       ];
     }

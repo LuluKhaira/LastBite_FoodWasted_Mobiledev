@@ -39,7 +39,7 @@
                 <label class="block text-sm font-bold text-[#2F5D34] mb-2">Biaya Layanan Platform (Rp)</label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#4E7554]">Rp</span>
-                    <input type="number" name="biaya_layanan" value="{{ $aturan->biaya_layanan ?? 1000 }}" min="0" step="500"
+                    <input type="number" name="biaya_layanan" value="{{ $aturan->biaya_layanan ?? 2000 }}" min="0" step="500"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-12 pr-4 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                 </div>
             </div>

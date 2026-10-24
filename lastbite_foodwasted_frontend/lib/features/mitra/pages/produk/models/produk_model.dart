@@ -1,10 +1,13 @@
+
+import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
+
 enum StatusProduk { tayang, terjadwal, habis }
 
 class Produk {
   final int id;
   final String nama;
   final String deskripsi;
-  final String tipe; 
+  final String tipe;
   final String kategori;
   final String? gambar;
   final int harga;
@@ -38,31 +41,61 @@ class Produk {
   factory Produk.fromJson(Map<String, dynamic> j) {
     int i(dynamic v) => int.tryParse('$v') ?? 0;
     double d(dynamic v) => double.tryParse('$v') ?? 0.0;
-    
-    // =======================================================================
-    // PERHATIKAN BAGIAN INI:
-    // - Kalau pakai Emulator Android, gunakan: http://10.0.2.2:8000
-    // - Kalau pakai HP Fisik, gunakan IP Laptopmu (Cek di CMD -> ipconfig -> IPv4)
-    //   Contoh: http://192.168.1.15:8000
-    // =======================================================================
-    const String baseUrlImage = 'http://10.0.2.2:8000'; // <--- GANTI DI SINI KALAU PERLU
-    
+
+    // Mengambil alamat server dari konfigurasi API.
+    // Contoh HP fisik: http://192.168.1.203:8000
+    final String baseUrlImage = ApiConfig.baseUrl.replaceFirst(
+      RegExp(r'/api/?$'),
+      '',
+    );
+
+    // Menggunakan gambar atau image_url dari respons API.
+    final dynamic nilaiGambar = j['gambar'] ?? j['image_url'];
+    final String rawImage = nilaiGambar?.toString().trim() ?? '';
+
     String? imgUrl;
-    if ((j['gambar'] != null && j['gambar'].toString().isNotEmpty) || (j['image_url'] != null && j['image_url'].toString().isNotEmpty)) {
-      final String gambarPath = j['gambar'].toString();
-      
-      if (gambarPath.startsWith('http')) {
-        imgUrl = gambarPath; // Jika dari DB sudah full URL
+
+    if (rawImage.isNotEmpty && rawImage != 'null') {
+      final uri = Uri.tryParse(rawImage);
+
+      if (uri != null && uri.hasScheme && uri.hasAuthority) {
+        // URL dari Laravel mungkin masih memakai localhost,
+        // 127.0.0.1, atau alamat emulator 10.0.2.2.
+        if (uri.host == '127.0.0.1' ||
+            uri.host == 'localhost' ||
+            uri.host == '10.0.2.2') {
+          final apiUri = Uri.parse(baseUrlImage);
+
+          imgUrl = uri.replace(
+            scheme: apiUri.scheme,
+            host: apiUri.host,
+            port: apiUri.port,
+          ).toString();
+        } else {
+          // Jika URL sudah memakai host yang benar, gunakan langsung.
+          imgUrl = rawImage;
+        }
       } else {
-        // Gabungkan Base URL + storage + nama file
-        imgUrl = '$baseUrlImage/storage/$gambarPath';
+        // Jika API hanya mengirim nama atau path gambar.
+        String path = rawImage;
+
+        if (path.startsWith('/')) {
+          path = path.substring(1);
+        }
+
+        if (!path.startsWith('storage/')) {
+          path = 'storage/$path';
+        }
+
+        imgUrl = '$baseUrlImage/$path';
       }
     }
 
     return Produk(
       id: i(j['id']),
       nama: '${j['nama'] ?? '-'}',
-      deskripsi: '${j['deskripsi'] ?? 'Kombinasi produk surplus berkualitas'}',
+      deskripsi:
+          '${j['deskripsi'] ?? 'Kombinasi produk surplus berkualitas'}',
       tipe: '${j['tipe'] ?? 'dimakan'}',
       kategori: '${j['kategori'] ?? 'Umum'}',
       gambar: imgUrl,
@@ -81,13 +114,20 @@ class Produk {
   StatusProduk get statusUI {
     if (!aktif) return StatusProduk.habis;
     if (stok == 0) return StatusProduk.habis;
-    return StatusProduk.tayang; 
+    return StatusProduk.tayang;
   }
 
   bool get adaDiskon => hargaAsli > harga && hargaAsli > 0;
-  int get diskon => adaDiskon ? ((1 - harga / hargaAsli) * 100).round() : 0;
+
+  int get diskon =>
+      adaDiskon ? ((1 - harga / hargaAsli) * 100).round() : 0;
+
   double get rasio => kuota == 0 ? 0 : stok / kuota;
+
   int get persen => (rasio * 100).toInt();
-  bool get cepatHabis => statusUI == StatusProduk.tayang && rasio <= 0.3;
+
+  bool get cepatHabis =>
+      statusUI == StatusProduk.tayang && rasio <= 0.3;
+
   String get jamAmbil => '$waktuMulai - $waktuSelesai';
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -6,18 +7,37 @@ use Illuminate\Database\Eloquent\Model;
 class Produk extends Model
 {
     protected $guarded = [];
-    protected $casts = ['aktif' => 'boolean', 'rating' => 'float', 'berat_kg' => 'float'];
 
-    public function mitra() { return $this->belongsTo(Mitra::class, 'id_mitra', 'id_mitra'); }
+    protected $casts = [
+        'aktif' => 'boolean',
+        'rating' => 'float',
+        'berat_kg' => 'float',
+    ];
+
+    public function mitra()
+    {
+        return $this->belongsTo(Mitra::class, 'id_mitra', 'id_mitra');
+    }
 
     /** Bentuk JSON yang cocok dengan field BahanItem di Flutter. */
     public function toApi(?float $lat = null, ?float $lng = null): array
     {
         $m = $this->mitra;
         $jarak = null;
+
         if ($lat !== null && $lng !== null && $m?->latitude && $m?->longitude) {
-            $jarak = round(self::haversine($lat, $lng, (float) $m->latitude, (float) $m->longitude), 1);
+            $jarak = round(
+                self::haversine($lat, $lng, (float) $m->latitude, (float) $m->longitude),
+                1
+            );
         }
+
+        // Database menyimpan path relatif, misalnya: produk/nama-file.jpg.
+        // Ubah menjadi URL publik agar Flutter bisa memuat gambar.
+        $gambarUrl = $this->gambar
+            ? url('storage/' . ltrim($this->gambar, '/'))
+            : null;
+
         return [
             'id'         => $this->id,
             'nama'       => $this->nama,
@@ -27,7 +47,8 @@ class Produk extends Model
             'alamat'     => $m?->alamat,
             'tipe'       => $this->tipe,
             'kategori'   => $this->kategori,
-            'gambar'     => $this->gambar,
+            'gambar'     => $gambarUrl,
+            'image_url'  => $gambarUrl,
             'tag'        => $this->tag,
             'harga'      => $this->harga,
             'harga_asli' => $this->harga_asli,
@@ -47,8 +68,9 @@ class Produk extends Model
         $r = 6371;
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
         return 2 * $r * asin(sqrt($a));
     }
-    
 }

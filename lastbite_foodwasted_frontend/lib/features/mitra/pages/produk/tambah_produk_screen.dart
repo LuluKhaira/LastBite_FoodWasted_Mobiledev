@@ -6,7 +6,6 @@ import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 
 import 'models/surplus_draft.dart';
-import 'widgets/top_toggle_widget.dart';
 import 'widgets/target_kategori_card.dart';
 import 'widgets/foto_informasi_card.dart';
 import 'widgets/harga_card.dart';
@@ -202,11 +201,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(
                   children: [
-                    TopToggleWidget(
-                      current: _tipe,
-                      onChanged: (val) => setState(() => _tipe = val),
-                    ),
-                    const SizedBox(height: 16),
                     TargetKategoriCard(
                       target: _target,
                       kategori: _kategori,

@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class PesananController extends Controller
 {
-    private const BIAYA_LAYANAN = 1000;     // sama dengan _fee di detail_paket.dart
+    private const BIAYA_LAYANAN = 2000;     // sama dengan _fee di detail_paket.dart
     private const KG_PER_PAKET  = 0.4;      // estimasi bila produk tidak punya berat_kg
     private const CO2_PER_KG    = 2.5;      // estimasi kg CO2e per kg makanan (angka kasar)
 
