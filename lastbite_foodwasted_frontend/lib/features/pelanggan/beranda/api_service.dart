@@ -5,6 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/api_config.dart';
 
+/// Dilempar saat server membalas 401 di endpoint yang butuh login
+/// (belum login / token sudah tidak valid). Layar bisa menangkapnya
+/// untuk menampilkan ajakan masuk, bukan pesan error biasa.
+class BelumLoginException implements Exception {
+  @override
+  String toString() => 'Silakan masuk untuk melanjutkan.';
+}
+
 class ApiService {
   /// Diambil dari ApiConfig (mendukung HP asli lewat LAN IP 192.168.1.203 atau Emulator 10.0.2.2)
   static String get baseUrl => ApiConfig.baseUrl;
@@ -27,6 +35,17 @@ class ApiService {
     debugPrint('HTTP [${r.statusCode}] ${r.request?.url}: ${r.body}');
     final body = r.body.isEmpty ? {} : jsonDecode(r.body);
     if (r.statusCode >= 200 && r.statusCode < 300) return body;
+
+    // 401 di endpoint yang butuh login -> token hilang/tidak valid.
+    // Endpoint login/daftar dikecualikan agar "sandi salah" tetap tampil normal.
+    final path = r.request?.url.path ?? '';
+    final endpointAuth = path.endsWith('/login') ||
+        path.endsWith('/register') ||
+        path.contains('/auth/');
+    if (r.statusCode == 401 && !endpointAuth) {
+      SharedPreferences.getInstance().then((p) => p.remove('token'));
+      throw BelumLoginException();
+    }
 
     var msg = 'Terjadi kesalahan (${r.statusCode})';
     if (body is Map) {

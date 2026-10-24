@@ -33,7 +33,7 @@ class EmailOtpController extends Controller
         try {
             Mail::raw(
                 "Kode OTP LastBite kamu: $kode\n\nBerlaku 5 menit. Jangan bagikan kode ini ke siapa pun.",
-                fn ($m) => $m->to($email)->subject('Kode OTP LastBite')
+                fn ($m) => $m->to($email)->subject  ('Kode OTP LastBite')
             );
         } catch (\Throwable $e) {
             report($e);
