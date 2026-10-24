@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import '../beranda/api_service.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import '../beranda/halaman_beranda.dart';
 import '../widgets/auth_widgets.dart';
 

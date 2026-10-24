@@ -52,7 +52,7 @@ class ApiService {
   static Future<bool> verifyOtp(String phoneNumber, String otp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/mitra/verify-otp'),
+        Uri.parse('$baseUrl/mitra/verify-otp'), // Pastikan ini tujuannya
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'phone': phoneNumber, 'otp': otp}),
       );
@@ -302,10 +302,18 @@ class ApiService {
           'data': List<Map<String, dynamic>>.from(data['data'] ?? []),
         };
       }
-      return {'ok': false, 'message': _pesanError(response), 'data': <Map<String, dynamic>>[]};
+      return {
+        'ok': false,
+        'message': _pesanError(response),
+        'data': <Map<String, dynamic>>[],
+      };
     } catch (e) {
       debugPrint('Error getMitraPesanan: $e');
-      return {'ok': false, 'message': 'Gagal terhubung ke server.', 'data': <Map<String, dynamic>>[]};
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server.',
+        'data': <Map<String, dynamic>>[],
+      };
     }
   }
 
@@ -371,7 +379,10 @@ class ApiService {
       return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
     } catch (e) {
       debugPrint('Error verifikasiPengambilan: $e');
-      return {'ok': false, 'message': 'Gagal verifikasi pengambilan ke server.'};
+      return {
+        'ok': false,
+        'message': 'Gagal verifikasi pengambilan ke server.',
+      };
     }
   }
 
@@ -391,7 +402,10 @@ class ApiService {
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        return {'ok': true, 'message': data['message'] ?? 'Pesanan berhasil ditolak.'};
+        return {
+          'ok': true,
+          'message': data['message'] ?? 'Pesanan berhasil ditolak.',
+        };
       }
       return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
     } catch (e) {
@@ -575,17 +589,23 @@ class ApiService {
       return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
     }
   }
+
   // ---------- LOGIN MITRA / PELANGGAN ----------
-  static Future<Map<String, dynamic>> loginMitra(String id, String password) async {
+  static Future<Map<String, dynamic>> loginMitra(
+    String id,
+    String password,
+  ) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login-mitra'),
+        Uri.parse(
+          '$baseUrl/login-mitra',
+        ), // Pastikan URL sesuai endpoint route Laravel (/login-mitra)
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'login': id, // Bisa berupa email atau nomor HP sesuai input form
+          'identifier': id, // Diubah dari 'login' menjadi 'identifier' sesuai validasi Laravel
           'password': password,
         }),
       );
@@ -598,16 +618,117 @@ class ApiService {
           'message': data['message'] ?? 'Login berhasil',
         };
       }
-      return {
-        'ok': false,
-        'message': data['message'] ?? _pesanError(response),
-      };
+      return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
     } catch (e) {
       debugPrint('Error loginMitra: $e');
       return {
         'ok': false,
         'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
       };
+    }
+  }
+
+  // ---------- REGISTER / PENDAFTARAN AKUN ----------
+  static Future<Map<String, dynamic>> register({
+    required String name,
+    required String identifier,
+    required String password,
+  }) async {
+    try {
+      final isEmail = identifier.contains('@');
+
+      // Jika user menginput HP, buatkan format email sementara agar pass validasi Laravel
+      final String emailValue = isEmail
+          ? identifier
+          : '${identifier.replaceAll(RegExp(r'\D'), '')}@lastbite.com';
+      final String phoneValue = isEmail ? '' : identifier;
+
+      final bodyData = {
+        'name': name,
+        'email': emailValue, // Memastikan field 'email' selalu terisi
+        'phone': phoneValue,
+        'password': password,
+        'password_confirmation': password,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(bodyData),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'ok': true,
+          'data': data,
+          'message': data['message'] ?? 'Pendaftaran berhasil',
+        };
+      }
+      return {'ok': false, 'message': data['message'] ?? _pesanError(response)};
+    } catch (e) {
+      debugPrint('Error register: $e');
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
+      };
+    }
+  }
+
+  // ---------- VERIFIKASI OTP (MITRA / PELANGGAN) ----------
+  static Future<bool> verifikasiOtp(
+    String phoneNumber,
+    String otp,
+    String purpose,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/mitra/verify-otp',
+        ), // Mengarah ke endpoint verifikasi OTP mitra yang benar
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'otp': otp,
+          'purpose': purpose,
+        }),
+      );
+
+      debugPrint('<-- [${response.statusCode}] verify-otp: ${response.body}');
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error verifikasiOtp: $e');
+      return false;
+    }
+  }
+
+  // ---------- KIRIM ULANG OTP ----------
+  static Future<bool> kirimUlangOtp(String phoneNumber, String purpose) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/mitra/register-phone',
+        ), // Memicu ulang pengiriman OTP via WhatsApp
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'purpose': purpose}),
+      );
+
+      debugPrint(
+        '<-- [${response.statusCode}] kirimUlangOtp: ${response.body}',
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error kirimUlangOtp: $e');
+      return false;
     }
   }
 }

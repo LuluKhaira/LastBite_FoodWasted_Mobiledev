@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
+
 import 'widgets/auth_ui.dart';
 import 'masuk_screen.dart';
+
+// Import layar OTP
+import '../pelanggan/daftar/verifikasi_email_otp.dart';
+import '../pelanggan/daftar/verifikasi_otp.dart';
 
 class DaftarScreen extends StatefulWidget {
   const DaftarScreen({super.key});
@@ -39,12 +45,53 @@ class _DaftarScreenState extends State<DaftarScreen> {
     }
     setState(() => _loading = true);
 
-    // TODO: panggil API pendaftaran, lalu arahkan ke verifikasi / beranda.
-    await Future.delayed(const Duration(milliseconds: 800));
+    final inputId = _id.text.trim();
+    final isEmail = inputId.contains('@');
 
-    if (!mounted) return;
-    setState(() => _loading = false);
-    authSnack(context, 'Form valid. Sambungkan ke API daftar di _daftar().');
+    if (isEmail) {
+      // Pendaftaran menggunakan Email
+      final result = await ApiService.register(
+        name: _nama.text.trim(),
+        identifier: inputId,
+        password: _sandi.text.trim(),
+      );
+
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      if (result['ok']) {
+        authSnack(context, result['message']);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => EmailOtpScreen(email: inputId)),
+        );
+      } else {
+        authSnack(context, result['message'], error: true);
+      }
+    } else {
+      // Pendaftaran menggunakan Nomor HP (Fonnte / WhatsApp OTP)
+      final success = await ApiService.registerWhatsApp(inputId);
+
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      if (success) {
+        authSnack(context, 'Kode OTP berhasil dikirim via WhatsApp.');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                OtpVerificationScreen(phone: inputId, purpose: 'register'),
+          ),
+        );
+      } else {
+        authSnack(
+          context,
+          ApiService.lastErrorMessage ?? 'Gagal mengirim OTP.',
+          error: true,
+        );
+      }
+    }
   }
 
   @override
