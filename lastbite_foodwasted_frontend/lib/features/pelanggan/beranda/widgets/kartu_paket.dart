@@ -4,7 +4,8 @@ import '../model_bahan.dart';
 import 'gambar_jaringan.dart';
 
 /// Kartu produk di daftar beranda.
-class BahanCard extends StatefulWidget {
+/// (Favorit disimpan dari halaman Detail Paket, bukan dari kartu ini.)
+class BahanCard extends StatelessWidget {
   final BahanItem item;
   final int index;
   final VoidCallback? onTap;
@@ -17,19 +18,12 @@ class BahanCard extends StatefulWidget {
   });
 
   @override
-  State<BahanCard> createState() => _BahanCardState();
-}
-
-class _BahanCardState extends State<BahanCard> {
-  bool _fav = false;
-
-  @override
   Widget build(BuildContext context) {
-    final it = widget.item;
-    final logoColor = widget.index.isEven ? LbColors.sageDeep : LbColors.peach;
+    final it = item;
+    final logoColor = index.isEven ? LbColors.sageDeep : LbColors.peach;
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -198,7 +192,8 @@ class _BahanCardState extends State<BahanCard> {
                             fit: BoxFit.scaleDown,
                             child: Text(
                               it.harga,
-                              style: LbText.heading(19, weight: FontWeight.w700),
+                              style:
+                                  LbText.heading(19, weight: FontWeight.w700),
                             ),
                           ),
                         ),
@@ -220,28 +215,6 @@ class _BahanCardState extends State<BahanCard> {
                               color: it.gratis
                                   ? LbColors.sageDeep
                                   : LbColors.peachDeep,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => setState(() => _fav = !_fav),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              transitionBuilder: (child, anim) =>
-                                  ScaleTransition(scale: anim, child: child),
-                              child: Icon(
-                                _fav
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                key: ValueKey(_fav),
-                                size: 25,
-                                color:
-                                    _fav ? LbColors.peach : LbColors.textGrey,
-                              ),
                             ),
                           ),
                         ),

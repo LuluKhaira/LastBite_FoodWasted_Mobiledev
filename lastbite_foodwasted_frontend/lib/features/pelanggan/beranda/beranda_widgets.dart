@@ -882,7 +882,7 @@ class BahanCard extends StatefulWidget {
 }
 
 class _BahanCardState extends State<BahanCard> {
-  bool _fav = false;
+  
 
   @override
   Widget build(BuildContext context) {
@@ -1127,29 +1127,6 @@ class _BahanCardState extends State<BahanCard> {
                               color: it.gratis
                                   ? LbColors.sageDeep
                                   : LbColors.peachDeep,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => setState(() => _fav = !_fav),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              transitionBuilder: (child, anim) =>
-                                  ScaleTransition(scale: anim, child: child),
-                              child: Icon(
-                                _fav
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                key: ValueKey(_fav),
-                                size: 25,
-                                color: _fav
-                                    ? LbColors.peach
-                                    : LbColors.textGrey,
-                              ),
                             ),
                           ),
                         ),
