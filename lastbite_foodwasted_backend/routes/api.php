@@ -139,5 +139,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // pembayaran via Midtrans
     Route::post('/pesanan/{kode}/bayar', [PembayaranController::class, 'buat']);
     Route::get('/pesanan/{kode}/cek-bayar', [PembayaranController::class, 'cek']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/akun/email/kirim-otp',  [EmailOtpController::class, 'kirimVerifikasi']);
+    Route::post('/akun/email/verifikasi', [EmailOtpController::class, 'verifikasiEmail']);
+    });
 // ============================================================
 });
