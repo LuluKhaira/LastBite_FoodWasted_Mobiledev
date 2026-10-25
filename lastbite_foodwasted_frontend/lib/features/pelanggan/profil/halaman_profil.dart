@@ -11,9 +11,6 @@ import '../pesanan/pesanan_model.dart' show lbRp;
 
 const String kVersiAplikasi = 'v2.4.1';
 
-// ============================================================
-// MODEL
-// ============================================================
 class ProfilData {
   final String name;
   final String email;
@@ -66,11 +63,7 @@ class ProfilData {
       : kg.toStringAsFixed(1).replaceAll('.', ',');
 }
 
-// ============================================================
-// LAYAR PROFIL
-// ============================================================
 class ProfilScreen extends StatefulWidget {
-  /// Dipanggil setelah logout berhasil (arahkan ke halaman login).
   final VoidCallback? onLoggedOut;
   const ProfilScreen({super.key, this.onLoggedOut});
 
@@ -127,8 +120,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
       ));
   }
 
-  /// Detail level penyelamat: dihitung dari pesanan yang sudah diambil.
-  /// Angka 5 harus sama dengan PAKET_PER_LEVEL di ProfilController (Laravel).
   void _detailLevel(ProfilData d) {
     const int perLevel = 5;
     final sisa = d.paket % perLevel;
@@ -257,18 +248,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
     try {
       await ApiService.logout();
-    } catch (_) {
-      // token lokal tetap dihapus oleh ApiService.logout (blok finally)
-    }
+    } catch (_) {}
     if (!mounted) return;
 
     if (widget.onLoggedOut != null) {
       widget.onLoggedOut!();
       return;
     }
-    // GANTI sesuai halaman login kamu, contoh:
-    // Navigator.pushAndRemoveUntil(context,
-    //   MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
     Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
@@ -282,196 +268,162 @@ class _ProfilScreenState extends State<ProfilScreen> {
       ),
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: ListView(
+          padding: EdgeInsets.zero,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: _ProfilHeader(),
+            // ---------- HEADER HIJAU PROFIL (TANPA TOMBOL NOTIFIKASI TAMBAHAN) ----------
+            LbHeaderHijau(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Profil Saya',
+                      style: LbText.heading(22, weight: FontWeight.w700, color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kelola akun dan preferensi LastBite kamu',
+                      style: LbText.body(13, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            Expanded(child: _isi()),
+            
+            // ---------- KONTEN PROFIL ----------
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: _isiKonten(),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _isi() {
+  Widget _isiKonten() {
     if (_loading && _data == null) {
-      return const Center(
-        child: SizedBox(
-          width: 30,
-          height: 30,
-          child: CircularProgressIndicator(strokeWidth: 3, color: LbColors.sageDeep),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: CircularProgressIndicator(strokeWidth: 3, color: LbColors.sageDeep),
+          ),
         ),
       );
     }
     if (_data == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_rounded, size: 44, color: LbColors.sageDeep),
-              const SizedBox(height: 12),
-              Text(_error ?? 'Terjadi kesalahan',
-                  textAlign: TextAlign.center, style: LbText.body(13)),
-              const SizedBox(height: 14),
-              TextButton.icon(
-                onPressed: _muat,
-                icon: const Icon(Icons.refresh_rounded, color: LbColors.forest),
-                label: Text('Coba lagi',
-                    style: LbText.heading(13, weight: FontWeight.w600)),
-              ),
-            ],
-          ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 44, color: LbColors.sageDeep),
+            const SizedBox(height: 12),
+            Text(_error ?? 'Terjadi kesalahan',
+                textAlign: TextAlign.center, style: LbText.body(13)),
+            const SizedBox(height: 14),
+            TextButton.icon(
+              onPressed: _muat,
+              icon: const Icon(Icons.refresh_rounded, color: LbColors.forest),
+              label: Text('Coba lagi',
+                  style: LbText.heading(13, weight: FontWeight.w600)),
+            ),
+          ],
         ),
       );
     }
 
     final d = _data!;
-    return RefreshIndicator(
-      color: LbColors.sageDeep,
-      onRefresh: () => _muat(silent: true),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        children: [
-          _KartuProfil(
-            data: d,
-            onEdit: _edit,
-            onLevelTap: () => _detailLevel(d),
-          ),
-          const _SectionLabel('PREFERENSI'),
-          _MenuGroup(children: [
-            _MenuTile(
-              icon: Icons.shield_outlined,
-              title: 'Keamanan akun',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeamananAkunScreen()),
-              ),
-            ),
-            _MenuTile(
-              icon: Icons.location_on_outlined,
-              title: 'Alamat & Lokasi Ambil Favorit',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AlamatScreen()),
-              ),
-            ),
-          ]),
-
-          const _SectionLabel('AKTIVITAS PENYELAMATAN'),
-          _MenuGroup(children: [
-            _MenuTile(
-              icon: Icons.star_border_rounded,
-              title: 'Ulasan & Penilaian Resto',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UlasanScreen()),
-              ),
-            ),
-          ]),
-
-          const _SectionLabel('PENGATURAN APLIKASI'),
-          _MenuGroup(children: [
-            _MenuTile(
-              icon: Icons.help_outline_rounded,
-              title: 'Pusat Bantuan & FAQ',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const BantuanScreen()),
-              ),
-            ),
-            _MenuTile(
-              icon: Icons.info_outline_rounded,
-              title: 'Tentang Lastbite',
-              trailingText: kVersiAplikasi,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TentangLastbiteScreen()),
-              ),
-            ),
-          ]),
-
-          const SizedBox(height: 18),
-          _TombolKeluar(onTap: _keluar),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  '“Setiap butir terselamatkan adalah senyuman untuk bumi.”',
-                  textAlign: TextAlign.center,
-                  style: LbText.body(12, height: 1.4),
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.eco_rounded, size: 16, color: LbColors.sageDeep),
-            ],
-          ),
-          const SizedBox(height: 90),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// HEADER
-// ============================================================
-class _ProfilHeader extends StatelessWidget {
-  const _ProfilHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const LbLogoMark(size: 44),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text('Profil',
-              style: LbText.heading(24, weight: FontWeight.w700)),
+        _KartuProfil(
+          data: d,
+          onEdit: _edit,
+          onLevelTap: () => _detailLevel(d),
         ),
-        SizedBox(
-          width: 42,
-          height: 42,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {},
-                icon: const Icon(Icons.notifications_none_rounded,
-                    size: 28, color: LbColors.forest),
-              ),
-              Positioned(
-                top: 8,
-                right: 9,
-                child: IgnorePointer(
-                  child: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: LbColors.peach,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: LbColors.offWhite, width: 1.8),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        const _SectionLabel('PREFERENSI'),
+        _MenuGroup(children: [
+          _MenuTile(
+            icon: Icons.shield_outlined,
+            title: 'Keamanan akun',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const KeamananAkunScreen()),
+            ),
           ),
+          _MenuTile(
+            icon: Icons.location_on_outlined,
+            title: 'Alamat & Lokasi Ambil Favorit',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AlamatScreen()),
+            ),
+          ),
+        ]),
+
+        const _SectionLabel('AKTIVITAS PENYELAMATAN'),
+        _MenuGroup(children: [
+          _MenuTile(
+            icon: Icons.star_border_rounded,
+            title: 'Ulasan & Penilaian Resto',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UlasanScreen()),
+            ),
+          ),
+        ]),
+
+        const _SectionLabel('PENGATURAN APLIKASI'),
+        _MenuGroup(children: [
+          _MenuTile(
+            icon: Icons.help_outline_rounded,
+            title: 'Pusat Bantuan & FAQ',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BantuanScreen()),
+            ),
+          ),
+          _MenuTile(
+            icon: Icons.info_outline_rounded,
+            title: 'Tentang Lastbite',
+            trailingText: kVersiAplikasi,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TentangLastbiteScreen()),
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 18),
+        _TombolKeluar(onTap: _keluar),
+        const SizedBox(height: 18),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                '“Setiap butir terselamatkan adalah senyuman untuk bumi.”',
+                textAlign: TextAlign.center,
+                style: LbText.body(12, height: 1.4),
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.eco_rounded, size: 16, color: LbColors.sageDeep),
+          ],
         ),
+        const SizedBox(height: 30),
       ],
     );
   }
 }
 
 // ============================================================
-// KARTU PROFIL
+// KARTU PROFIL & KOMPONEN PENDUKUNG
 // ============================================================
 class _KartuProfil extends StatelessWidget {
   final ProfilData data;
@@ -493,7 +445,6 @@ class _KartuProfil extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Avatar inisial
               SizedBox(
                 width: 78,
                 height: 78,
@@ -622,9 +573,6 @@ class _KartuProfil extends StatelessWidget {
   }
 }
 
-// ============================================================
-// KOMPONEN MENU
-// ============================================================
 BoxDecoration _kartuDeco() => BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(24),
@@ -688,28 +636,14 @@ class _MenuGroup extends StatelessWidget {
 
 class _MenuTile extends StatelessWidget {
   final IconData icon;
-  final bool iconSolid; // kotak ikon hijau pekat
   final String title;
-  final String? subtitle;
-  final String? chip;
-  final Color chipBg;
-  final Color chipFg;
   final String? trailingText;
-  final Color trailingColor;
-  final bool trailingBold;
   final VoidCallback? onTap;
 
   const _MenuTile({
     required this.icon,
     required this.title,
-    this.iconSolid = false,
-    this.subtitle,
-    this.chip,
-    this.chipBg = LbColors.sage,
-    this.chipFg = LbColors.forest,
     this.trailingText,
-    this.trailingColor = LbColors.textGrey,
-    this.trailingBold = false,
     this.onTap,
   });
 
@@ -725,61 +659,29 @@ class _MenuTile extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: iconSolid ? LbColors.sageDeep : LbColors.sageLight,
+                color: LbColors.sageLight,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon,
-                  size: 23, color: iconSolid ? Colors.white : LbColors.forest),
+              child: Icon(icon, size: 23, color: LbColors.forest),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbText.heading(14.5, weight: FontWeight.w600, height: 1.25),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: LbText.body(12)),
-                  ],
-                ],
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: LbText.heading(14.5, weight: FontWeight.w600, height: 1.25),
               ),
             ),
-            if (chip != null) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: chip == 'Baru' ? LbColors.sage.withValues(alpha: 0.45) : chipBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  chip!,
-                  style: LbText.body(11.5,
-                      weight: FontWeight.w800,
-                      color: chip == 'Baru' ? LbColors.forest : chipFg),
-                ),
-              ),
-            ],
             if (trailingText != null) ...[
               const SizedBox(width: 8),
               Text(
                 trailingText!,
-                style: LbText.body(12,
-                    weight: trailingBold ? FontWeight.w800 : FontWeight.w600,
-                    color: trailingColor),
+                style: LbText.body(12, weight: FontWeight.w600, color: LbColors.textGrey),
               ),
             ],
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
-                size: 22, color: LbColors.textGrey),
+            const Icon(Icons.chevron_right_rounded, size: 22, color: LbColors.textGrey),
           ],
         ),
       ),
@@ -818,9 +720,6 @@ class _TombolKeluar extends StatelessWidget {
   }
 }
 
-// ============================================================
-// BOTTOM SHEET EDIT PROFIL
-// ============================================================
 class _EditProfilSheet extends StatefulWidget {
   final String nama;
   final String phone;

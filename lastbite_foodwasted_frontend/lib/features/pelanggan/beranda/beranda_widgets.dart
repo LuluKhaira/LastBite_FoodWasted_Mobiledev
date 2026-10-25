@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../pesanan/pesanan_model.dart' show lbRp;
 
 // File ini sekarang hanya "pintu masuk" (barrel).
-// Isinya sudah dipecah ke file-file kecil. Semua import lama
-// (import 'beranda_widgets.dart') tetap jalan tanpa diubah.
 export '../../../core/tema/tema_lb.dart';
 export '../../../core/komponen/navbar_bawah.dart';
 export 'model_bahan.dart';
@@ -19,6 +17,7 @@ export 'widgets/toggle_tipe.dart';
 export 'widgets/bilah_kategori.dart';
 export 'widgets/judul_seksi.dart';
 export 'widgets/kartu_paket.dart';
+export '../../../core/komponen/animasi_lb.dart';
 
 // ============================================================
 // WARNA LASTBITE
@@ -26,18 +25,15 @@ export 'widgets/kartu_paket.dart';
 class LbColors {
   LbColors._();
 
-  // Warna utama (sesuai permintaan)
   static const Color offWhite = Color(0xFFF8F6F2); // background
   static const Color sage = Color(0xFFA7C957); // hijau sage
   static const Color peach = Color(0xFFFFB07C); // oranye peach
 
-  // Turunan warna
   static const Color sageDeep = Color(0xFF86A83A); // ujung gradient / ikon
   static const Color sageLight = Color(0xFFEDF3DC); // chip & latar lembut
   static const Color peachLight = Color(0xFFFFEADB);
   static const Color peachDeep = Color(0xFFC9692F);
 
-  // Teks
   static const Color forest = Color(0xFF2F4F2A); // judul & teks utama
   static const Color textGrey = Color(0xFF7B8374); // teks sekunder
   static const Color border = Color(0xFFEAE7E0);
@@ -84,7 +80,7 @@ class LbText {
 // MODEL DATA
 // ============================================================
 class BahanItem {
-  final int? id; // id produk di database (dari API)
+  final int? id;
   final String nama;
   final String penjual;
   final String inisial;
@@ -92,13 +88,13 @@ class BahanItem {
   final String jarak;
   final String kategori;
   final String gambar;
-  final String badge; // contoh: "20 kg" / "3 tersisa"
+  final String badge;
   final String rating;
   final String tag;
   final IconData tagIcon;
   final String harga;
-  final String satuan; // "Gratis" / "/paket" / "/karung"
-  final String? hargaAsli; // harga coret (opsional)
+  final String satuan;
+  final String? hargaAsli;
   final String alamat;
 
   const BahanItem({
@@ -120,7 +116,6 @@ class BahanItem {
     this.alamat = 'Batam Center, Kepulauan Riau',
   });
 
-  /// Bentuk data dari API Laravel (GET /api/produk).
   factory BahanItem.fromJson(Map<String, dynamic> j) {
     String fmt(double v) => v == v.roundToDouble()
         ? v.toInt().toString()
@@ -172,7 +167,7 @@ class LbKategori {
 }
 
 // ============================================================
-// GAMBAR NETWORK (dengan placeholder & fallback)
+// GAMBAR NETWORK
 // ============================================================
 class LbNetImage extends StatelessWidget {
   final String url;
@@ -207,104 +202,78 @@ class LbNetImage extends StatelessWidget {
 }
 
 // ============================================================
-// HEADER
+// HEADER HIJAU UTAMA PELANGGAN (TANPA NOTIFIKASI)
 // ============================================================
-class LbHeader extends StatelessWidget {
-  final String title;
-  const LbHeader({super.key, this.title = 'Beranda'});
+class LbHeaderHijau extends StatelessWidget {
+  final List<Widget> children;
+  final VoidCallback? onNotifikasi;
+  final int jumlahNotifikasi;
+
+  const LbHeaderHijau({
+    super.key,
+    required this.children,
+    this.onNotifikasi,
+    this.jumlahNotifikasi = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Logo LastBite
-        const LbLogoMark(size: 50),
-        const SizedBox(width: 12),
-
-        // Judul
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'LASTBITE',
-                style: LbText.heading(
-                  11,
-                  weight: FontWeight.w700,
-                  color: LbColors.sageDeep,
-                  letterSpacing: 1.6,
-                ),
-              ),
-              Text(
-                title,
-                style: LbText.heading(
-                  27,
-                  weight: FontWeight.w700,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [LbColors.sage, LbColors.sageDeep],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-
-        // Notifikasi
-        SizedBox(
-          width: 42,
-          height: 42,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  size: 28,
-                  color: LbColors.forest,
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 9,
-                child: IgnorePointer(
-                  child: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: LbColors.peach,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: LbColors.offWhite, width: 1.8),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: LbColors.sageDeep.withValues(alpha: 0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const LbLogoMark(size: 44, circle: true, shadow: true),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'LASTBITE',
+                          style: LbText.heading(10.5, weight: FontWeight.w700, color: Colors.white70, letterSpacing: 1.5),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          'Beranda Pelanggan',
+                          style: LbText.heading(18, weight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-
-        // Avatar
-        Container(
-          width: 48,
-          height: 48,
-          padding: const EdgeInsets.all(2.5),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [LbColors.sage, LbColors.sageDeep],
+                // Tombol notifikasi dihapus agar bersih di semua halaman
+              ],
             ),
-          ),
-          child: ClipOval(
-            child: Container(
-              color: Colors.white,
-              child: const LbNetImage(
-                url: 'https://i.pravatar.cc/150?img=32',
-                fallbackIcon: Icons.person_rounded,
-              ),
-            ),
-          ),
+            const SizedBox(height: 18),
+            ...children,
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -322,8 +291,15 @@ class LbLocationRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF4E3),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -351,12 +327,13 @@ class LbLocationRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: LbColors.sage.withValues(alpha: 0.28),
+            color: Colors.white.withValues(alpha: 0.24),
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
           ),
           child: Text(
             '3 km',
-            style: LbText.heading(13, weight: FontWeight.w600),
+            style: LbText.heading(13, weight: FontWeight.w600, color: Colors.white),
           ),
         ),
       ],
@@ -369,8 +346,9 @@ class LbLocationRow extends StatelessWidget {
 // ============================================================
 class LbSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
-  final VoidCallback? onFilter; // dipanggil saat tombol filter ditekan
-  final bool filterAktif; // true = tampilkan titik penanda
+  final VoidCallback? onFilter;
+  final bool filterAktif;
+
   const LbSearchBar({
     super.key,
     this.onChanged,
@@ -386,12 +364,11 @@ class LbSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: LbColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -602,7 +579,7 @@ class LbBanner extends StatelessWidget {
 // ============================================================
 class LbTypeToggle extends StatelessWidget {
   final bool isTernak;
-  final ValueChanged<bool> onChanged; // true = ternak
+  final ValueChanged<bool> onChanged;
 
   const LbTypeToggle({
     super.key,
@@ -865,7 +842,7 @@ class LbSectionTitle extends StatelessWidget {
 // ============================================================
 // KARTU PRODUK
 // ============================================================
-class BahanCard extends StatefulWidget {
+class BahanCard extends StatelessWidget {
   final BahanItem item;
   final int index;
   final VoidCallback? onTap;
@@ -878,20 +855,12 @@ class BahanCard extends StatefulWidget {
   });
 
   @override
-  State<BahanCard> createState() => _BahanCardState();
-}
-
-class _BahanCardState extends State<BahanCard> {
-  
-
-  @override
   Widget build(BuildContext context) {
-    final it = widget.item;
-    final logoColor =
-        widget.index.isEven ? LbColors.sageDeep : LbColors.peach;
+    final it = item;
+    final logoColor = index.isEven ? LbColors.sageDeep : LbColors.peach;
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -910,7 +879,6 @@ class _BahanCardState extends State<BahanCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ---------------- GAMBAR ----------------
               SizedBox(
                 width: 118,
                 child: Stack(
@@ -921,8 +889,6 @@ class _BahanCardState extends State<BahanCard> {
                         child: LbNetImage(url: it.gambar),
                       ),
                     ),
-
-                    // Badge berat / sisa
                     Positioned(
                       top: 8,
                       left: 8,
@@ -945,8 +911,6 @@ class _BahanCardState extends State<BahanCard> {
                         ),
                       ),
                     ),
-
-                    // Logo toko (inisial)
                     Positioned(
                       left: 8,
                       bottom: 8,
@@ -973,13 +937,10 @@ class _BahanCardState extends State<BahanCard> {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // ---------------- DETAIL ----------------
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Rating
                     Align(
                       alignment: Alignment.centerRight,
                       child: Container(
@@ -1013,8 +974,6 @@ class _BahanCardState extends State<BahanCard> {
                       ),
                     ),
                     const SizedBox(height: 4),
-
-                    // Judul
                     Text(
                       it.nama,
                       maxLines: 2,
@@ -1026,8 +985,6 @@ class _BahanCardState extends State<BahanCard> {
                       ),
                     ),
                     const SizedBox(height: 3),
-
-                    // Penjual
                     Text(
                       it.penjual,
                       maxLines: 1,
@@ -1035,8 +992,6 @@ class _BahanCardState extends State<BahanCard> {
                       style: LbText.body(12, weight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
-
-                    // Waktu + jarak
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1060,8 +1015,6 @@ class _BahanCardState extends State<BahanCard> {
                       ],
                     ),
                     const SizedBox(height: 6),
-
-                    // Tag kategori
                     Row(
                       children: [
                         Icon(it.tagIcon, size: 14, color: LbColors.sageDeep),
@@ -1081,8 +1034,6 @@ class _BahanCardState extends State<BahanCard> {
                       ],
                     ),
                     const SizedBox(height: 8),
-
-                    // Harga coret (kalau ada)
                     if (it.hargaAsli != null)
                       Text(
                         it.hargaAsli!,
@@ -1090,8 +1041,6 @@ class _BahanCardState extends State<BahanCard> {
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
-
-                    // Harga + satuan + favorit
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -1237,11 +1186,11 @@ class LbBottomNav extends StatelessWidget {
 }
 
 // ============================================================
-// LAYOUT HALAMAN BERANDA (dipakai kedua mode)
+// LAYOUT HALAMAN BERANDA
 // ============================================================
 class BerandaLayout extends StatefulWidget {
   final bool isTernak;
-  final ValueChanged<bool> onSwitch; // true = pindah ke ternak
+  final ValueChanged<bool> onSwitch;
   final List<LbKategori> kategori;
   final int selectedKategori;
   final ValueChanged<int> onKategori;
@@ -1286,31 +1235,36 @@ class _BerandaLayoutState extends State<BerandaLayout> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: LbColors.offWhite,
-      bottomNavigationBar: LbBottomNav(
-        currentIndex: 0,
-        onTap: (i) => widget.onNavTap?.call(i),
-      ),
+      bottomNavigationBar: widget.onNavTap == null
+          ? null
+          : LbBottomNav(
+              currentIndex: 0,
+              onTap: (i) => widget.onNavTap!(i),
+            ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
+              child: LbHeaderHijau(
+                children: [
+                  const LbLocationRow(),
+                  const SizedBox(height: 14),
+                  LbSearchBar(
+                    onChanged: widget.onSearch,
+                    onFilter: widget.onFilter,
+                    filterAktif: widget.filterAktif,
+                  ),
+                ],
+              ),
+            ),
+            SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const LbHeader(),
-                    const SizedBox(height: 16),
-                    const LbLocationRow(),
-                    const SizedBox(height: 14),
-                    LbSearchBar(
-                      onChanged: widget.onSearch,
-                      onFilter: widget.onFilter,
-                      filterAktif: widget.filterAktif,
-                    ),
-                    const SizedBox(height: 18),
                     const LbBanner(),
                     const SizedBox(height: 18),
                     LbTypeToggle(
@@ -1443,7 +1397,9 @@ class _BerandaLayoutState extends State<BerandaLayout> {
   }
 }
 
-/// Logo LastBite (ikon apel-bumi). File: assets/images/logo_mark.png
+// ============================================================
+// LOGO MARK
+// ============================================================
 class LbLogoMark extends StatelessWidget {
   const LbLogoMark({
     super.key,

@@ -78,7 +78,6 @@ class _FavoritScreenState extends State<FavoritScreen> {
   }
 
   void _buka(TokoFavorit t) {
-    // Detail paket dibuka dari Beranda; di sini arahkan pelanggan ke sana.
     _snack('Pilih paket ${t.nama} di Beranda untuk memesan');
     LbNav.go(context, from: 2, to: 0);
   }
@@ -113,13 +112,32 @@ class _FavoritScreenState extends State<FavoritScreen> {
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            padding: EdgeInsets.zero,
             children: [
-              const LbHeader(title: 'Favorit'),
-              const SizedBox(height: 18),
-              _ringkasan(),
-              const SizedBox(height: 14),
-              ..._isi(),
+              // Menggunakan Header Hijau agar konsisten
+              LbHeaderHijau(
+                children: [
+                  Text(
+                    'Favorit Saya',
+                    style: LbText.heading(22, weight: FontWeight.w700, color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kelola daftar toko dan mitra kesukaanmu',
+                    style: LbText.body(13, color: Colors.white70),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Column(
+                  children: [
+                    _ringkasan(),
+                    const SizedBox(height: 14),
+                    ..._isi(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

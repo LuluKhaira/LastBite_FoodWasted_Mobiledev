@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import '../../../../core/komponen/animasi_lb.dart';
 import '../../../../core/tema/tema_lb.dart';
 import 'gambar_jaringan.dart';
 
-/// Banner "Misi Zero Waste".
-class LbBanner extends StatelessWidget {
+/// Banner "Misi Zero Waste". Lingkaran dekorasi bernapas pelan,
+/// foto makanan melayang.
+class LbBanner extends StatefulWidget {
   const LbBanner({super.key});
+
+  @override
+  State<LbBanner> createState() => _LbBannerState();
+}
+
+class _LbBannerState extends State<LbBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3600),
+  )..repeat(reverse: true);
+  late final Animation<double> _a =
+      CurvedAnimation(parent: _c, curve: Curves.easeInOut);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   Widget _circle(double size, Color color) {
     return Container(
@@ -18,32 +39,58 @@ class LbBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
-      constraints: const BoxConstraints(minHeight: 144),
+      constraints: const BoxConstraints(minHeight: 148),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEBF3D6), Color(0xFFD2E3A6)],
+          colors: [Color(0xFFF3F9E6), Color(0xFFD5EAAB)],
         ),
         border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: LbColors.sageDeep.withValues(alpha: 0.16),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Stack(
         children: [
-          Positioned(
-            right: -34,
-            top: -46,
-            child: _circle(160, LbColors.sage.withValues(alpha: 0.38)),
-          ),
-          Positioned(
-            right: -20,
-            bottom: -40,
-            child: _circle(104, LbColors.peach.withValues(alpha: 0.6)),
-          ),
-          Positioned(
-            left: -26,
-            bottom: -34,
-            child: _circle(86, LbColors.sage.withValues(alpha: 0.3)),
+          // Lingkaran dekorasi yang bernapas
+          AnimatedBuilder(
+            animation: _a,
+            builder: (context, _) {
+              final v = _a.value;
+              return Stack(
+                children: [
+                  Positioned(
+                    right: -34 + 10 * v,
+                    top: -46 + 6 * v,
+                    child: Transform.scale(
+                      scale: 1 + 0.06 * v,
+                      child: _circle(
+                          160, LbColors.sage.withValues(alpha: 0.38)),
+                    ),
+                  ),
+                  Positioned(
+                    right: -20 - 8 * v,
+                    bottom: -40 + 8 * v,
+                    child: Transform.scale(
+                      scale: 1 + 0.08 * (1 - v),
+                      child: _circle(
+                          104, LbColors.peach.withValues(alpha: 0.6)),
+                    ),
+                  ),
+                  Positioned(
+                    left: -26 + 8 * v,
+                    bottom: -34,
+                    child: _circle(86, LbColors.sage.withValues(alpha: 0.3)),
+                  ),
+                ],
+              );
+            },
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -100,8 +147,10 @@ class LbBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Transform.rotate(
-                  angle: 0.05,
+                LbMelayang(
+                  jarak: 5,
+                  putar: 0.025,
+                  sudutAwal: 0.05,
                   child: Container(
                     width: 104,
                     height: 104,
@@ -110,9 +159,9 @@ class LbBanner extends StatelessWidget {
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
+                          color: Colors.black.withValues(alpha: 0.14),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../core/komponen/animasi_lb.dart';
 import '../../../core/komponen/navbar_bawah.dart';
 import '../../../core/tema/tema_lb.dart';
 import 'model_bahan.dart';
@@ -57,131 +59,183 @@ class BerandaLayout extends StatefulWidget {
 }
 
 class _BerandaLayoutState extends State<BerandaLayout> {
+  // Animasi masuk besar hanya sekali per sesi aplikasi, supaya saat pindah
+  // mode (dimakan <-> ternak) halaman tidak "reset" dari awal.
+  static bool _sudahMasuk = false;
+  late final bool _animasi;
+
+  @override
+  void initState() {
+    super.initState();
+    _animasi = !_sudahMasuk;
+    _sudahMasuk = true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: LbColors.offWhite,
-      bottomNavigationBar: widget.onNavTap == null
-          ? null
-          : LbBottomNav(
-              currentIndex: 0,
-              onTap: (i) => widget.onNavTap!(i),
-            ),
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        backgroundColor: LbColors.offWhite,
+        bottomNavigationBar: widget.onNavTap == null
+            ? null
+            : LbBottomNav(
+                currentIndex: 0,
+                onTap: (i) => widget.onNavTap!(i),
+              ),
+        body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
+            // ---------- HEADER HIJAU ----------
+            SliverToBoxAdapter(
+              child: LbMuncul(
+                aktif: _animasi,
+                dari: const Offset(0, -30),
+                durasi: const Duration(milliseconds: 650),
+                child: LbHeaderHijau(
+                  children: [
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 2,
+                      child: const LbLocationRow(),
+                    ),
+                    const SizedBox(height: 14),
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 3,
+                      child: LbSearchBar(
+                        onChanged: widget.onSearch,
+                        onFilter: widget.onFilter,
+                        filterAktif: widget.filterAktif,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ---------- BANNER, TOGGLE, KATEGORI ----------
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const LbHeader(),
-                    const SizedBox(height: 16),
-                    const LbLocationRow(),
-                    const SizedBox(height: 14),
-                    LbSearchBar(
-                      onChanged: widget.onSearch,
-                      onFilter: widget.onFilter,
-                      filterAktif: widget.filterAktif,
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 4,
+                      child: const LbBanner(),
                     ),
                     const SizedBox(height: 18),
-                    const LbBanner(),
-                    const SizedBox(height: 18),
-                    LbTypeToggle(
-                      isTernak: widget.isTernak,
-                      onChanged: widget.onSwitch,
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 5,
+                      child: LbTypeToggle(
+                        isTernak: widget.isTernak,
+                        onChanged: widget.onSwitch,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    LbKategoriBar(
-                      kategori: widget.kategori,
-                      selected: widget.selectedKategori,
-                      onSelected: widget.onKategori,
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 6,
+                      child: LbKategoriBar(
+                        kategori: widget.kategori,
+                        selected: widget.selectedKategori,
+                        onSelected: widget.onKategori,
+                      ),
                     ),
                     const SizedBox(height: 22),
-                    LbSectionTitle(
-                      title: widget.sectionTitle,
-                      onLihatPeta: widget.onLihatPeta,
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 7,
+                      child: LbSectionTitle(
+                        title: widget.sectionTitle,
+                        onLihatPeta: widget.onLihatPeta,
+                      ),
                     ),
                     const SizedBox(height: 14),
                   ],
                 ),
               ),
             ),
+
+            // ---------- ISI DAFTAR ----------
             if (widget.loading)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 56),
-                  child: Center(
-                    child: SizedBox(
-                      width: 30,
-                      height: 30,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: LbColors.sageDeep,
-                      ),
-                    ),
-                  ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                sliver: SliverList.separated(
+                  itemCount: 3,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (_, __) => const KartuKerangka(),
                 ),
               )
             else if (widget.errorMessage != null)
               SliverToBoxAdapter(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.cloud_off_rounded,
-                          size: 44, color: LbColors.sageDeep),
-                      const SizedBox(height: 12),
-                      Text(
-                        widget.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: LbText.body(13),
-                      ),
-                      const SizedBox(height: 14),
-                      TextButton.icon(
-                        onPressed: widget.onRetry,
-                        icon: const Icon(Icons.refresh_rounded,
-                            color: LbColors.forest),
-                        label: Text(
-                          'Coba lagi',
-                          style: LbText.heading(13, weight: FontWeight.w600),
+                child: LbMuncul(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 40, horizontal: 32),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.cloud_off_rounded,
+                            size: 44, color: LbColors.sageDeep),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: LbText.body(13),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        TextButton.icon(
+                          onPressed: widget.onRetry,
+                          icon: const Icon(Icons.refresh_rounded,
+                              color: LbColors.forest),
+                          label: Text(
+                            'Coba lagi',
+                            style: LbText.heading(13, weight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               )
             else if (widget.items.isEmpty)
               SliverToBoxAdapter(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: const BoxDecoration(
-                          color: LbColors.sageLight,
-                          shape: BoxShape.circle,
+                child: LbMuncul(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 48, horizontal: 32),
+                    child: Column(
+                      children: [
+                        LbMelayang(
+                          jarak: 4,
+                          putar: 0.03,
+                          child: Container(
+                            width: 72,
+                            height: 72,
+                            decoration: const BoxDecoration(
+                              color: LbColors.sageLight,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.search_off_rounded,
+                                size: 34, color: LbColors.sageDeep),
+                          ),
                         ),
-                        child: const Icon(Icons.search_off_rounded,
-                            size: 34, color: LbColors.sageDeep),
-                      ),
-                      const SizedBox(height: 14),
-                      Text('Belum ada yang cocok',
-                          style: LbText.heading(15, weight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Coba ganti kata kunci, kategori, atau filter lain.',
-                        textAlign: TextAlign.center,
-                        style: LbText.body(12.5),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        Text('Belum ada yang cocok',
+                            style: LbText.heading(15, weight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Coba ganti kata kunci, kategori, atau filter lain.',
+                          textAlign: TextAlign.center,
+                          style: LbText.body(12.5),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               )
@@ -191,13 +245,23 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                 sliver: SliverList.separated(
                   itemCount: widget.items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) => BahanCard(
-                    item: widget.items[i],
-                    index: i,
-                    onTap: widget.onItemTap == null
-                        ? null
-                        : () => widget.onItemTap!(widget.items[i]),
-                  ),
+                  itemBuilder: (context, i) {
+                    final it = widget.items[i];
+                    return LbMuncul(
+                      // key berubah saat data/mode berubah -> animasi diputar ulang
+                      key: ValueKey('${it.id ?? it.nama}-${widget.isTernak}-$i'),
+                      urutan: i < 6 ? i : 0,
+                      jeda: const Duration(milliseconds: 70),
+                      dari: const Offset(0, 32),
+                      child: BahanCard(
+                        item: it,
+                        index: i,
+                        onTap: widget.onItemTap == null
+                            ? null
+                            : () => widget.onItemTap!(it),
+                      ),
+                    );
+                  },
                 ),
               ),
           ],

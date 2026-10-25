@@ -1,8 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/komponen/navbar_bawah.dart';
-import '../../../core/tema/tema_lb.dart';
 import '../beranda/api_service.dart';
 import '../beranda/lb_nav.dart';
 import 'widgets/dialog_pesanan.dart';
@@ -10,12 +8,10 @@ import 'widgets/kartu_pesanan.dart';
 import 'widgets/kartu_riwayat.dart';
 import 'widgets/lembar_nota.dart';
 import 'widgets/tab_pesanan.dart';
+import '../beranda/beranda_widgets.dart';
 
-/// Halaman "Pesanan Saya". Hanya berisi state, pemuatan data, dan aksi.
-/// Tampilan dipecah ke folder widgets/.
+/// Halaman "Pesanan Saya". Menggunakan header hijau bergradasi agar konsisten.
 class PesananScreen extends StatefulWidget {
-  /// true  = halaman ini menampilkan navbar sendiri (dibuka lewat push).
-  /// false = dipakai di dalam CangkangUtama (navbar sudah ada di cangkang).
   final bool denganNavbar;
 
   const PesananScreen({super.key, this.denganNavbar = true});
@@ -34,7 +30,6 @@ class _PesananScreenState extends State<PesananScreen> {
   void initState() {
     super.initState();
     _muat();
-    // Polling status tiap 6 detik agar update dari Mitra langsung terefleksi
     _timer =
         Timer.periodic(const Duration(seconds: 6), (_) => _muat(diam: true));
   }
@@ -113,64 +108,78 @@ class _PesananScreenState extends State<PesananScreen> {
           onRefresh: () => _muat(),
           color: LbColors.forest,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: EdgeInsets.zero,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // ---------- HEADER HIJAU PESANAN ----------
+              LbHeaderHijau(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Pesanan Saya',
-                            style: LbText.heading(24, weight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text('Pantau status dan pengambilan paket makananmu',
-                            style: LbText.body(13)),
-                      ],
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pesanan Saya',
+                            style: LbText.heading(22, weight: FontWeight.w700, color: Colors.white),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pantau status dan pengambilan paket makananmu',
+                            style: LbText.body(13, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                      _tombolSegarkan(),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _tombolSegarkan(),
                 ],
               ),
-              const SizedBox(height: 16),
-              TabPesanan(
-                tab: _tab,
-                jumlahAktif: _aktifList.length,
-                jumlahRiwayat: _riwayatList.length,
-                onGanti: (i) => setState(() => _tab = i),
+              
+              // ---------- ISI KONTEN PESANAN ----------
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  children: [
+                    TabPesanan(
+                      tab: _tab,
+                      jumlahAktif: _aktifList.length,
+                      jumlahRiwayat: _riwayatList.length,
+                      onGanti: (i) => setState(() => _tab = i),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_loading)
+                      const Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Center(
+                              child: CircularProgressIndicator(
+                                  color: LbColors.forest)))
+                    else if (list.isEmpty)
+                      _kosong()
+                    else
+                      for (final p in list)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _tab == 0
+                              ? KartuPesananAktif(
+                                  p: p,
+                                  onMaps: () => _bukaMaps(p),
+                                  onHubungi: () => _hubungi(p),
+                                  onBayar: () => _bayar(p),
+                                  onCek: () => _cekBayar(p),
+                                  onBatal: () => _batal(p),
+                                  onDisalin: (kode) => _snack(
+                                      'Kode pengambilan $kode berhasil disalin'),
+                                )
+                              : KartuRiwayat(
+                                  p: p,
+                                  onNota: () => tampilLembarNota(context, p),
+                                  onNilai: () => _beriNilai(p),
+                                ),
+                        ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              if (_loading)
-                const Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: LbColors.forest)))
-              else if (list.isEmpty)
-                _kosong()
-              else
-                for (final p in list)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _tab == 0
-                        ? KartuPesananAktif(
-                            p: p,
-                            onMaps: () => _bukaMaps(p),
-                            onHubungi: () => _hubungi(p),
-                            onBayar: () => _bayar(p),
-                            onCek: () => _cekBayar(p),
-                            onBatal: () => _batal(p),
-                            onDisalin: (kode) => _snack(
-                                'Kode pengambilan $kode berhasil disalin'),
-                          )
-                        : KartuRiwayat(
-                            p: p,
-                            onNota: () => tampilLembarNota(context, p),
-                            onNilai: () => _beriNilai(p),
-                          ),
-                  ),
             ],
           ),
         ),
@@ -184,20 +193,20 @@ class _PesananScreenState extends State<PesananScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withValues(alpha: 0.2),
             shape: BoxShape.circle,
-            border: Border.all(color: LbColors.border),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.5),
           ),
           child: _menyegarkan
               ? const Padding(
                   padding: EdgeInsets.all(12),
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: LbColors.sageDeep,
+                    color: Colors.white,
                   ),
                 )
               : const Icon(Icons.refresh_rounded,
-                  color: LbColors.forest, size: 24),
+                  color: Colors.white, size: 24),
         ),
       );
 
@@ -225,7 +234,6 @@ class _PesananScreenState extends State<PesananScreen> {
         ),
       );
 
-  // ---------------- AKSI PENGGUNA ----------------
   Future<void> _bayar(Map p) async {
     try {
       final url = await ApiService.buatPembayaran('${p['kode']}');
