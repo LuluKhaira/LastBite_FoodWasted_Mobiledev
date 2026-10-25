@@ -10,17 +10,25 @@
     </div>
 
     <div class="rounded-3xl bg-white p-6 sm:p-8 shadow-sm">
-        <form action="#" method="POST" class="space-y-6">
+        <form action="{{ route('admin.aturan.simpan') }}" method="POST" class="space-y-6">
             @csrf
+
+            @if (session('success'))
+                <div class="rounded-xl bg-green-100 px-4 py-3 text-sm font-bold text-green-700">{{ session('success') }}</div>
+            @endif
+            @if ($errors->any())
+                <div class="rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
+            @endif
+
             {{-- Batas Diskon --}}
             <div>
                 <label class="block text-sm font-bold text-[#2F5D34] mb-2">Batas Maksimal Diskon (%)</label>
                 <div class="relative">
-                    <input type="number" name="max_diskon" value="{{ $aturan->max_diskon ?? 90 }}" min="1" max="99"
+                    <input type="number" name="max_diskon" value="{{ old('max_diskon', $aturan->max_diskon ?? 100) }}" min="1" max="100"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-4 pr-12 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                     <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[#4E7554]">%</span>
                 </div>
-                <p class="mt-2 text-xs text-[#4E7554]">Produk dengan diskon di atas batas ini akan ditandai sebagai <b class="text-red-500">Anomali Harga</b> di dashboard.</p>
+                <p class="mt-2 text-xs text-[#4E7554]">Produk dengan diskon di atas batas ini ditandai <b class="text-red-500">Anomali Harga</b>. Isi <b>100</b> jika produk gratis diperbolehkan.</p>
             </div>
 
             {{-- Batas Minimal Harga --}}
@@ -28,10 +36,10 @@
                 <label class="block text-sm font-bold text-[#2F5D34] mb-2">Batas Minimal Harga Jual (Rp)</label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#4E7554]">Rp</span>
-                    <input type="number" name="min_harga" value="{{ $aturan->min_harga ?? 1000 }}" min="0" step="500"
+                    <input type="number" name="min_harga" value="{{ old('min_harga', $aturan->min_harga ?? 0) }}" min="0" step="500"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-12 pr-4 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                 </div>
-                <p class="mt-2 text-xs text-[#4E7554]">Mitra tidak dapat menjual produk di bawah harga ini (kecuali gratis/0).</p>
+                <p class="mt-2 text-xs text-[#4E7554]">Harga jual di bawah nilai ini ditandai anomali. Produk gratis (Rp 0) selalu diperbolehkan. Isi 0 untuk menonaktifkan.</p>
             </div>
 
             {{-- Biaya Layanan --}}
@@ -39,7 +47,7 @@
                 <label class="block text-sm font-bold text-[#2F5D34] mb-2">Biaya Layanan Platform (Rp)</label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#4E7554]">Rp</span>
-                    <input type="number" name="biaya_layanan" value="{{ $aturan->biaya_layanan ?? 2000 }}" min="0" step="500"
+                    <input type="number" name="biaya_layanan" value="{{ old('biaya_layanan', $aturan->biaya_layanan ?? 2000) }}" min="0" step="500"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-12 pr-4 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                 </div>
             </div>

@@ -3,6 +3,7 @@
 @section('title', 'Produk & Moderasi')
 
 @section('content')
+@php $aturan = \App\Models\AturanHarga::aktif(); @endphp
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -27,9 +28,10 @@
                 <tbody>
                     @forelse($produks as $produk)
                         @php
-                            // Cek anomali: Jika diskon lebih dari 90% atau harga diskon > harga asli
                             $pct = $produk->harga_asli > 0 ? (($produk->harga_asli - $produk->harga) / $produk->harga_asli) * 100 : 0;
-                            $isAnomali = $pct > 90 || $produk->harga > $produk->harga_asli;
+                            $isAnomali = $produk->harga > $produk->harga_asli                           // jual lebih mahal dari harga asli
+                                      || $pct > $aturan->max_diskon                                     // diskon melebihi batas admin
+                                      || ($produk->harga > 0 && $produk->harga < $aturan->min_harga);   // di bawah minimum (gratis dikecualikan)
                         @endphp
                         <tr class="border-t border-[#A7C957]/15 hover:bg-[#F8F6F2] transition {{ $isAnomali ? 'bg-red-50' : '' }}">
                             <td class="px-6 py-4">

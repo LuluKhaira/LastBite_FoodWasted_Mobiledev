@@ -12,6 +12,8 @@ class Produk extends Model
         'aktif' => 'boolean',
         'rating' => 'float',
         'berat_kg' => 'float',
+        'harga'      => 'float',
+        'harga_asli' => 'float',
     ];
 
     public function mitra()
@@ -72,5 +74,15 @@ class Produk extends Model
             + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
 
         return 2 * $r * asin(sqrt($a));
+    }
+
+    public function getIsAnomaliAttribute(): bool
+    {
+        return $this->harga > $this->harga_asli;
+    }
+
+    public function scopeAnomali($query)
+    {
+        return $query->whereColumn('harga', '>', 'harga_asli');
     }
 }

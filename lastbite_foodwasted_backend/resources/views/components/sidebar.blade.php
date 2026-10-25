@@ -56,7 +56,7 @@ $settings = [
         <div class="w-10 h-10 rounded-full bg-[#A7C957] text-[#2F5D34] grid place-items-center text-sm font-bold">AL</div>
         <div class="flex-1 leading-tight">
             <p class="text-sm font-extrabold">Admin Lastbite</p>
-            <p class="text-xs font-semibold text-[#2F5D34]">Super Admin</p>
+            <p class="text-xs font-semibold text-[#2F5D34]">Admin</p>
         </div>
         <form method="POST" action="{{ route('admin.logout') }}">
             @csrf

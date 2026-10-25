@@ -16,7 +16,6 @@ class ManajemenController extends Controller
                               ->whereNotNull('foto_ktp')
                               ->latest()
                               ->get();
-        // Ubah 'admin.verifikasi' menjadi 'pages.admin.verifikasi'
         return view('pages.admin.verifikasi', compact('pendingMitras'));
     }
 
@@ -49,28 +48,18 @@ class ManajemenController extends Controller
         $totalMakanan = Pesanan::sum('makanan') ?? 0;
         $totalCo2 = Pesanan::sum('co2') ?? 0;
         $totalTransaksi = Pesanan::where('status', 'selesai')->count() ?? 0;
-        
-        $rekapMitra = Mitra::withCount(['pesanan as total_pesanan' => function($q) {
+
+        $rekapMitra = Mitra::withCount(['pesanan as total_pesanan' => function ($q) {
             $q->where('status', 'selesai');
-        }])->get()->map(function($mitra) {
+        }])->get()->map(function ($mitra) {
             $pesananSelesai = $mitra->pesanan()->where('status', 'selesai')->get();
             $mitra->total_kg = $pesananSelesai->sum('makanan');
-            $mitra->total_pendapatan = $pesananSelesai->sum(function($p) {
+            $mitra->total_pendapatan = $pesananSelesai->sum(function ($p) {
                 return $p->qty * $p->harga_satuan;
             });
             return $mitra;
         });
 
         return view('pages.admin.laporan', compact('totalMakanan', 'totalCo2', 'totalTransaksi', 'rekapMitra'));
-    }
-
-    public function aturanHarga()
-    {
-        $aturan = (object) [
-            'max_diskon' => 90,
-            'min_harga' => 1000,
-            'biaya_layanan' => 1000,
-        ];
-        return view('pages.admin.aturan', compact('aturan'));
     }
 }

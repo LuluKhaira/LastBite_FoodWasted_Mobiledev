@@ -16,16 +16,8 @@
         <div class="relative">
             <button type="button" @click="open = !open" class="flex items-center gap-1">
                 <span class="w-10 h-10 rounded-full bg-[#A7C957] text-[#2F5D34] grid place-items-center text-sm font-bold">AL</span>
-                <span class="material-symbols-outlined">expand_more</span>
+                
             </button>
-            <div x-cloak x-show="open" @click.outside="open = false"
-                 class="absolute right-0 mt-2 w-44 rounded-2xl bg-white shadow-lg border border-[#A7C957]/30 py-2 text-sm">
-                <a href="#" class="block px-4 py-2 hover:bg-[#A7C957]/15">Profil</a>
-                <form method="POST" action="{{ route('admin.logout') }}">
-                    @csrf
-                    <button type="submit" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-[#A7C957]/15">Keluar</button>
-                </form>
-            </div>
         </div>
     </div>
 </header>

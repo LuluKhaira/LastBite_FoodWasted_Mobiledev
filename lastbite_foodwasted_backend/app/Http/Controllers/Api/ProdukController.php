@@ -8,17 +8,6 @@ use Illuminate\Http\Request;
 
 class ProdukController extends Controller
 {
-    /**
-     * GET /api/produk
-     *  tipe       : dimakan | ternak
-     *  kategori[] : satu atau lebih kategori
-     *  q          : kata kunci (nama produk / nama toko)
-     *  urutan     : Rekomendasi | Jarak Terdekat | Harga Terendah
-     *  harga_min, harga_max : rentang harga (rupiah)
-     *  tersedia   : 1 = hanya yang stoknya > 0
-     *  lat, lng   : lokasi pembeli (untuk hitung jarak)
-     *  jarak      : jarak maksimal (km), dipakai kalau lat & lng dikirim
-     */
     public function index(Request $r)
     {
         $q = Produk::with('mitra')->where('aktif', true);
@@ -88,8 +77,8 @@ class ProdukController extends Controller
             'phone' => 'required',
             'nama' => 'required|string',
             'kategori' => 'required|string',
-            'harga' => 'required|numeric',
-            'harga_asli' => 'required|numeric',
+            'harga'      => 'required|numeric|min:0|lte:harga_asli',
+            'harga_asli' => 'required|numeric|min:0',
             'stok' => 'required|numeric',
         ]);
 
@@ -134,8 +123,8 @@ class ProdukController extends Controller
         $request->validate([
             'id' => 'required|numeric',
             'nama' => 'required|string',
-            'harga' => 'required|numeric',
-            'harga_asli' => 'required|numeric',
+            'harga'      => 'required|numeric|min:0|lte:harga_asli',
+            'harga_asli' => 'required|numeric|min:0',
             'stok' => 'required|numeric',
         ]);
 
