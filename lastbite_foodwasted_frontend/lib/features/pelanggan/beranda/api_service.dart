@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/api_config.dart';
+import 'package:cross_file/cross_file.dart';
 
 /// Dilempar saat server membalas 401 di endpoint yang butuh login
 /// (belum login / token sudah tidak valid). Layar bisa menangkapnya
@@ -434,4 +435,39 @@ static Future<void> mitraAksiPesanan(String kode, String aksi,
       })));
   _handle(r);
 }
+
+  /// Beri bintang + ulasan + tag cepat + foto (maks 2) untuk pesanan selesai.
+  static Future<void> beriNilaiLengkap({
+    required String kode,
+    required int rating,
+    String? ulasan,
+    List<String> tag = const [],
+    List<XFile> foto = const [],
+  }) async {
+    final req = http.MultipartRequest(
+        'POST', Uri.parse('$baseUrl/pesanan/$kode/rating'));
+
+    // Content-Type dibuang supaya http mengisi multipart + boundary sendiri
+    final h = await _headers(auth: true);
+    h.remove('Content-Type');
+    req.headers.addAll(h);
+
+    req.fields['rating'] = '$rating';
+    if (ulasan != null && ulasan.trim().isNotEmpty) {
+      req.fields['ulasan'] = ulasan.trim();
+    }
+    for (var i = 0; i < tag.length; i++) {
+      req.fields['tag[$i]'] = tag[i];
+    }
+    for (var i = 0; i < foto.length; i++) {
+      final bytes = await foto[i].readAsBytes();
+      var nama = foto[i].name;
+      if (!nama.contains('.')) nama = 'foto_$i.jpg';
+      req.files.add(
+          http.MultipartFile.fromBytes('foto[$i]', bytes, filename: nama));
+    }
+
+    final r = await _kirim(req.send().then((s) => http.Response.fromStream(s)));
+    _handle(r);
+  }
 }

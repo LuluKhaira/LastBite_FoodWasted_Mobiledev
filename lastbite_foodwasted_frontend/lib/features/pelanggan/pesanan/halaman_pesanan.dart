@@ -8,6 +8,7 @@ import 'widgets/kartu_pesanan.dart';
 import 'widgets/kartu_riwayat.dart';
 import 'widgets/lembar_nota.dart';
 import 'widgets/tab_pesanan.dart';
+import 'halaman_beri_nilai.dart';
 import '../beranda/beranda_widgets.dart';
 
 /// Halaman "Pesanan Saya". Menggunakan header hijau bergradasi agar konsisten.
@@ -284,15 +285,14 @@ class _PesananScreenState extends State<PesananScreen> {
     }
   }
 
-  Future<void> _beriNilai(Map p) async {
-    final n = await dialogBeriNilai(context, '${p['penjual']}');
-    if (n == null) return;
-    try {
-      await ApiService.beriNilai('${p['kode']}', n);
+   Future<void> _beriNilai(Map p) async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => HalamanBeriNilai.dariMap(p)),
+    );
+    if (ok == true) {
       _snack('Terima kasih atas ulasanmu!');
       _muat();
-    } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 }
