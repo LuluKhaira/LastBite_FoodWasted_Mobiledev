@@ -8,6 +8,7 @@ use App\Models\Pesanan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 class MitraPesananController extends Controller
 {
@@ -130,83 +131,72 @@ class MitraPesananController extends Controller
      *  - untuk verify-pickup : { phone, kode_ambil }
      */
     public function ambil(Request $r, ?string $kode = null): JsonResponse
-    {
-        $phone      = $r->input('phone');
-        $kodeAmbil  = $r->input('kode_ambil');
-        $mitra      = $this->cariMitra($phone);
-
-        if (!$mitra) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Mitra tidak ditemukan.',
-            ], 404);
-        }
-
-        $query = Pesanan::where('id_mitra', $mitra->id_mitra);
-
-        // Cari pesanan: prioritas kode pesanan (dari URL), lalu kode_ambil (dari body)
-        if ($kode) {
-            $query->where('kode', $kode);
-        } elseif ($kodeAmbil) {
-            $query->where('kode_ambil', $kodeAmbil);
-        } else {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Kode pesanan atau kode ambil wajib diisi.',
-            ], 422);
-        }
-
-        $p = $query->first();
-        if (!$p) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Pesanan tidak ditemukan atau bukan milik toko ini.',
-            ], 404);
-        }
-
-        // Boleh ambil kalau statusnya 'siap'. Kalau 'menunggu' kasih error jelas.
-        if ($p->status === 'menunggu') {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Pesanan belum ditandai siap. Tandai siap dulu ya.',
-            ], 422);
-        }
-
-        if ($p->status !== 'siap') {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Pesanan ini sudah tidak aktif (status: '.$p->status.').',
-            ], 422);
-        }
-
-        // Cek kode_ambil kalau yang dipakai endpoint verify-pickup (bukan dari URL)
-        if (!$kode && $kodeAmbil && $p->kode_ambil && $p->kode_ambil !== $kodeAmbil) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Kode pengambilan tidak cocok.',
-            ], 422);
-        }
-
-        $pendapatan = (int) (($p->harga_satuan * $p->qty) - ($p->biaya_layanan ?? 0));
-        if ($pendapatan < 0) $pendapatan = 0;
-
-        $p->update([
-            'status'     => 'selesai',
-            'diambil_at' => now(),
-        ]);
-
-        // Tambah saldo mitra
-        $mitra->increment('saldo', $pendapatan);
-        $mitra->refresh();
-
-        return response()->json([
-            'ok'            => true,
-            'message'       => 'Pengambilan berhasil.',
-            'data'          => $p->fresh()->toApi(),
-            'pendapatan'    => $pendapatan,
-            'saldo_terbaru' => (int) $mitra->saldo,
-        ]);
+{
+    $mitra = $this->cariMitra($r->input('phone'));
+    if (!$mitra) {
+        return response()->json(['ok' => false, 'message' => 'Mitra tidak ditemukan.'], 404);
     }
+
+    // Terima nama field dari Flutter (pickup_code) maupun nama lama (kode_ambil)
+    $kodeAmbil = $r->input('pickup_code') ?? $r->input('kode_ambil');
+    $kodeAmbil = $kodeAmbil ? strtoupper(preg_replace('/\s+/', '', $kodeAmbil)) : null;
+
+    // Kode pesanan: dari URL, atau dari body (Flutter mengirim 'kode')
+    $kodePesanan = $kode ?? $r->input('kode');
+    $kodePesanan = $kodePesanan ? ltrim(trim($kodePesanan), '#') : null;
+
+    if (!$kodePesanan && !$kodeAmbil) {
+        return response()->json([
+            'ok' => false, 'message' => 'Kode pengambilan wajib diisi.',
+        ], 422);
+    }
+
+    $query = Pesanan::where('id_mitra', $mitra->id_mitra);
+    if ($kodePesanan) $query->where('kode', $kodePesanan);
+    if ($kodeAmbil)   $query->where('kode_ambil', $kodeAmbil);
+
+    $p = $query->first();
+    if (!$p) {
+        return response()->json([
+            'ok' => false,
+            'message' => $kodeAmbil
+                ? 'Kode pengambilan salah atau bukan untuk pesanan ini.'
+                : 'Pesanan tidak ditemukan atau bukan milik toko ini.',
+        ], 404);
+    }
+
+    if ($p->status === 'menunggu') {
+        return response()->json([
+            'ok' => false, 'message' => 'Pesanan belum ditandai siap. Tandai siap dulu ya.',
+        ], 422);
+    }
+    if ($p->status !== 'siap') {
+        return response()->json([
+            'ok' => false, 'message' => 'Pesanan ini sudah tidak aktif (status: '.$p->status.').',
+        ], 422);
+    }
+    if ($p->batas_ambil && now()->greaterThan($p->batas_ambil)) {
+        return response()->json([
+            'ok' => false, 'message' => 'Batas waktu pengambilan sudah lewat.',
+        ], 422);
+    }
+
+    $pendapatan = max(0, (int) ($p->harga_satuan * $p->qty));
+
+    DB::transaction(function () use ($p, $mitra, $pendapatan) {
+        $p->update(['status' => 'selesai', 'diambil_at' => now()]);
+        $mitra->increment('saldo', $pendapatan);
+    });
+    $mitra->refresh();
+
+    return response()->json([
+        'ok'            => true,
+        'message'       => 'Pengambilan berhasil.',
+        'data'          => $p->fresh()->toApi(),
+        'pendapatan'    => $pendapatan,
+        'saldo_terbaru' => (int) $mitra->saldo,
+    ]);
+}
 
     /**
      * Ambil pesanan yang dipastikan milik mitra login.
