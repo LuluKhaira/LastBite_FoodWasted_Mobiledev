@@ -45,6 +45,7 @@ class MitraProdukController extends Controller
             'kuota'         => 'required|integer|min:1|max:999',
             'waktu_mulai'   => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i',
+            'kadaluarsa'    => 'required_if:tipe,dimakan|nullable|date',
             'terbit'        => 'required|boolean',
             'foto'          => 'nullable|image|max:5120',
             'gambar_lama'   => 'nullable|string|max:255',
@@ -58,11 +59,18 @@ class MitraProdukController extends Controller
             'harga.lt'           => 'Harga Lastbite harus lebih hemat dari harga asli.',
             'stok.min'           => 'Jumlah stok minimal 1.',
             'waktu_selesai.date_format' => 'Format jam batas pengambilan tidak valid.',
+            'kadaluarsa.required' => 'Tanggal dan jam kadaluarsa wajib diisi.',
+            'kadaluarsa.date'     => 'Format tanggal kadaluarsa tidak valid.',
             'foto.image'         => 'File harus berupa gambar.',
             'foto.max'           => 'Ukuran foto maksimal 5 MB.',
         ]);
 
         $terbit = $request->boolean('terbit');
+
+        // Input dari Flutter dianggap waktu WIB bila tidak membawa offset zona waktu
+        $kadaluarsa = ! empty($data['kadaluarsa'])
+            ? Carbon::parse($data['kadaluarsa'], 'Asia/Jakarta')->setTimezone('Asia/Jakarta')
+            : null;
 
         // Foto lama hanya boleh dipakai kalau memang milik mitra ini (dipakai fitur template)
         $gambarLama = null;
@@ -82,6 +90,13 @@ class MitraProdukController extends Controller
                 throw ValidationException::withMessages(['foto' => ['Foto makanan wajib diunggah.']]);
             }
 
+            // Kadaluarsa harus di masa depan
+            if ($kadaluarsa && $kadaluarsa->lessThanOrEqualTo(now('Asia/Jakarta'))) {
+                throw ValidationException::withMessages([
+                    'kadaluarsa' => ['Waktu kadaluarsa harus setelah sekarang.'],
+                ]);
+            }
+
             // Cek jam batas pengambilan
             $batas = Carbon::today('Asia/Jakarta')->setTimeFromTimeString($data['waktu_selesai']);
             if ($batas->lessThanOrEqualTo(now('Asia/Jakarta'))) {
@@ -89,6 +104,9 @@ class MitraProdukController extends Controller
                     'waktu_selesai' => ['Batas pengambilan harus lebih lambat dari jam sekarang.'],
                 ]);
             }
+
+            // Batas pengambilan tidak boleh melewati jam tutup toko (pengaturan Jam Buka)
+            $this->periksaJamOperasional($mitra, $data['waktu_selesai']);
         }
 
         $gambar = $gambarLama;
@@ -111,6 +129,7 @@ class MitraProdukController extends Controller
             'kuota'         => (int) $data['kuota'],
             'waktu_mulai'   => $data['waktu_mulai'] . ':00',
             'waktu_selesai' => $data['waktu_selesai'] . ':00',
+            'kadaluarsa'    => $kadaluarsa?->format('Y-m-d H:i:s'),
             'aktif'         => $terbit ? 1 : 0,
             'created_at'    => now(),
             'updated_at'    => now(),
@@ -150,6 +169,42 @@ class MitraProdukController extends Controller
                 'gambar_url' => $p->gambar ? url('storage/' . $p->gambar) : null,
             ],
         ]);
+    }
+
+    /**
+     * Tolak bila batas pengambilan melewati jam tutup toko hari ini,
+     * atau toko diatur libur hari ini. Belum diatur = tidak dibatasi.
+     */
+    private function periksaJamOperasional(Mitra $mitra, string $waktuSelesai): void
+    {
+        $jam = $mitra->jam_operasional;
+        if (is_string($jam)) {
+            $jam = json_decode($jam, true);
+        }
+        if (! is_array($jam) || empty($jam)) {
+            return;
+        }
+
+        $namaHari = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+        $hariIni  = now('Asia/Jakarta')->dayOfWeekIso;
+        $atur     = collect($jam)->firstWhere('hari', $hariIni);
+
+        if (! $atur) {
+            return;
+        }
+
+        if (empty($atur['buka'])) {
+            throw ValidationException::withMessages([
+                'waktu_selesai' => ["Toko kamu diatur libur hari {$namaHari[$hariIni]}. Ubah di Jam Buka kalau ingin menerbitkan produk hari ini."],
+            ]);
+        }
+
+        $selesai = substr($waktuSelesai, 0, 5);
+        if ($selesai > $atur['tutup']) {
+            throw ValidationException::withMessages([
+                'waktu_selesai' => ["Batas pengambilan ({$selesai}) melewati jam tutup toko ({$atur['tutup']}). Ubah batas pengambilan atau atur ulang Jam Buka."],
+            ]);
+        }
     }
 
     private function mitraDariRequest(Request $request): ?Mitra

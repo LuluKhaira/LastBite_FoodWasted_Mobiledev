@@ -1,4 +1,3 @@
-
 import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
 
 enum StatusProduk { tayang, terjadwal, habis }
@@ -19,6 +18,9 @@ class Produk {
   final String waktuSelesai;
   final double rating;
   final bool aktif;
+  final DateTime? kadaluarsa;
+  final String? kategoriAsli;
+  final DateTime? dialihkanPada;
 
   Produk({
     required this.id,
@@ -36,11 +38,18 @@ class Produk {
     required this.waktuSelesai,
     required this.rating,
     required this.aktif,
+    this.kadaluarsa,
+    this.kategoriAsli,
+    this.dialihkanPada,
   });
 
   factory Produk.fromJson(Map<String, dynamic> j) {
     int i(dynamic v) => int.tryParse('$v') ?? 0;
     double d(dynamic v) => double.tryParse('$v') ?? 0.0;
+    DateTime? t(dynamic v) {
+      final s = v?.toString().trim() ?? '';
+      return s.isEmpty ? null : DateTime.tryParse(s);
+    }
 
     // Mengambil alamat server dari konfigurasi API.
     // Contoh HP fisik: http://192.168.1.203:8000
@@ -108,8 +117,26 @@ class Produk {
       waktuSelesai: '${j['waktu_selesai'] ?? '00:00'}',
       rating: d(j['rating']),
       aktif: j['aktif'] == true || j['aktif'] == 1,
+      kadaluarsa: t(j['kadaluarsa']),
+      kategoriAsli: j['kategori_asli']?.toString(),
+      dialihkanPada: t(j['dialihkan_pada']),
     );
   }
+
+  /// Sudah dialihkan otomatis ke kategori pakan oleh scheduler.
+  bool get sudahDialihkan => dialihkanPada != null;
+
+  /// Sudah lewat kadaluarsa tapi scheduler belum sempat mengalihkan.
+  bool get kadaluarsaBelumDialihkan =>
+      !sudahDialihkan &&
+      tipe == 'dimakan' &&
+      kadaluarsa != null &&
+      DateTime.now().isAfter(kadaluarsa!);
+
+  bool get tampilBadgePakan => sudahDialihkan || kadaluarsaBelumDialihkan;
+
+  String get labelBadgePakan =>
+      sudahDialihkan ? 'Expired → Pakan' : 'Kadaluarsa • segera jadi pakan';
 
   StatusProduk get statusUI {
     if (!aktif) return StatusProduk.habis;

@@ -34,7 +34,11 @@ class ProdukMitraController extends Controller
             return [
                 'id' => $p->id,
                 'nama' => $p->nama,
+                'tipe' => $p->tipe,
                 'kategori' => $p->kategori,
+                'kategori_asli' => $p->kategori_asli,
+                'kadaluarsa' => $p->kadaluarsa,
+                'dialihkan_pada' => $p->dialihkan_pada,
                 'harga' => $p->harga,
                 'harga_asli' => $p->harga_asli,
                 'stok' => $p->stok,

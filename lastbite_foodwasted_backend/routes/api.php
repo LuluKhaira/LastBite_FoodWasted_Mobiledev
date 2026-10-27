@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\PembayaranController;
 use App\Http\Controllers\Api\dashboard_mitra\MitraPesananController;
 use App\Http\Controllers\Api\dashboard_mitra\ProdukMitraController;
+use App\Http\Controllers\Api\dashboard_mitra\JamOperasionalController;
 
 // MITRA
 // ============================================================
@@ -36,6 +37,8 @@ Route::post('/mitra/produk/stok', [ProdukMitraController::class, 'updateStok']);
 Route::post('/mitra/produk/aktif', [ProdukMitraController::class, 'updateAktif']);
 Route::post('/mitra/produk', [ProdukController::class, 'tambah']);
 Route::post('/mitra/produk/update', [ProdukController::class, 'update']);
+Route::get('/produk/opsi-pengalihan', [ProdukController::class, 'opsiPengalihan']);
+Route::post('/mitra/produk/alihkan', [ProdukController::class, 'alihkanManual']);
 
 // ============================================================
 // PELANGGAN (publik)
@@ -48,6 +51,8 @@ Route::post('/mitra/dashboard', [MitraDashboardController::class, 'show']);
 Route::post('/mitra/toko-status', [MitraDashboardController::class, 'setStatusToko']);
 Route::post('/mitra/produk', [\App\Http\Controllers\Api\dashboard_mitra\MitraProdukController::class, 'store']);
 Route::post('/mitra/produk/template', [\App\Http\Controllers\Api\dashboard_mitra\MitraProdukController::class, 'template']);
+Route::post('/mitra/jam-buka', [JamOperasionalController::class, 'show']);
+Route::post('/mitra/jam-buka/simpan', [JamOperasionalController::class, 'simpan']);
 
 // daftar & masuk via WhatsApp OTP & Email OTP
 Route::prefix('auth')->group(function () {

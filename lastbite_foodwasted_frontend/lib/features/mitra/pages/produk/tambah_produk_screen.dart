@@ -35,6 +35,11 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   TimeOfDay _mulaiAmbil = const TimeOfDay(hour: 20, minute: 0);
   TimeOfDay _batasMaksimal = const TimeOfDay(hour: 21, minute: 30);
   bool _tutupOtomatis = true;
+  DateTime _kadaluarsa = DateTime.now().add(const Duration(hours: 4));
+
+  // Jam operasional hari ini (dari menu Jam Buka). null = belum diatur.
+  TimeOfDay? _jamTutupToko;
+  bool _tokoLibur = false;
 
   Uint8List? _fotoBytes;
   String? _fotoNama;
@@ -47,6 +52,42 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     super.initState();
     _asliCtrl.addListener(() => setState(() {}));
     _diskonCtrl.addListener(() => setState(() {}));
+    _muatJamToko();
+  }
+
+  int _menit(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  String _fmtJam(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  TimeOfDay? _parseJam(String s) {
+    final p = s.split(':');
+    if (p.length < 2) return null;
+    final h = int.tryParse(p[0]);
+    final m = int.tryParse(p[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  Future<void> _muatJamToko() async {
+    final data = await ApiService.getJamOperasional(widget.phoneNumber);
+    if (!mounted || data == null) return;
+
+    final hariIni = DateTime.now().weekday; // 1 = Senin ... 7 = Minggu
+    for (final d in data) {
+      if ((int.tryParse('${d['hari']}') ?? 0) != hariIni) continue;
+      final buka = d['buka'] == true || d['buka'] == 1;
+      final tutup = _parseJam('${d['tutup']}');
+      setState(() {
+        _tokoLibur = !buka;
+        _jamTutupToko = buka ? tutup : null;
+        // Default batas pengambilan jangan melewati jam tutup toko
+        if (buka && tutup != null && _menit(_batasMaksimal) > _menit(tutup)) {
+          _batasMaksimal = tutup;
+        }
+      });
+      break;
+    }
   }
 
   @override
@@ -124,15 +165,44 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
       context: context,
       initialTime: isMulai ? _mulaiAmbil : _batasMaksimal,
     );
-    if (t != null) {
-      setState(() {
-        if (isMulai) {
-          _mulaiAmbil = t;
-        } else {
-          _batasMaksimal = t;
-        }
-      });
+    if (t == null) return;
+
+    final tutup = _jamTutupToko;
+    if (!isMulai && tutup != null && _menit(t) > _menit(tutup)) {
+      _snack(
+        'Batas pengambilan (${_fmtJam(t)}) melewati jam tutup toko (${_fmtJam(tutup)}). '
+        'Pilih jam yang lebih awal, atau ubah jam tutup di menu Jam Buka.',
+      );
+      return;
     }
+
+    setState(() {
+      if (isMulai) {
+        _mulaiAmbil = t;
+      } else {
+        _batasMaksimal = t;
+      }
+    });
+  }
+
+  Future<void> _pilihKadaluarsa() async {
+    final sekarang = DateTime.now();
+    final awal = _kadaluarsa.isBefore(sekarang) ? sekarang : _kadaluarsa;
+    final tgl = await showDatePicker(
+      context: context,
+      initialDate: awal,
+      firstDate: DateTime(sekarang.year, sekarang.month, sekarang.day),
+      lastDate: sekarang.add(const Duration(days: 30)),
+    );
+    if (tgl == null || !mounted) return;
+    final jam = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(awal),
+    );
+    if (jam == null) return;
+    setState(() {
+      _kadaluarsa = DateTime(tgl.year, tgl.month, tgl.day, jam.hour, jam.minute);
+    });
   }
 
   void _snack(String pesan) {
@@ -146,6 +216,21 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     if (_kategori == null) return _snack('Pilih kategori produk.');
     if (_asliCtrl.text.isEmpty) return _snack('Harga asli wajib diisi.');
     if (_diskonCtrl.text.isEmpty) return _snack('Harga diskon wajib diisi.');
+    if (terbit &&
+        _target == TargetSurplus.manusia &&
+        _kadaluarsa.isBefore(DateTime.now())) {
+      return _snack('Waktu kadaluarsa harus setelah sekarang.');
+    }
+
+    if (terbit && _tokoLibur) {
+      return _snack('Toko kamu diatur libur hari ini. Ubah di menu Jam Buka untuk menerbitkan produk.');
+    }
+    final tutupToko = _jamTutupToko;
+    if (terbit && tutupToko != null && _menit(_batasMaksimal) > _menit(tutupToko)) {
+      return _snack(
+        'Batas pengambilan (${_fmtJam(_batasMaksimal)}) melewati jam tutup toko (${_fmtJam(tutupToko)}).',
+      );
+    }
 
     setState(() => _saving = true);
 
@@ -163,6 +248,9 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
           '${_mulaiAmbil.hour.toString().padLeft(2, '0')}:${_mulaiAmbil.minute.toString().padLeft(2, '0')}',
       waktuSelesai:
           '${_batasMaksimal.hour.toString().padLeft(2, '0')}:${_batasMaksimal.minute.toString().padLeft(2, '0')}',
+      kadaluarsa: _target == TargetSurplus.manusia
+          ? _kadaluarsa.toIso8601String()
+          : '',
       terbit: terbit,
       fotoBytes: _fotoBytes,
       fotoNama: _fotoNama,
@@ -234,8 +322,13 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                     JadwalCard(
                       mulaiAmbil: _mulaiAmbil,
                       batasMaksimal: _batasMaksimal,
+                      kadaluarsa: _kadaluarsa,
+                      tampilKadaluarsa: _target == TargetSurplus.manusia,
+                      jamTutupToko: _jamTutupToko,
+                      tokoLibur: _tokoLibur,
                       onPilihMulai: () => _pilihWaktu(true),
                       onPilihBatas: () => _pilihWaktu(false),
+                      onPilihKadaluarsa: _pilihKadaluarsa,
                     ),
                   ],
                 ),

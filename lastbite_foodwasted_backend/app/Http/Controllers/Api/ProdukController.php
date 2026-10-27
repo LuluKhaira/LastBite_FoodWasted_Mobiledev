@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PengalihanKategori;
 use App\Models\Produk;
 use Illuminate\Http\Request;
 
@@ -11,6 +12,13 @@ class ProdukController extends Controller
     public function index(Request $r)
     {
         $q = Produk::with('mitra')->where('aktif', true);
+
+        // Produk konsumsi manusia yang sudah lewat kadaluarsa tidak ditampilkan.
+        $q->where(function ($w) {
+            $w->where('tipe', '!=', Produk::TIPE_DIMAKAN)
+                ->orWhereNull('kadaluarsa')
+                ->orWhere('kadaluarsa', '>', now('Asia/Jakarta'));
+        });
 
         if ($r->filled('tipe')) {
             $q->where('tipe', $r->tipe);
@@ -38,11 +46,10 @@ class ProdukController extends Controller
             $q->where('harga', '<=', (int) $r->harga_max);
         }
 
-        // Urutan di level database (jarak diurutkan setelah dihitung di bawah)
         if ($r->urutan === 'Harga Terendah') {
             $q->orderBy('harga')->orderByDesc('rating');
         } else {
-            $q->orderByDesc('rating')->orderByDesc('id'); // Rekomendasi
+            $q->orderByDesc('rating')->orderByDesc('id');
         }
 
         $lat = $r->filled('lat') ? (float) $r->lat : null;
@@ -52,7 +59,6 @@ class ProdukController extends Controller
 
         if ($lat !== null && $lng !== null && $r->filled('jarak')) {
             $max = (float) $r->jarak;
-            // 10 km = batas slider paling jauh -> anggap "tanpa batas"
             if ($max < 10) {
                 $items = $items->filter(fn($i) => $i['jarak_km'] === null || $i['jarak_km'] <= $max);
             }
@@ -70,7 +76,53 @@ class ProdukController extends Controller
         return response()->json(['data' => $produk->load('mitra')->toApi()]);
     }
 
-    // --- FUNGSI TAMBAH PRODUK (Dari Flutter) ---
+    /**
+     * GET /api/produk/opsi-pengalihan?kategori=Roti%20%26%20Pastry
+     */
+    public function opsiPengalihan(Request $request)
+    {
+        $kategori = (string) $request->input('kategori', '');
+
+        return response()->json([
+            'default_untuk_kategori' => $kategori
+                ? PengalihanKategori::cariTujuan($kategori)
+                : null,
+            'opsi_tujuan' => PengalihanKategori::semuaTujuan(),
+        ]);
+    }
+
+    /**
+     * POST /api/mitra/produk/alihkan
+     */
+    public function alihkanManual(Request $request)
+    {
+        $request->validate([
+            'id'                         => 'required|numeric',
+            'target_kategori_pengalihan' => 'required|string',
+            'tipe_tujuan'                => 'nullable|in:pakan,kompos',
+        ]);
+
+        $produk = Produk::find($request->id);
+        if (!$produk) {
+            return response()->json(['message' => 'Produk tidak ditemukan'], 404);
+        }
+
+        $ok = $produk->alihkan(
+            $request->target_kategori_pengalihan,
+            $request->tipe_tujuan
+        );
+
+        if (!$ok) {
+            return response()->json(['message' => 'Produk sudah pernah dialihkan'], 422);
+        }
+
+        return response()->json([
+            'message' => 'Produk berhasil dialihkan',
+            'data'    => $produk->fresh()->toApi(),
+        ]);
+    }
+
+    // --- TAMBAH PRODUK ---
     public function tambah(Request $request)
     {
         $request->validate([
@@ -80,15 +132,15 @@ class ProdukController extends Controller
             'harga'      => 'required|numeric|min:0|lte:harga_asli',
             'harga_asli' => 'required|numeric|min:0',
             'stok' => 'required|numeric',
+            'kadaluarsa' => 'nullable|date',
+            'target_kategori_pengalihan' => 'nullable|string',
         ]);
 
-        // Cari Mitra berdasarkan nomor HP
         $mitra = \App\Models\Mitra::where('no_whatsapp', $request->phone)->first();
         if (!$mitra) {
             return response()->json(['message' => 'Mitra tidak ditemukan'], 404);
         }
 
-        // Proses Upload Gambar (Opsional)
         $gambarPath = null;
         if ($request->hasFile('foto')) {
             $file = $request->file('foto');
@@ -97,12 +149,11 @@ class ProdukController extends Controller
             $gambarPath = 'produk/' . $namaFile;
         }
 
-        // Simpan ke database
-        $produk = \App\Models\Produk::create([
+        $produk = Produk::create([
             'id_mitra' => $mitra->id_mitra,
             'nama' => $request->nama,
             'deskripsi' => $request->deskripsi ?? '-',
-            'tipe' => $request->tipe ?? 'dimakan',
+            'tipe' => $request->tipe ?? Produk::TIPE_DIMAKAN,
             'kategori' => $request->kategori,
             'gambar' => $gambarPath,
             'harga' => $request->harga,
@@ -112,12 +163,14 @@ class ProdukController extends Controller
             'waktu_mulai' => $request->waktu_mulai ?? '00:00',
             'waktu_selesai' => $request->waktu_selesai ?? '23:59',
             'aktif' => $request->terbit ?? 1,
+            'kadaluarsa' => $request->kadaluarsa,
+            'target_kategori_pengalihan' => $request->target_kategori_pengalihan,
         ]);
 
         return response()->json(['message' => 'Produk berhasil ditambahkan', 'data' => $produk], 201);
     }
 
-    // --- FUNGSI EDIT PRODUK (Dari Flutter) ---
+    // --- EDIT PRODUK ---
     public function update(Request $request)
     {
         $request->validate([
@@ -126,10 +179,11 @@ class ProdukController extends Controller
             'harga'      => 'required|numeric|min:0|lte:harga_asli',
             'harga_asli' => 'required|numeric|min:0',
             'stok' => 'required|numeric',
+            'kadaluarsa' => 'nullable|date',
+            'target_kategori_pengalihan' => 'nullable|string',
         ]);
 
-        $produk = \App\Models\Produk::find($request->id);
-
+        $produk = Produk::find($request->id);
         if (!$produk) {
             return response()->json(['message' => 'Produk tidak ditemukan'], 404);
         }
@@ -140,6 +194,8 @@ class ProdukController extends Controller
             'harga_asli' => $request->harga_asli,
             'harga' => $request->harga,
             'stok' => $request->stok,
+            'kadaluarsa' => $request->kadaluarsa ?? $produk->kadaluarsa,
+            'target_kategori_pengalihan' => $request->target_kategori_pengalihan ?? $produk->target_kategori_pengalihan,
         ]);
 
         return response()->json(['message' => 'Produk berhasil diperbarui'], 200);

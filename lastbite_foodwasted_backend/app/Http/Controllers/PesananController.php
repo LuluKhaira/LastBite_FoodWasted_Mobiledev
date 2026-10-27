@@ -43,6 +43,25 @@ class PesananController extends Controller
             if (! $produk) {
                 throw ValidationException::withMessages(['produk_id' => 'Produk tidak ditemukan.']);
             }
+            if (! $produk->aktif) {
+                throw ValidationException::withMessages(['produk_id' => 'Produk ini sedang tidak tersedia.']);
+            }
+
+            $sekarang = now('Asia/Jakarta');
+
+            // Produk konsumsi manusia yang sudah lewat kadaluarsa tidak boleh dipesan,
+            // walaupun scheduler belum sempat mengalihkannya ke kategori pakan.
+            if ($produk->tipe === 'dimakan'
+                && $produk->kadaluarsa
+                && $produk->kadaluarsa < $sekarang->format('Y-m-d H:i:s')) {
+                throw ValidationException::withMessages(['produk_id' => 'Produk ini sudah kedaluwarsa dan tidak bisa dipesan.']);
+            }
+
+            // Batas pengambilan hari ini sudah lewat
+            if ($produk->waktu_selesai
+                && substr($produk->waktu_selesai, 0, 8) < $sekarang->format('H:i:s')) {
+                throw ValidationException::withMessages(['produk_id' => 'Batas pengambilan produk ini sudah lewat.']);
+            }
             if ((int) $produk->stok < $v['qty']) {
                 throw ValidationException::withMessages(['qty' => 'Stok tidak mencukupi atau sudah habis.']);
             }

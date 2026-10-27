@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'widgets/profil_ui.dart';
 
 class _Hari {
@@ -15,7 +16,8 @@ class _Hari {
 }
 
 class JamBukaScreen extends StatefulWidget {
-  const JamBukaScreen({super.key});
+  final String phoneNumber;
+  const JamBukaScreen({super.key, required this.phoneNumber});
 
   @override
   State<JamBukaScreen> createState() => _JamBukaScreenState();
@@ -31,6 +33,43 @@ class _JamBukaScreenState extends State<JamBukaScreen> {
     'Sabtu',
     'Minggu',
   ].map(_Hari.new).toList();
+
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  TimeOfDay _parse(String s, TimeOfDay cadangan) {
+    final p = s.split(':');
+    if (p.length < 2) return cadangan;
+    final h = int.tryParse(p[0]);
+    final m = int.tryParse(p[1]);
+    if (h == null || m == null) return cadangan;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  Future<void> _muat() async {
+    final data = await ApiService.getJamOperasional(widget.phoneNumber);
+    if (!mounted) return;
+
+    if (data == null) {
+      profilSnack(context, 'Gagal memuat jam buka, menampilkan nilai awal', error: true);
+    } else {
+      for (final d in data) {
+        final i = (int.tryParse('${d['hari']}') ?? 0) - 1; // 1 = Senin
+        if (i < 0 || i >= _hari.length) continue;
+        final h = _hari[i];
+        h.buka = d['buka'] == true || d['buka'] == 1;
+        h.mulai = _parse('${d['mulai']}', h.mulai);
+        h.tutup = _parse('${d['tutup']}', h.tutup);
+      }
+    }
+    setState(() => _loading = false);
+  }
 
   String _fmt(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
@@ -79,14 +118,35 @@ class _JamBukaScreenState extends State<JamBukaScreen> {
     profilSnack(context, 'Semua hari disamakan dengan hari Senin');
   }
 
-  void _simpan() {
+  Future<void> _simpan() async {
+    if (_loading || _saving) return;
     if (_hari.every((h) => !h.buka)) {
       profilSnack(context, 'Minimal satu hari harus buka', error: true);
       return;
     }
-    // TODO: sambungkan ke API untuk menyimpan jam operasional.
-    profilSnack(context, 'Jam operasional disimpan');
-    Navigator.pop(context);
+
+    setState(() => _saving = true);
+    final hasil = await ApiService.simpanJamOperasional(
+      phoneNumber: widget.phoneNumber,
+      jam: [
+        for (var i = 0; i < _hari.length; i++)
+          {
+            'hari': i + 1, // 1 = Senin ... 7 = Minggu
+            'buka': _hari[i].buka,
+            'mulai': _fmt(_hari[i].mulai),
+            'tutup': _fmt(_hari[i].tutup),
+          },
+      ],
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (hasil['ok'] == true) {
+      profilSnack(context, 'Jam operasional disimpan');
+      Navigator.pop(context, true);
+    } else {
+      profilSnack(context, '${hasil['message']}', error: true);
+    }
   }
 
   @override
@@ -140,7 +200,15 @@ class _JamBukaScreenState extends State<JamBukaScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          ..._hari.map(_kartuHari),
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else
+            ..._hari.map(_kartuHari),
         ],
       ),
     );

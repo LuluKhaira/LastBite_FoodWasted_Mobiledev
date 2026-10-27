@@ -499,7 +499,7 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
         _buildGridItem(
           icon: Icons.access_time_rounded,
           label: 'Jam Buka',
-          onTap: () => _buka(const JamBukaScreen()),
+          onTap: () => _buka(JamBukaScreen(phoneNumber: widget.phoneNumber)),
         ),
         _buildGridItem(
           icon: Icons.account_balance_outlined,

@@ -61,12 +61,12 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
 
   int _pesananAktif = 0;
 
-  List<String> get _kategoriList => [
-    'Semua Paket',
-    'Bakery & Pastry',
-    'Roti Manis',
-    'Pakan & Olahan',
-  ];
+  // Dibuat dari kategori produk yang benar-benar ada, supaya produk yang
+  // dialihkan ke Pakan Ternak & Ikan ikut punya filter.
+  List<String> get _kategoriList {
+    final unik = {for (final p in _produk) p.kategori}.toList()..sort();
+    return ['Semua Paket', ...unik];
+  }
 
   @override
   void initState() {
@@ -614,6 +614,37 @@ class _ProductCardRef extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (produk.tampilBadgePakan) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.orange.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.autorenew,
+                                  size: 11, color: _UI.orangeText),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  produk.labelBadgePakan,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppColors.body(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _UI.orangeText,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

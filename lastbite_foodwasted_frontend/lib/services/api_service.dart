@@ -491,6 +491,60 @@ class ApiService {
     }
   }
 
+  /// Jam operasional toko per hari (hari: 1 = Senin ... 7 = Minggu).
+  /// Mengembalikan list kosong bila belum diatur, null bila gagal memuat.
+  static Future<List<Map<String, dynamic>>?> getJamOperasional(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/jam-buka'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber}),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final dynamic raw = decoded is Map ? decoded['data'] : null;
+        if (raw is List) {
+          return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        return [];
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getJamOperasional: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>> simpanJamOperasional({
+    required String phoneNumber,
+    required List<Map<String, dynamic>> jam,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/jam-buka/simpan'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'phone': phoneNumber, 'jam': jam}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final b = jsonDecode(response.body);
+        return {'ok': true, 'message': '${b['message'] ?? 'Berhasil disimpan.'}'};
+      }
+      return {'ok': false, 'message': _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> tambahProdukLengkap({
     required String phoneNumber,
     required String nama,
@@ -502,6 +556,7 @@ class ApiService {
     required int stok,
     required String waktuMulai,
     required String waktuSelesai,
+    required String kadaluarsa,
     required bool terbit,
     Uint8List? fotoBytes,
     String? fotoNama,
@@ -525,6 +580,7 @@ class ApiService {
         'kuota': '$stok',
         'waktu_mulai': waktuMulai,
         'waktu_selesai': waktuSelesai,
+        'kadaluarsa': kadaluarsa,
         'terbit': terbit ? '1' : '0',
       });
 

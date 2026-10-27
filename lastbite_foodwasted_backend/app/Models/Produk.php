@@ -3,9 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Produk extends Model
 {
+    /** Kategori tujuan default saat produk konsumsi manusia sudah lewat kadaluarsa. */
+    public const KATEGORI_EXPIRED = 'Pakan Ternak & Ikan';
+
+    public const TIPE_DIMAKAN = 'dimakan';
+    public const TIPE_PAKAN   = 'pakan';
+    public const TIPE_KOMPOS  = 'kompos';
+
     protected $guarded = [];
 
     protected $casts = [
@@ -14,11 +22,59 @@ class Produk extends Model
         'berat_kg' => 'float',
         'harga'      => 'float',
         'harga_asli' => 'float',
+        'kadaluarsa'     => 'datetime',
+        'dialihkan_pada' => 'datetime',
     ];
 
     public function mitra()
     {
         return $this->belongsTo(Mitra::class, 'id_mitra', 'id_mitra');
+    }
+
+    /** Produk yang sudah lewat kadaluarsa tapi belum dialihkan. */
+    public function scopePerluDialihkan($query)
+    {
+        return $query->where('tipe', self::TIPE_DIMAKAN)
+            ->whereNotNull('kadaluarsa')
+            ->whereNull('dialihkan_pada')
+            ->where('kadaluarsa', '<=', now('Asia/Jakarta'));
+    }
+
+    /** Produk yang sudah dialihkan. */
+    public function scopeSudahDialihkan($query)
+    {
+        return $query->whereNotNull('dialihkan_pada');
+    }
+
+    /**
+     * Alihkan produk ini ke kategori tujuan.
+     * Prioritas: parameter -> target pilihan mitra -> mapping default.
+     * Idempotent: kalau sudah dialihkan, tidak melakukan apa-apa.
+     */
+    public function alihkan(?string $kategoriTujuan = null, ?string $tipeTujuan = null): bool
+    {
+        if ($this->dialihkan_pada !== null) {
+            return false;
+        }
+
+        if ($kategoriTujuan === null) {
+            $kategoriTujuan = $this->target_kategori_pengalihan;
+        }
+
+        if ($kategoriTujuan === null) {
+            $tujuan = PengalihanKategori::cariTujuan($this->kategori);
+            $kategoriTujuan = $tujuan['kategori'];
+            $tipeTujuan = $tipeTujuan ?? $tujuan['tipe'];
+        }
+
+        $this->update([
+            'kategori_asli'  => $this->kategori_asli ?? $this->kategori,
+            'kategori'       => $kategoriTujuan,
+            'tipe'           => $tipeTujuan ?? self::TIPE_PAKAN,
+            'dialihkan_pada' => now('Asia/Jakarta'),
+        ]);
+
+        return true;
     }
 
     /** Bentuk JSON yang cocok dengan field BahanItem di Flutter. */
@@ -34,8 +90,6 @@ class Produk extends Model
             );
         }
 
-        // Database menyimpan path relatif, misalnya: produk/nama-file.jpg.
-        // Ubah menjadi URL publik agar Flutter bisa memuat gambar.
         $gambarUrl = $this->gambar
             ? url('storage/' . ltrim($this->gambar, '/'))
             : null;
@@ -62,6 +116,15 @@ class Produk extends Model
                 ? substr($this->waktu_mulai, 0, 5) . ' - ' . substr($this->waktu_selesai, 0, 5) . ' WIB'
                 : null,
             'jarak_km'   => $jarak,
+            'kadaluarsa'     => $this->kadaluarsa
+                ? Carbon::parse($this->kadaluarsa, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'kategori_asli'  => $this->kategori_asli,
+            'dialihkan_pada' => $this->dialihkan_pada
+                ? Carbon::parse($this->dialihkan_pada, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'sudah_dialihkan' => $this->dialihkan_pada !== null,
+            'target_kategori_pengalihan' => $this->target_kategori_pengalihan,
         ];
     }
 
