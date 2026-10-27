@@ -11,59 +11,105 @@
         </div>
         <form action="" method="GET" class="relative w-full sm:w-64">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4E7554]">search</span>
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama usaha..." 
-                   class="w-full rounded-full border-0 bg-white py-2 pl-10 pr-4 text-sm shadow-sm focus:ring-2 focus:ring-[#A7C957]">
+            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama usaha..."
+                class="w-full rounded-full border-0 bg-white py-2 pl-10 pr-4 text-sm shadow-sm focus:ring-2 focus:ring-[#A7C957]">
         </form>
     </div>
 
     <div class="rounded-3xl bg-white shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full min-w-[800px] text-left text-sm">
-                <thead class="bg-[#A7C957]/20 text-xs font-bold uppercase tracking-wide text-[#4E7554]">
-                    <tr>
-                        <th class="px-6 py-4">Mitra</th>
-                        <th class="px-4 py-4">Kontak</th>
-                        <th class="px-4 py-4">Status</th>
-                        <th class="px-4 py-4">Saldo</th>
-                        <th class="px-4 py-4">Bergabung</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($mitras as $mitra)
+        <div class="rounded-3xl bg-white shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[800px] text-left text-sm">
+                    <thead class="bg-[#A7C957]/20 text-xs font-bold uppercase tracking-wide text-[#4E7554]">
+                        <tr>
+                            <th class="px-6 py-4">Mitra</th>
+                            <th class="px-4 py-4">Kontak</th>
+                            <th class="px-4 py-4">Status</th>
+                            <th class="px-4 py-4">Saldo</th>
+                            <th class="px-4 py-4">Bergabung</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @forelse($mitras as $mitra)
+                        @php
+                        $status = strtolower(trim($mitra->status_verifikasi ?? ''));
+
+                        $statusMenunggu = [
+                        'pending',
+                        'menunggu_verifikasi',
+                        ];
+
+                        $statusDisetujui = [
+                        'disetujui',
+                        'approved',
+                        ];
+                        @endphp
+
                         <tr class="border-t border-[#A7C957]/15 hover:bg-[#F8F6F2] transition">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#A7C957] font-extrabold text-[#2F5D34]">
-                                        {{ substr($mitra->nama_usaha, 0, 2) }}
+                                        {{ strtoupper(substr($mitra->nama_usaha ?? 'MI', 0, 2)) }}
                                     </div>
+
                                     <div>
-                                        <p class="font-extrabold text-[#2F5D34]">{{ $mitra->nama_usaha }}</p>
-                                        <p class="text-xs text-[#4E7554]">{{ $mitra->alamat ?? '-' }}</p>
+                                        <p class="font-extrabold text-[#2F5D34]">
+                                            {{ $mitra->nama_usaha ?? 'Tanpa Nama' }}
+                                        </p>
+
+                                        <p class="text-xs text-[#4E7554]">
+                                            {{ $mitra->alamat ?? '-' }}
+                                        </p>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-4 font-semibold">{{ $mitra->no_whatsapp }}</td>
+
+                            <td class="px-4 py-4 font-semibold">
+                                {{ $mitra->no_whatsapp ?? '-' }}
+                            </td>
+
                             <td class="px-4 py-4">
-                                @if($mitra->status_verifikasi === 'disetujui')
-                                    <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Aktif</span>
-                                @elseif($mitra->status_verifikasi === 'pending')
-                                    <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">Pending</span>
+                                @if(in_array($status, $statusDisetujui))
+                                <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                                    Disetujui
+                                </span>
+                                @elseif(in_array($status, $statusMenunggu) || $status === '')
+                                <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">
+                                    Pending
+                                </span>
+                                @elseif($status === 'ditolak')
+                                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                                    Ditolak
+                                </span>
                                 @else
-                                    <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Ditolak</span>
+                                <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700">
+                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
+                                </span>
                                 @endif
                             </td>
-                            <td class="px-4 py-4 font-bold text-[#2F5D34]">Rp {{ number_format($mitra->saldo, 0, ',', '.') }}</td>
-                            <td class="px-4 py-4 text-xs text-[#4E7554]">{{ $mitra->created_at->format('d M Y') }}</td>
+
+                            <td class="px-4 py-4 font-bold text-[#2F5D34]">
+                                Rp {{ number_format($mitra->saldo ?? 0, 0, ',', '.') }}
+                            </td>
+
+                            <td class="px-4 py-4 text-xs text-[#4E7554]">
+                                {{ $mitra->created_at?->format('d M Y') ?? '-' }}
+                            </td>
                         </tr>
-                    @empty
-                        <tr><td colspan="5" class="px-6 py-10 text-center text-[#4E7554]">Belum ada data mitra.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="px-6 py-4 border-t border-[#A7C957]/15">
-            {{ $mitras->links() }}
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-[#4E7554]">
+                                Belum ada data mitra.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-[#A7C957]/15">
+                {{ $mitras->links() }}
+            </div>
         </div>
     </div>
-</div>
-@endsection
+    @endsection

@@ -12,13 +12,17 @@ use Illuminate\Support\Str;
 
 class DashboardController extends Controller
 {
-    // Aturan harga: diskon minimum (%). Produk dengan diskon di bawah ini dianggap anomali.
+    // Diskon minimum (%). Produk di bawah batas ini dianggap anomali.
     private const MIN_DISKON = 40;
 
     public function index(Request $request)
     {
-        // Mitra yang sudah mengunggah dokumen dan menunggu keputusan admin
-        $pending = Mitra::where(fn ($q) => $q->whereNotIn('status_verifikasi', ['disetujui', 'ditolak'])->orWhereNull('status_verifikasi'))
+        // Hanya mitra yang masih menunggu keputusan admin.
+        // Status MUA di database adalah "menunggu_verifikasi".
+        $pending = Mitra::whereIn('status_verifikasi', [
+                'menunggu_verifikasi',
+                'pending',
+            ])
             ->whereNotNull('foto_ktp')
             ->orderBy('id_mitra')
             ->get();
@@ -30,24 +34,25 @@ class DashboardController extends Controller
             ->sortBy(fn ($r) => ($r['urgent'] ? '0' : '1') . ($r['type'] === 'mitra' ? '0' : '1'))
             ->values();
 
-        // Panel moderasi kosong sampai admin memilih mitra dari antrean/tabel (?mitra=ID)
+        // Panel moderasi kosong sampai admin memilih mitra dari antrean/tabel.
         $selected = $request->filled('mitra')
             ? $pending->firstWhere('id_mitra', (int) $request->query('mitra'))
             : null;
 
         $queue = $rows->take(4)->map(function ($r) use ($selected) {
-            $r['active'] = $selected && $r['type'] === 'mitra' && $r['id'] === $selected->id_mitra;
+            $r['active'] = $selected && $r['type'] === 'mitra' && (int) $r['id'] === (int) $selected->id_mitra;
             return $r;
         });
 
         $stats = [
-            ['label' => 'Total Transaksi', 'value' => $this->rupiah($this->sum('pesanan', 'total_harga')), 'badge' => null],
-            ['label' => 'Pendapatan Biaya Admin', 'value' => $this->rupiah($this->sum('pesanan', 'biaya_admin')), 'badge' => null],
+            ['label' => 'Total Transaksi', 'value' => $this->rupiah($this->sum('pesanans', 'total_harga')), 'badge' => null],
+            ['label' => 'Pendapatan Biaya Admin', 'value' => $this->rupiah($this->sum('pesanans', 'biaya_admin')), 'badge' => null],
             ['label' => 'Mitra Aktif', 'value' => number_format(Mitra::where('status_verifikasi', 'disetujui')->count(), 0, ',', '.') . ' Toko', 'badge' => 'Terverifikasi'],
             ['label' => 'Surplus Terselamatkan', 'value' => number_format($this->porsi(), 0, ',', '.') . ' Porsi', 'badge' => null],
         ];
 
-        $orderCol = Schema::hasColumn('mitra', 'updated_at') ? 'updated_at' : 'id_mitra';
+        $orderCol = Schema::hasColumn('mitras', 'updated_at') ? 'updated_at' : 'id_mitra';
+
         $activities = Mitra::whereIn('status_verifikasi', ['disetujui', 'ditolak'])
             ->whereNotNull('nama_usaha')
             ->orderByDesc($orderCol)
@@ -101,7 +106,7 @@ class DashboardController extends Controller
         [$label, $urgent] = $this->urgency($time);
 
         $words = preg_split('/\s+/', trim($m->nama_usaha ?: 'M'));
-        $initial = strtoupper(mb_substr($words[0], 0, 1) . (isset($words[1]) ? mb_substr($words[1], 0, 1) : ''));
+        $initial = strtoupper(mb_substr($words[0] ?? 'M', 0, 1) . (isset($words[1]) ? mb_substr($words[1], 0, 1) : ''));
 
         $docs = [];
         foreach ([
@@ -114,7 +119,9 @@ class DashboardController extends Controller
                     'icon' => $icon,
                     'name' => basename($m->{$col}),
                     'desc' => $desc,
-                    'url' => Str::startsWith($m->{$col}, ['http://', 'https://']) ? $m->{$col} : route('admin.mitra.dokumen', ['id' => $m->id_mitra, 'field' => $col]),
+                    'url' => Str::startsWith($m->{$col}, ['http://', 'https://'])
+                        ? $m->{$col}
+                        : route('admin.mitra.dokumen', ['id' => $m->id_mitra, 'field' => $col]),
                 ];
             }
         }
@@ -138,16 +145,24 @@ class DashboardController extends Controller
 
     private function anomalies()
     {
-        if (! Schema::hasTable('produk')
-            || ! Schema::hasColumns('produk', ['id_produk', 'nama_produk', 'harga_asli', 'harga_diskon', 'id_mitra'])) {
+        // Nama tabel pada aplikasi adalah "produks" dan "mitras".
+        if (!Schema::hasTable('produks')
+            || !Schema::hasColumns('produks', ['id_produk', 'nama_produk', 'harga_asli', 'harga_diskon', 'id_mitra'])) {
             return collect();
         }
 
-        return DB::table('produk')
-            ->leftJoin('mitra', 'mitra.id_mitra', '=', 'produk.id_mitra')
-            ->where('produk.harga_asli', '>', 0)
-            ->whereRaw('((produk.harga_asli - produk.harga_diskon) / produk.harga_asli * 100) < ?', [self::MIN_DISKON])
-            ->select('produk.id_produk', 'produk.nama_produk', 'produk.harga_asli', 'produk.harga_diskon', 'mitra.nama_usaha', 'mitra.alamat')
+        return DB::table('produks')
+            ->leftJoin('mitras', 'mitras.id_mitra', '=', 'produks.id_mitra')
+            ->where('produks.harga_asli', '>', 0)
+            ->whereRaw('((produks.harga_asli - produks.harga_diskon) / produks.harga_asli * 100) < ?', [self::MIN_DISKON])
+            ->select(
+                'produks.id_produk',
+                'produks.nama_produk',
+                'produks.harga_asli',
+                'produks.harga_diskon',
+                'mitras.nama_usaha',
+                'mitras.alamat'
+            )
             ->limit(20)
             ->get()
             ->map(function ($p) {
@@ -181,7 +196,7 @@ class DashboardController extends Controller
 
     private function urgency($time): array
     {
-        if (! $time) {
+        if (!$time) {
             return ['Baru Masuk', false, 'Baru'];
         }
 
@@ -195,7 +210,7 @@ class DashboardController extends Controller
 
     private function waktu($time, bool $full = false): string
     {
-        if (! $time) return '-';
+        if (!$time) return '-';
 
         return Carbon::parse($time)->locale('id')->translatedFormat($full ? 'd F Y, H:i' : 'd M Y, H.i');
     }
@@ -229,11 +244,11 @@ class DashboardController extends Controller
             : 0;
     }
 
-    // Porsi terselamatkan = pesanan yang sudah diambil pembeli
+    // Porsi terselamatkan = pesanan yang sudah diambil pembeli.
     private function porsi(): int
     {
-        return Schema::hasTable('pesanan') && Schema::hasColumn('pesanan', 'waktu_diambil')
-            ? DB::table('pesanan')->whereNotNull('waktu_diambil')->count()
+        return Schema::hasTable('pesanans') && Schema::hasColumn('pesanans', 'waktu_diambil')
+            ? DB::table('pesanans')->whereNotNull('waktu_diambil')->count()
             : 0;
     }
 }

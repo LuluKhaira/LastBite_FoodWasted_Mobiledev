@@ -26,7 +26,6 @@ class AuthController extends Controller
             'email'    => $data['email'],
             'password' => Hash::make($data['password']),
             'no_hp'    => $data['no_hp'] ?? null,
-            'role'     => 'pembeli',
         ]);
 
         return response()->json([
@@ -190,9 +189,6 @@ class AuthController extends Controller
             }
             if (!empty($pending['password'])) {
                 $user->password = $pending['password'];
-            }
-            if (!$user->exists) {
-                $user->role = 'pembeli';
             }
             $user->no_hp_verified_at = now();
             $user->save();

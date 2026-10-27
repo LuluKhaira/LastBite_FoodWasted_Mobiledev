@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 // Login admin
 Route::get('/', [AuthController::class, 'showLogin'])->name('admin.login');
-Route::post('/login', [AuthController::class, 'login'])
+Route::post('/login', [AuthController::class, 'adminLogin'])
     ->middleware('throttle:5,1')
     ->name('admin.login.submit');
 
@@ -42,5 +42,5 @@ Route::middleware(AdminAuth::class)->group(function () {
     Route::post('/admin/aturan-harga', [AturanHargaController::class, 'simpan'])->name('admin.aturan.simpan');
 
     // Logout
-    Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+    Route::post('/logout', [AuthController::class, 'adminLogout'])->name('admin.logout');
 });

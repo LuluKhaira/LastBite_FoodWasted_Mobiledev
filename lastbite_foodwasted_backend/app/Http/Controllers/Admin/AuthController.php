@@ -3,48 +3,329 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Admin;
+use App\Models\User;
+use App\Services\OtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class AuthController extends Controller
 {
-    public function showLogin(Request $request)
+    /**
+     * Menampilkan halaman login admin (route GET admin.login).
+     */
+    public function showLogin()
     {
-        if ($request->session()->has('admin_id')) {
-            return redirect()->route('admin.dashboard');
-        }
-
         return view('pages.login.login_admin');
     }
 
-    public function login(Request $request)
+    /**
+     * Login khusus dashboard admin menggunakan username dan password.
+     */
+    public function adminLogin(Request $r)
     {
-        $data = $request->validate([
+        $data = $r->validate([
             'username' => 'required|string',
             'password' => 'required|string',
+        ], [
+            'username.required' => 'Username wajib diisi.',
+            'password.required' => 'Kata sandi wajib diisi.',
         ]);
 
-        $admin = Admin::where('username', $data['username'])->first();
+        // Menggunakan tabel admin dengan kolom id_admin, username, password.
+        $admin = DB::table('admins')
+            ->where('username', $data['username'])
+            ->first();
 
-        if (! $admin || ! Hash::check($data['password'], $admin->password)) {
-            return back()
-                ->withErrors(['username' => 'Username atau kata sandi salah.'])
-                ->onlyInput('username');
+        if (!$admin || !Hash::check($data['password'], $admin->password)) {
+            throw ValidationException::withMessages([
+                'username' => ['Username atau kata sandi salah.'],
+            ]);
         }
 
-        $request->session()->regenerate();
-        $request->session()->put('admin_id', $admin->getKey());
+        $r->session()->regenerate();
+        $r->session()->put('admin_id', $admin->id_admin);
+        $r->session()->put('admin_username', $admin->username);
 
         return redirect()->route('admin.dashboard');
     }
 
-    public function logout(Request $request)
+    /**
+     * Logout khusus admin berbasis session.
+     */
+    public function adminLogout(Request $r)
     {
-        $request->session()->forget('admin_id');
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $r->session()->forget(['admin_id', 'admin_username']);
+        $r->session()->invalidate();
+        $r->session()->regenerateToken();
 
         return redirect()->route('admin.login');
+    }
+
+    public function register(Request $r)
+    {
+        $data = $r->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'no_hp'    => 'nullable|string|max:20',
+        ]);
+
+        $user = User::create([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => Hash::make($data['password']),
+            'no_hp'    => $data['no_hp'] ?? null,
+        ]);
+
+        return response()->json([
+            'user'  => $user,
+            'token' => $user->createToken('flutter')->plainTextToken,
+        ], 201);
+    }
+
+    /**
+     * POST /api/login
+     * Mendukung login dengan Email ATAU Nomor WhatsApp + Password
+     */
+    public function login(Request $r)
+    {
+        // Terima 'identifier' (bisa email atau no_hp) atau 'email' jika dikirim dari request lama
+        $identifier = $r->input('identifier') ?? $r->input('email');
+
+        $r->merge(['identifier' => $identifier]);
+
+        $data = $r->validate([
+            'identifier' => 'required|string',
+            'password'   => 'required|string',
+        ], [
+            'identifier.required' => 'Nomor WhatsApp atau Email wajib diisi.',
+            'password.required'   => 'Kata sandi wajib diisi.',
+        ]);
+
+        $val = $data['identifier'];
+        $normalizedPhone = $this->normalizePhone($val);
+
+        // Cari user berdasarkan email, no_hp mentah, atau no_hp ter-normalisasi (+62/62)
+        $user = User::where('email', $val)
+            ->orWhere('no_hp', $val)
+            ->when($normalizedPhone, function ($query) use ($normalizedPhone) {
+                return $query->orWhere('no_hp', $normalizedPhone);
+            })
+            ->first();
+
+        if (!$user || !Hash::check($data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'identifier' => ['Nomor WhatsApp/Email atau kata sandi salah.'],
+            ]);
+        }
+
+        return response()->json([
+            'user'  => $user,
+            'token' => $user->createToken('flutter')->plainTextToken,
+        ]);
+    }
+
+    public function me(Request $r)
+    {
+        return $r->user();
+    }
+
+    public function logout(Request $r)
+    {
+        $r->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Berhasil keluar']);
+    }
+
+    // =====================================================================
+    //  DAFTAR & MASUK VIA WHATSAPP OTP (Fonnte)
+    //  Login email/no_hp + sandi tetap memakai login() di atas.
+    // =====================================================================
+
+    /** POST /api/auth/register-phone : validasi lalu kirim OTP. Akun baru dibuat SETELAH OTP benar. */
+    public function registerPhone(Request $r, OtpService $otp)
+    {
+        $r->merge(['phone' => $this->normalizePhone($r->input('phone'))]);
+
+        $data = $r->validate([
+            'name'     => 'required|string|min:3|max:100',
+            'phone'    => 'required|string',
+            'email'    => 'nullable|email|max:255',
+            'password' => 'nullable|string|min:8|max:72',
+        ], ['phone.required' => 'Nomor WhatsApp tidak valid.']);
+
+        if (User::where('no_hp', $data['phone'])->whereNotNull('no_hp_verified_at')->exists()) {
+            throw ValidationException::withMessages(['phone' => ['Nomor ini sudah terdaftar. Silakan masuk.']]);
+        }
+
+        if (!empty($data['email']) && User::where('email', $data['email'])->exists()) {
+            throw ValidationException::withMessages(['email' => ['Email sudah dipakai akun lain.']]);
+        }
+
+        // Email & sandi baru disimpan setelah nomor terbukti milik pendaftar (anti pengambilalihan akun)
+        $pending = [
+            'name'     => $data['name'],
+            'email'    => $data['email'] ?? null,
+            'password' => !empty($data['password']) ? Hash::make($data['password']) : null,
+        ];
+
+        return $this->kirimOtp($otp, $data['phone'], 'register', $pending);
+    }
+
+    /** POST /api/auth/login-phone : kirim OTP untuk masuk */
+    public function loginPhone(Request $r, OtpService $otp)
+    {
+        $r->merge(['phone' => $this->normalizePhone($r->input('phone'))]);
+        $data = $r->validate(['phone' => 'required|string'], ['phone.required' => 'Nomor WhatsApp tidak valid.']);
+
+        $ada = User::where('no_hp', $data['phone'])->whereNotNull('no_hp_verified_at')->exists();
+        if (!$ada) {
+            return response()->json(['message' => 'Nomor belum terdaftar. Silakan daftar dulu.'], 404);
+        }
+
+        return $this->kirimOtp($otp, $data['phone'], 'login');
+    }
+
+    /** POST /api/auth/resend-otp */
+    public function resendOtp(Request $r, OtpService $otp)
+    {
+        $r->merge(['phone' => $this->normalizePhone($r->input('phone'))]);
+        $data = $r->validate([
+            'phone'   => 'required|string',
+            'purpose' => 'required|in:register,login',
+        ]);
+
+        if ($data['purpose'] === 'register' && !$otp->getPending($data['phone'])) {
+            return response()->json(['message' => 'Sesi pendaftaran berakhir. Silakan daftar ulang.'], 422);
+        }
+        if (
+            $data['purpose'] === 'login'
+            && !User::where('no_hp', $data['phone'])->whereNotNull('no_hp_verified_at')->exists()
+        ) {
+            return response()->json(['message' => 'Nomor belum terdaftar.'], 404);
+        }
+
+        return $this->kirimOtp($otp, $data['phone'], $data['purpose']);
+    }
+
+    /** POST /api/auth/verify-otp : OTP benar -> {user, token} */
+    public function verifyOtp(Request $r, OtpService $otp)
+    {
+        $r->merge(['phone' => $this->normalizePhone($r->input('phone'))]);
+        $data = $r->validate([
+            'phone'   => 'required|string',
+            'code'    => 'required|digits:6',
+            'purpose' => 'required|in:register,login',
+        ]);
+
+        try {
+            $otp->verify($data['phone'], $data['purpose'], $data['code']);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
+        }
+
+        if ($data['purpose'] === 'register') {
+            $pending = $otp->pullPending($data['phone']);
+            if (!$pending) {
+                return response()->json(['message' => 'Sesi pendaftaran berakhir. Silakan daftar ulang.'], 422);
+            }
+
+            $user = User::firstOrNew(['no_hp' => $data['phone']]);
+            $user->name = $pending['name'];
+
+            $email = $pending['email'] ?? null;
+            if ($email && !User::where('email', $email)->where('id', '!=', $user->id ?? 0)->exists()) {
+                $user->email = $email;
+            }
+            if (!empty($pending['password'])) {
+                $user->password = $pending['password'];
+            }
+            $user->no_hp_verified_at = now();
+            $user->save();
+
+            $pesan = 'Akun berhasil dibuat. Selamat datang!';
+        } else {
+            $user = User::where('no_hp', $data['phone'])->whereNotNull('no_hp_verified_at')->first();
+            if (!$user) {
+                return response()->json(['message' => 'Akun tidak ditemukan.'], 404);
+            }
+            $pesan = 'Berhasil masuk.';
+        }
+
+        return response()->json([
+            'message' => $pesan,
+            'user'    => $user,
+            'token'   => $user->createToken('flutter')->plainTextToken,
+        ]);
+    }
+
+    // ---------------------------------------------------------------------
+
+    private function kirimOtp(OtpService $otp, string $phone, string $purpose, ?array $pending = null)
+    {
+        try {
+            $otp->send($phone, $purpose, $pending);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 500);
+        }
+
+        return response()->json([
+            'message'        => 'Kode OTP sudah dikirim ke WhatsApp kamu.',
+            'phone'          => $phone,
+            'resend_seconds' => OtpService::RESEND_SECONDS,
+        ]);
+    }
+
+    /** 0812... / +62812... / 812... -> 62812... (null kalau bukan nomor HP Indonesia) */
+    private function normalizePhone(?string $raw): ?string
+    {
+        $d = preg_replace('/\D+/', '', (string) $raw);
+        if ($d === '') return null;
+
+        if (str_starts_with($d, '62')) {
+            // sudah benar
+        } elseif (str_starts_with($d, '0')) {
+            $d = '62' . substr($d, 1);
+        } elseif (str_starts_with($d, '8')) {
+            $d = '62' . $d;
+        } else {
+            return null;
+        }
+
+        return preg_match('/^628[1-9][0-9]{7,11}$/', $d) ? $d : null;
+    }
+
+    public function loginMitra(Request $r)
+    {
+        $data = $r->validate([
+            'identifier' => 'required|string',
+            'password'   => 'required|string',
+        ]);
+
+        $phone = $this->normalizePhone($data['identifier']);
+
+        $mitra = \App\Models\Mitra::where('no_whatsapp', $data['identifier'])
+            ->when($phone, fn($q) => $q->orWhere('no_whatsapp', $phone)
+                ->orWhere('no_whatsapp', '0' . substr($phone, 2)))
+            ->first();
+
+        if (!$mitra || !$mitra->password || !Hash::check($data['password'], $mitra->password)) {
+            throw ValidationException::withMessages([
+                'identifier' => ['Nomor WhatsApp atau kata sandi salah.'],
+            ]);
+        }
+
+        if ($mitra->status_verifikasi !== 'disetujui') {
+            return response()->json([
+                'message' => 'Akun belum disetujui admin (status: ' . $mitra->status_verifikasi . ').',
+            ], 403);
+        }
+
+        return response()->json([
+            'mitra' => $mitra,
+            'token' => $mitra->createToken('flutter-mitra')->plainTextToken,
+        ]);
     }
 }

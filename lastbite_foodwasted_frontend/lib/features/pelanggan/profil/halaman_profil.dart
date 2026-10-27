@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import '../beranda/api_service.dart';
 import '../beranda/beranda_widgets.dart';
-import 'halaman_alamat.dart';
 import 'halaman_bantuan.dart';
 import 'halaman_keamanan.dart';
+import 'halaman_lokasi_favorit.dart';
 import 'halaman_tentang.dart';
 import 'halaman_ulasan.dart';
 import '../beranda/lb_nav.dart';
@@ -358,10 +358,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
           ),
           _MenuTile(
             icon: Icons.location_on_outlined,
-            title: 'Alamat & Lokasi Ambil Favorit',
+            title: 'Lokasi Ambil Favorit',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AlamatScreen()),
+              MaterialPageRoute(builder: (_) => const LokasiFavoritScreen()),
             ),
           ),
         ]),

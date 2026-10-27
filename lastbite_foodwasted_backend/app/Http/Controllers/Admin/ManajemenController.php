@@ -12,34 +12,43 @@ class ManajemenController extends Controller
 {
     public function verifikasi()
     {
-        $pendingMitras = Mitra::whereNotIn('status_verifikasi', ['disetujui', 'ditolak'])
-                              ->whereNotNull('foto_ktp')
-                              ->latest()
-                              ->get();
+        // Tampilkan hanya mitra yang masih menunggu keputusan admin.
+        $pendingMitras = Mitra::whereIn('status_verifikasi', [
+                'menunggu_verifikasi',
+                'pending',
+            ])
+            ->whereNotNull('foto_ktp')
+            ->latest()
+            ->get();
+
         return view('pages.admin.verifikasi', compact('pendingMitras'));
     }
 
     public function mitra()
     {
         $mitras = Mitra::latest()->paginate(10);
+
         return view('pages.admin.mitra', compact('mitras'));
     }
 
     public function pengguna()
     {
-        $users = User::where('role', 'pembeli')->latest()->paginate(15);
+        $users = User::latest()->paginate(15);
+
         return view('pages.admin.pengguna', compact('users'));
     }
 
     public function produk()
     {
         $produks = Produk::with('mitra')->latest()->paginate(15);
+
         return view('pages.admin.produk', compact('produks'));
     }
 
     public function pesanan()
     {
         $pesanans = Pesanan::with(['user', 'mitra'])->latest()->paginate(20);
+
         return view('pages.admin.pesanan', compact('pesanans'));
     }
 
@@ -57,9 +66,15 @@ class ManajemenController extends Controller
             $mitra->total_pendapatan = $pesananSelesai->sum(function ($p) {
                 return $p->qty * $p->harga_satuan;
             });
+
             return $mitra;
         });
 
-        return view('pages.admin.laporan', compact('totalMakanan', 'totalCo2', 'totalTransaksi', 'rekapMitra'));
+        return view('pages.admin.laporan', compact(
+            'totalMakanan',
+            'totalCo2',
+            'totalTransaksi',
+            'rekapMitra'
+        ));
     }
 }

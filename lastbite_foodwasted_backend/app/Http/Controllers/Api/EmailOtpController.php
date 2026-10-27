@@ -50,7 +50,7 @@ class EmailOtpController extends Controller
 
         $user = User::firstOrCreate(
             ['email' => $email],
-            ['name' => explode('@', $email)[0], 'role' => 'pelanggan']
+            ['name' => explode('@', $email)[0]]
         );
 
         return response()->json([

@@ -27,7 +27,6 @@ class GoogleAuthController extends Controller
             ['email' => $res['email']],
             [
                 'name' => $res['name'] ?? $res['email'],
-                'role' => 'pelanggan',
             ]
         );
 

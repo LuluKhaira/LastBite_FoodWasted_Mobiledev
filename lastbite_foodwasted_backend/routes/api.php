@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AkunController;
-use App\Http\Controllers\Api\AlamatController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BantuanPesanController;
 use App\Http\Controllers\Api\FaqController;
@@ -110,13 +109,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profil', [ProfilController::class, 'update']);
     Route::put('/akun/password', [AkunController::class, 'ubahPassword']);
     Route::post('/akun/logout-lainnya', [AkunController::class, 'logoutLainnya']);
-
-    // alamat
-    Route::get('/alamat', [AlamatController::class, 'index']);
-    Route::post('/alamat', [AlamatController::class, 'store']);
-    Route::put('/alamat/{id}', [AlamatController::class, 'update']);
-    Route::delete('/alamat/{id}', [AlamatController::class, 'destroy']);
-    Route::post('/alamat/{id}/utama', [AlamatController::class, 'utama']);
 
     // mitra favorit
     Route::get('/mitra-favorit', [MitraFavoritController::class, 'index']);
