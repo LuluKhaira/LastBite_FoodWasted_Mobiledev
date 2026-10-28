@@ -10,6 +10,7 @@ $menu = [
 ['Laporan', 'bar_chart', 'admin.laporan', null],
 ];
 $settings = [
+['Kategori Produk', 'category', 'admin.kategori'],
 ['Aturan Harga', 'sell', 'admin.aturan'],
 ];
 @endphp

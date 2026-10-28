@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AkunController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BantuanPesanController;
 use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\MitraFavoritController;
 use App\Http\Controllers\Api\MitraRegisterController;
 use App\Http\Controllers\Api\PesananController;
@@ -88,6 +89,7 @@ Route::get('/produk', [ProdukController::class, 'index']);
 Route::get('/produk/{produk}', [ProdukController::class, 'show']);
 
 Route::get('/faq', [FaqController::class, 'index']);
+Route::get('/kategori', [KategoriController::class, 'index']);
 
 // ============================================================
 // PELANGGAN (harus login)
