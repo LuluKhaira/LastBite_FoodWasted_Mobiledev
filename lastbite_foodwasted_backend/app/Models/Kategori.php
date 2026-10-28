@@ -11,7 +11,8 @@ class Kategori extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'aktif' => 'boolean',
+        'aktif'        => 'boolean',
+        'harga_per_kg' => 'integer',
     ];
 
     /** Kategori tujuan pengalihan (untuk kategori bertipe dimakan). */
@@ -23,5 +24,16 @@ class Kategori extends Model
     public function scopeAktif($query)
     {
         return $query->where('aktif', true);
+    }
+
+    public function scopeTujuanPengalihan($query)
+    {
+        return $query->where('aktif', true)
+            ->whereIn('tipe', ['pakan', 'kompos']);
+    }
+
+    public function hasValidHarga(): bool
+    {
+        return $this->harga_per_kg !== null && $this->harga_per_kg > 0;
     }
 }

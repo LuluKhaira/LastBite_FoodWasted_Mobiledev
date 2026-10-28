@@ -558,6 +558,9 @@ class ApiService {
     required String waktuSelesai,
     required String kadaluarsa,
     required bool terbit,
+    bool bersediaDialihkan = false,
+    String? targetKategoriPengalihan,
+    double? perkiraanBeratPerPaket,
     Uint8List? fotoBytes,
     String? fotoNama,
   }) async {
@@ -582,7 +585,16 @@ class ApiService {
         'waktu_selesai': waktuSelesai,
         'kadaluarsa': kadaluarsa,
         'terbit': terbit ? '1' : '0',
+        'bersedia_dialihkan': bersediaDialihkan ? '1' : '0',
       });
+
+      if (bersediaDialihkan && targetKategoriPengalihan != null) {
+        request.fields['target_kategori_pengalihan'] = targetKategoriPengalihan;
+      }
+      if (bersediaDialihkan && perkiraanBeratPerPaket != null) {
+        request.fields['perkiraan_berat_per_paket'] =
+            perkiraanBeratPerPaket.toString();
+      }
 
       if (fotoBytes != null) {
         var namaFile = (fotoNama == null || fotoNama.isEmpty)
@@ -618,23 +630,34 @@ class ApiService {
     required int hargaAsli,
     required int harga,
     required int stok,
+    bool? bersediaDialihkan,
+    String? targetKategoriPengalihan,
+    double? perkiraanBeratPerPaket,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'phone': phoneNumber,
+        'id': idProduk,
+        'nama': nama,
+        'deskripsi': deskripsi,
+        'harga_asli': hargaAsli,
+        'harga': harga,
+        'stok': stok,
+      };
+
+      if (bersediaDialihkan != null) {
+        body['bersedia_dialihkan'] = bersediaDialihkan;
+        body['target_kategori_pengalihan'] = targetKategoriPengalihan;
+        body['perkiraan_berat_per_paket'] = perkiraanBeratPerPaket;
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/mitra/produk/update'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'phone': phoneNumber,
-          'id': idProduk,
-          'nama': nama,
-          'deskripsi': deskripsi,
-          'harga_asli': hargaAsli,
-          'harga': harga,
-          'stok': stok,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -643,6 +666,65 @@ class ApiService {
       return {'ok': false, 'message': _pesanError(response)};
     } catch (e) {
       return {'ok': false, 'message': 'Tidak bisa terhubung ke server.'};
+    }
+  }
+
+  /// Mengambil opsi kategori tujuan pengalihan pakan / kompos
+  static Future<Map<String, dynamic>?> getOpsiPengalihan({String? kategori}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/produk/opsi-pengalihan').replace(
+        queryParameters: kategori != null && kategori.isNotEmpty
+            ? {'kategori': kategori}
+            : null,
+      );
+      final response = await http.get(uri, headers: {'Accept': 'application/json'});
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getOpsiPengalihan: $e');
+      return null;
+    }
+  }
+
+  /// Konfirmasi pengalihan produk yang melewati batas penjualan oleh mitra
+  static Future<Map<String, dynamic>> konfirmasiPengalihan({
+    required String phoneNumber,
+    required int idProduk,
+    required String aksi, // 'alihkan' | 'buang'
+    double? beratAktual,
+    String? targetKategori,
+    String? catatan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mitra/produk/konfirmasi-pengalihan'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phoneNumber,
+          'id': idProduk,
+          'aksi': aksi,
+          'berat_aktual': beratAktual,
+          'target_kategori': targetKategori,
+          'catatan': catatan,
+        }),
+      );
+
+      final b = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'ok': true,
+          'message': b['message'] ?? 'Berhasil diproses.',
+          'data': b['data'],
+        };
+      }
+      return {'ok': false, 'message': b['message'] ?? _pesanError(response)};
+    } catch (e) {
+      return {'ok': false, 'message': 'Gagal terhubung ke server: $e'};
     }
   }
 

@@ -50,7 +50,9 @@ class MitraProdukController extends Controller
             'terbit'        => 'required|boolean',
             'foto'          => 'nullable|image|max:5120',
             'gambar_lama'   => 'nullable|string|max:255',
+            'bersedia_dialihkan'        => 'nullable|boolean',
             'target_kategori_pengalihan' => 'nullable|string|max:255',
+            'perkiraan_berat_per_paket'  => 'nullable|numeric|min:0',
         ], [
             'nama.required'      => 'Nama produk wajib diisi.',
             'kategori.required'  => 'Pilih kategori produk.',
@@ -132,11 +134,15 @@ class MitraProdukController extends Controller
             'waktu_mulai'   => $data['waktu_mulai'] . ':00',
             'waktu_selesai' => $data['waktu_selesai'] . ':00',
             'kadaluarsa'    => $kadaluarsa?->format('Y-m-d H:i:s'),
-            // Kategori tujuan pilihan mitra saat produk kadaluarsa (hanya untuk produk dimakan).
-            // Kosong = pakai mapping default PengalihanKategori::MAP.
-            'target_kategori_pengalihan' => $data['tipe'] === 'dimakan'
+            // Konfigurasi pengalihan produk (hanya untuk produk konsumsi manusia)
+            'bersedia_dialihkan'        => $data['tipe'] === 'dimakan' ? $request->boolean('bersedia_dialihkan') : false,
+            'target_kategori_pengalihan' => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
                 ? ($data['target_kategori_pengalihan'] ?? null)
                 : null,
+            'perkiraan_berat_per_paket'  => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
+                ? (float) ($data['perkiraan_berat_per_paket'] ?? 0)
+                : null,
+            'status_pengalihan'         => \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
             'aktif'         => $terbit ? 1 : 0,
             'created_at'    => now(),
             'updated_at'    => now(),

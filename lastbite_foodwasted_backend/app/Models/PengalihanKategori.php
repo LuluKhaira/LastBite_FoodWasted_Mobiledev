@@ -23,14 +23,18 @@ class PengalihanKategori
         try {
             $tujuan = Kategori::with('tujuan')->where('nama', $kategoriAsal)->first()?->tujuan;
             if ($tujuan) {
-                return ['tipe' => $tujuan->tipe, 'kategori' => $tujuan->nama];
+                return [
+                    'tipe'         => $tujuan->tipe,
+                    'kategori'     => $tujuan->nama,
+                    'harga_per_kg' => (int) ($tujuan->harga_per_kg ?? 0),
+                ];
             }
         } catch (\Throwable $e) {
             // tabel kategoris belum dimigrasi: pakai cadangan di bawah
         }
 
-        return self::MAP[$kategoriAsal]
-            ?? ['tipe' => 'pakan', 'kategori' => Produk::KATEGORI_EXPIRED];
+        $fallback = self::MAP[$kategoriAsal] ?? ['tipe' => 'pakan', 'kategori' => Produk::KATEGORI_EXPIRED];
+        return array_merge($fallback, ['harga_per_kg' => 5000]);
     }
 
     /** Tipe (pakan/kompos) dari sebuah kategori tujuan, null bila tidak dikenal. */
@@ -60,19 +64,24 @@ class PengalihanKategori
             $rows = Kategori::aktif()
                 ->whereIn('tipe', ['pakan', 'kompos'])
                 ->orderBy('urutan')->orderBy('nama')
-                ->get(['nama', 'tipe']);
+                ->get(['id', 'nama', 'tipe', 'harga_per_kg']);
 
             if ($rows->isNotEmpty()) {
-                return $rows->map(fn ($k) => ['tipe' => $k->tipe, 'kategori' => $k->nama])->all();
+                return $rows->map(fn ($k) => [
+                    'id'           => $k->id,
+                    'tipe'         => $k->tipe,
+                    'kategori'     => $k->nama,
+                    'harga_per_kg' => (int) ($k->harga_per_kg ?? 0),
+                ])->all();
             }
         } catch (\Throwable $e) {
         }
 
         return [
-            ['tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan'],
-            ['tipe' => 'kompos', 'kategori' => 'Bahan Kompos & Pupuk'],
-            ['tipe' => 'kompos', 'kategori' => 'Ampas Kelapa & Kopi'],
-            ['tipe' => 'kompos', 'kategori' => 'Limbah Organik'],
+            ['id' => 1, 'tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan',  'harga_per_kg' => 5000],
+            ['id' => 2, 'tipe' => 'kompos', 'kategori' => 'Bahan Kompos & Pupuk', 'harga_per_kg' => 3000],
+            ['id' => 3, 'tipe' => 'kompos', 'kategori' => 'Ampas Kelapa & Kopi',  'harga_per_kg' => 2500],
+            ['id' => 4, 'tipe' => 'kompos', 'kategori' => 'Limbah Organik',       'harga_per_kg' => 2000],
         ];
     }
 }
