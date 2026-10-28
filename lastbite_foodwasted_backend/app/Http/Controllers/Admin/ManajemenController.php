@@ -45,6 +45,17 @@ class ManajemenController extends Controller
         return view('pages.admin.produk', compact('produks'));
     }
 
+    public function toggleProduk(Produk $produk)
+    {
+        $produk->aktif = ! $produk->aktif;
+        $produk->save();
+
+        return back()->with(
+            'success',
+            'Produk "' . $produk->nama . '" berhasil ' . ($produk->aktif ? 'diaktifkan kembali' : 'dinonaktifkan') . '.'
+        );
+    }
+
     public function pesanan()
     {
         $pesanans = Pesanan::with(['user', 'mitra'])->latest()->paginate(20);
