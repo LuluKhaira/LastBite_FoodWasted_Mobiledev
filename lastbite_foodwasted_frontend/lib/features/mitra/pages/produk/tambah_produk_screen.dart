@@ -225,6 +225,26 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     if (terbit && _tokoLibur) {
       return _snack('Toko kamu diatur libur hari ini. Ubah di menu Jam Buka untuk menerbitkan produk.');
     }
+    if (terbit) {
+      final sekarang = TimeOfDay.now();
+      final tutup = _jamTutupToko;
+      if (tutup != null && _menit(sekarang) >= _menit(tutup)) {
+        return _snack(
+          'Toko sudah tutup (jam tutup ${_fmtJam(tutup)}). Pilih jam setelah sekarang, '
+          'atau ubah jam tutup di menu Jam Buka.',
+        );
+      }
+      if (_menit(_batasMaksimal) <= _menit(sekarang)) {
+        return _snack(
+          'Batas pengambilan (${_fmtJam(_batasMaksimal)}) sudah lewat. '
+          'Pilih jam setelah sekarang (${_fmtJam(sekarang)}).',
+        );
+      }
+      if (_menit(_mulaiAmbil) >= _menit(_batasMaksimal)) {
+        return _snack('Jam mulai ambil harus lebih awal dari batas pengambilan.');
+      }
+    }
+
     final tutupToko = _jamTutupToko;
     if (terbit && tutupToko != null && _menit(_batasMaksimal) > _menit(tutupToko)) {
       return _snack(

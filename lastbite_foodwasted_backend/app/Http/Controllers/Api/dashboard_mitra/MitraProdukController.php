@@ -166,10 +166,10 @@ class MitraProdukController extends Controller
 
         $path = $p->gambar ? ltrim($p->gambar, '/') : null;
         if ($path && !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
-            if (!str_starts_with($path, 'storage/')) {
-                $path = 'storage/' . $path;
+            if (str_starts_with($path, 'storage/')) {
+                $path = substr($path, 8);
             }
-            $imgUrl = request()->root() . '/' . $path;
+            $imgUrl = request()->root() . '/api/foto/' . $path;
         } else {
             $imgUrl = $path;
         }
