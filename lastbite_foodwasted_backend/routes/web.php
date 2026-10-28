@@ -35,6 +35,7 @@ Route::middleware(AdminAuth::class)->group(function () {
     Route::get('/admin/mitra', [ManajemenController::class, 'mitra'])->name('admin.mitra');
     Route::get('/admin/pengguna', [ManajemenController::class, 'pengguna'])->name('admin.pengguna');
     Route::get('/admin/produk', [ManajemenController::class, 'produk'])->name('admin.produk');
+    Route::patch('/admin/produk/{produk}/toggle', [ManajemenController::class, 'toggleProduk'])->name('admin.produk.toggle');
     Route::get('/admin/pesanan', [ManajemenController::class, 'pesanan'])->name('admin.pesanan');
     Route::get('/admin/laporan', [ManajemenController::class, 'laporan'])->name('admin.laporan');
 
