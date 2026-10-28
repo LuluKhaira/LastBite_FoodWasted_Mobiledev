@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/config/api_config.dart';
 import '../pesanan/pesanan_model.dart' show lbRp;
 import 'model_toko.dart';
 
@@ -77,7 +78,7 @@ class BahanItem {
       waktu: (j['waktu'] ?? '-').toString(),
       jarak: jarak == null ? '-' : '${fmt(jarak)} km',
       kategori: (j['kategori'] ?? '').toString(),
-      gambar: (j['gambar'] ?? '').toString(),
+      gambar: ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']),
       badge: stok <= 0
           ? 'Habis'
           : (tipe == 'ternak' ? '${fmt(berat)} kg' : '$stok tersisa'),

@@ -58,7 +58,22 @@ class MitraDashboardController extends Controller
             ->get([
                 'id as id_produk', 'nama as nama_produk',
                 'harga_asli', 'harga as harga_diskon', 'stok', 'waktu_selesai',
-            ]);
+                'gambar',
+            ])
+            ->map(function ($p) {
+                $path = $p->gambar ? ltrim($p->gambar, '/') : null;
+                $url = null;
+                if ($path) {
+                    if (!str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+                        $url = request()->root() . '/api/foto/' . $path;
+                    } else {
+                        $url = $path;
+                    }
+                }
+                $p->gambar_url = $url;
+                $p->image_url = $url;
+                return $p;
+            });
 
         return response()->json([
             'success' => true,

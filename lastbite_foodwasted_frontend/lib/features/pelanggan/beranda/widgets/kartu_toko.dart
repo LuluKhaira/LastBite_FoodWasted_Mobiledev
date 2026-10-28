@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/tema/tema_lb.dart';
 import '../model_bahan.dart';
 import '../model_toko.dart';
+import 'gambar_jaringan.dart';
 
 /// Kartu satu toko di beranda: info toko di atas, paket-paketnya
 /// bisa digeser ke samping di bawahnya.
@@ -231,19 +232,9 @@ class _ProdukMini extends StatelessWidget {
   }
 
   Widget _foto(String url) {
-    Widget kosong() => Container(
-          color: LbColors.sageLight,
-          alignment: Alignment.center,
-          child: const Icon(Icons.restaurant_rounded,
-              color: LbColors.sageDeep, size: 26),
-        );
-    if (url.isEmpty) return kosong();
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      loadingBuilder: (_, child, p) =>
-          p == null ? child : Container(color: LbColors.sageLight),
-      errorBuilder: (_, __, ___) => kosong(),
+    return LbNetImage(
+      url: url,
+      fallbackIcon: Icons.restaurant_rounded,
     );
   }
 }

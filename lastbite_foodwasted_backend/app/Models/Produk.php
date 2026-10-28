@@ -80,6 +80,30 @@ class Produk extends Model
         return true;
     }
 
+    public function getGambarUrlAttribute(): ?string
+    {
+        if (empty($this->gambar)) {
+            return null;
+        }
+
+        $gambar = trim($this->gambar);
+        if (str_starts_with($gambar, 'http://') || str_starts_with($gambar, 'https://')) {
+            return $gambar;
+        }
+
+        $path = ltrim($gambar, '/');
+
+        // Gunakan route API langsung /api/foto/{path} agar dapat diakses tanpa bergantung symlink webserver
+        try {
+            $root = request()->root();
+            if (!empty($root)) {
+                return rtrim($root, '/') . '/api/foto/' . $path;
+            }
+        } catch (\Throwable $e) {}
+
+        return url('api/foto/' . $path);
+    }
+
     /** Bentuk JSON yang cocok dengan field BahanItem di Flutter. */
     public function toApi(?float $lat = null, ?float $lng = null): array
     {
@@ -93,9 +117,7 @@ class Produk extends Model
             );
         }
 
-        $gambarUrl = $this->gambar
-            ? url('storage/' . ltrim($this->gambar, '/'))
-            : null;
+        $gambarUrl = $this->gambar_url;
 
         return [
             'id'         => $this->id,

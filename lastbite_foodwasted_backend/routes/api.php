@@ -41,6 +41,13 @@ Route::get('/produk/opsi-pengalihan', [ProdukController::class, 'opsiPengalihan'
 Route::post('/mitra/produk/alihkan', [ProdukController::class, 'alihkanManual']);
 
 // ============================================================
+// AKSES FOTO / GAMBAR PRODUK
+// ============================================================
+Route::get('/foto/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/produk/foto/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/storage/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+
+// ============================================================
 // PELANGGAN (publik)
 // ============================================================
 Route::post('/register', [AuthController::class, 'register']);
@@ -85,8 +92,12 @@ Route::post('/mitra/pesanan/{kode}/siap',          [MitraPesananController::clas
 Route::post('/mitra/pesanan/{kode}/ambil',         [MitraPesananController::class, 'ambil']);
 Route::post('/mitra/pesanan/{kode}/tolak',         [MitraPesananController::class, 'tolak']);
 
+// Jika URL mengarah langsung ke nama file gambar produk (misal: /api/produk/xxx.png)
+Route::get('/produk/{file}', [ProdukController::class, 'tampilFoto'])
+    ->where('file', '.*\.(jpg|jpeg|png|gif|webp|svg|bmp)');
+
 Route::get('/produk', [ProdukController::class, 'index']);
-Route::get('/produk/{produk}', [ProdukController::class, 'show']);
+Route::get('/produk/{produk}', [ProdukController::class, 'show'])->whereNumber('produk');
 
 Route::get('/faq', [FaqController::class, 'index']);
 Route::get('/kategori', [KategoriController::class, 'index']);

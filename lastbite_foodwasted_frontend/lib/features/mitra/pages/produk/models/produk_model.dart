@@ -51,54 +51,9 @@ class Produk {
       return s.isEmpty ? null : DateTime.tryParse(s);
     }
 
-    // Mengambil alamat server dari konfigurasi API.
-    // Contoh HP fisik: http://192.168.1.203:8000
-    final String baseUrlImage = ApiConfig.baseUrl.replaceFirst(
-      RegExp(r'/api/?$'),
-      '',
-    );
-
-    // Menggunakan gambar atau image_url dari respons API.
-    final dynamic nilaiGambar = j['gambar'] ?? j['image_url'];
-    final String rawImage = nilaiGambar?.toString().trim() ?? '';
-
-    String? imgUrl;
-
-    if (rawImage.isNotEmpty && rawImage != 'null') {
-      final uri = Uri.tryParse(rawImage);
-
-      if (uri != null && uri.hasScheme && uri.hasAuthority) {
-        // URL dari Laravel mungkin masih memakai localhost,
-        // 127.0.0.1, atau alamat emulator 10.0.2.2.
-        if (uri.host == '127.0.0.1' ||
-            uri.host == 'localhost' ||
-            uri.host == '10.0.2.2') {
-          final apiUri = Uri.parse(baseUrlImage);
-
-          imgUrl = uri.replace(
-            scheme: apiUri.scheme,
-            host: apiUri.host,
-            port: apiUri.port,
-          ).toString();
-        } else {
-          // Jika URL sudah memakai host yang benar, gunakan langsung.
-          imgUrl = rawImage;
-        }
-      } else {
-        // Jika API hanya mengirim nama atau path gambar.
-        String path = rawImage;
-
-        if (path.startsWith('/')) {
-          path = path.substring(1);
-        }
-
-        if (!path.startsWith('storage/')) {
-          path = 'storage/$path';
-        }
-
-        imgUrl = '$baseUrlImage/$path';
-      }
-    }
+    // Menggunakan helper terpusat ApiConfig untuk menangani path gambar & host
+    final resolvedUrl = ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']);
+    final String? imgUrl = resolvedUrl.isEmpty ? null : resolvedUrl;
 
     return Produk(
       id: i(j['id']),
@@ -136,7 +91,7 @@ class Produk {
   bool get tampilBadgePakan => sudahDialihkan || kadaluarsaBelumDialihkan;
 
   String get labelBadgePakan =>
-      sudahDialihkan ? 'Expired → Pakan' : 'Kadaluarsa • segera jadi pakan';
+      sudahDialihkan ? 'Expired â†’ Pakan' : 'Kadaluarsa â€¢ segera jadi pakan';
 
   StatusProduk get statusUI {
     if (!aktif) return StatusProduk.habis;

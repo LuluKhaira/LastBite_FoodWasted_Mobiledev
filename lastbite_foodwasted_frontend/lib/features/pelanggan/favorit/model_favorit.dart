@@ -1,4 +1,6 @@
-﻿/// Data satu toko (mitra) yang disimpan pelanggan sebagai favorit.
+import '../../../core/config/api_config.dart';
+
+/// Data satu toko (mitra) yang disimpan pelanggan sebagai favorit.
 /// Dibuat dari JSON `GET /api/mitra-favorit`. Semua field aman terhadap null.
 class TokoFavorit {
   final int idMitra;
@@ -37,7 +39,7 @@ class TokoFavorit {
       idMitra: angka(j['id_mitra']) ?? 0,
       nama: teks(j['nama']).isEmpty ? 'Mitra LastBite' : teks(j['nama']),
       alamat: teks(j['alamat']),
-      gambar: teks(j['gambar']),
+      gambar: ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']),
       waktu: teks(j['waktu']),
       jarakKm: desimal(j['jarak_km']),
       produkId: angka(j['produk_id']),

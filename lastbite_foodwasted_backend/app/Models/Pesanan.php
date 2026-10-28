@@ -64,6 +64,21 @@ class Pesanan extends Model
         $isSiap = in_array($this->status, ['siap', self::STATUS_READY_FOR_PICKUP]);
         $isSelesai = in_array($this->status, ['selesai', self::STATUS_COMPLETED]);
 
+        $path = $this->gambar ? ltrim($this->gambar, '/') : null;
+        if ($path && !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+            if (!str_starts_with($path, 'storage/')) {
+                $path = 'storage/' . $path;
+            }
+            try {
+                $root = request()->root();
+                $gambarUrl = !empty($root) ? (rtrim($root, '/') . '/' . $path) : asset($path);
+            } catch (\Throwable $e) {
+                $gambarUrl = asset($path);
+            }
+        } else {
+            $gambarUrl = $path;
+        }
+
         return [
             'id'                => $this->id,
             'kode'              => $this->kode,
@@ -73,7 +88,8 @@ class Pesanan extends Model
             'inisial'           => $this->inisial,
             'alamat'            => $this->alamat,
             'produk'            => $this->produk,
-            'gambar'            => $this->gambar,
+            'gambar'            => $gambarUrl,
+            'image_url'         => $gambarUrl,
             'metode'            => $this->metode ?: 'QRIS',
             'qty'               => $this->qty,
             'harga_satuan'      => (int) $this->harga_satuan,

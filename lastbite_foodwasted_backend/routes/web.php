@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\MitraVerifikasiController;
 use App\Http\Controllers\Admin\ManajemenController;
 use App\Http\Controllers\Admin\AturanHargaController;
 use App\Http\Controllers\Admin\KategoriController;
+use App\Http\Controllers\Api\ProdukController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -52,3 +53,9 @@ Route::middleware(AdminAuth::class)->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'adminLogout'])->name('admin.logout');
 });
+
+// Akses publik foto/gambar
+Route::get('/storage/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/foto/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/produk/{file}', [ProdukController::class, 'tampilFoto'])
+    ->where('file', '.*\.(jpg|jpeg|png|gif|webp|svg|bmp)');

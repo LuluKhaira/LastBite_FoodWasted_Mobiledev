@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 
 class SurplusSection extends StatelessWidget {
@@ -97,6 +98,8 @@ class SurplusSection extends StatelessWidget {
     final batas = _batas(p['waktu_selesai']);
     final stok = int.tryParse('${p['stok']}') ?? 0;
     final adaAsli = (num.tryParse('${p['harga_asli']}') ?? 0) > 0;
+    final rawFoto = p['gambar'] ?? p['gambar_url'] ?? p['image_url'];
+    final fotoUrl = ApiConfig.resolveImageUrl(rawFoto);
 
     return Material(
       color: Colors.white,
@@ -109,15 +112,19 @@ class SurplusSection extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: fotoUrl.isNotEmpty
+                      ? Image.network(
+                          fotoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fotoKosong(),
+                        )
+                      : _fotoKosong(),
                 ),
-                child: const Icon(Icons.bakery_dining,
-                    size: 36, color: AppColors.textDark),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -200,6 +207,22 @@ class SurplusSection extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _fotoKosong() {
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        color: AppColors.orange.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(
+        Icons.bakery_dining,
+        size: 36,
+        color: AppColors.textDark,
       ),
     );
   }

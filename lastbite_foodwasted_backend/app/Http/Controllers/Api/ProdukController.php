@@ -213,4 +213,38 @@ class ProdukController extends Controller
 
         return response()->json(['message' => 'Produk berhasil diperbarui'], 200);
     }
+
+    /**
+     * GET /api/foto/{path}
+     * Menampilkan file foto produk secara langsung lewat response file API
+     */
+    public function tampilFoto($path)
+    {
+        $path = ltrim($path, '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, 8);
+        }
+
+        $candidates = [
+            storage_path('app/public/' . $path),
+            storage_path('app/public/produk/' . $path),
+            public_path('storage/' . $path),
+            public_path('storage/produk/' . $path),
+            public_path('images/' . $path),
+            storage_path('app/' . $path),
+        ];
+
+        foreach ($candidates as $filePath) {
+            if (file_exists($filePath) && !is_dir($filePath)) {
+                $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
+                return response()->file($filePath, [
+                    'Content-Type' => $mimeType,
+                    'Access-Control-Allow-Origin' => '*',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Foto tidak ditemukan: ' . $path], 404);
+    }
 }

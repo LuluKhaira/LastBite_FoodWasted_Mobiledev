@@ -1,6 +1,8 @@
-﻿// ============================================================
+// ============================================================
 // MODEL PESANAN (dari API Laravel: GET /api/pesanan)
 // ============================================================
+
+import '../../../core/config/api_config.dart';
 
 String lbRp(int v) {
   final s = v.abs().toString();
@@ -79,7 +81,7 @@ class Pesanan {
       inisial: inisial,
       alamat: '${j['alamat'] ?? ''}',
       produk: '${j['produk'] ?? ''}',
-      gambar: '${j['gambar'] ?? ''}',
+      gambar: ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']),
       metode: '${j['metode'] ?? ''}',
       qty: i(j['qty']) == 0 ? 1 : i(j['qty']),
       hargaSatuan: satuan,

@@ -30,7 +30,15 @@ class ProdukMitraController extends Controller
 
         // 3. Terjemahkan data agar sesuai dengan format yang dibaca Flutter
         $data = $produks->map(function ($p) {
-            $img = $p->gambar ? url('storage/' . $p->gambar) : null;
+            $path = $p->gambar ? ltrim($p->gambar, '/') : null;
+            if ($path && !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+                if (!str_starts_with($path, 'storage/')) {
+                    $path = 'storage/' . $path;
+                }
+                $img = request()->root() . '/' . $path;
+            } else {
+                $img = $path;
+            }
             return [
                 'id' => $p->id,
                 'nama' => $p->nama,

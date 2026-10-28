@@ -164,6 +164,16 @@ class MitraProdukController extends Controller
             return response()->json(['success' => true, 'data' => null]);
         }
 
+        $path = $p->gambar ? ltrim($p->gambar, '/') : null;
+        if ($path && !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
+            if (!str_starts_with($path, 'storage/')) {
+                $path = 'storage/' . $path;
+            }
+            $imgUrl = request()->root() . '/' . $path;
+        } else {
+            $imgUrl = $path;
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -173,7 +183,7 @@ class MitraProdukController extends Controller
                 'harga'      => $p->harga,
                 'stok'       => $p->stok,
                 'gambar'     => $p->gambar,
-                'gambar_url' => $p->gambar ? url('storage/' . $p->gambar) : null,
+                'gambar_url' => $imgUrl,
             ],
         ]);
     }
