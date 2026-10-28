@@ -10,7 +10,6 @@ import 'widgets/baris_lokasi.dart';
 import 'widgets/bilah_pencarian.dart';
 import 'widgets/banner_misi.dart';
 import 'widgets/toggle_tipe.dart';
-import 'widgets/bilah_kategori.dart';
 import 'widgets/judul_seksi.dart';
 import 'widgets/kartu_paket.dart';
 import 'widgets/kartu_toko.dart';
@@ -21,9 +20,6 @@ import 'widgets/kartu_toko.dart';
 class BerandaLayout extends StatefulWidget {
   final bool isTernak;
   final ValueChanged<bool> onSwitch; // true = pindah ke ternak
-  final List<LbKategori> kategori;
-  final int selectedKategori;
-  final ValueChanged<int> onKategori;
   final String sectionTitle;
   final List<BahanItem> items;
   final ValueChanged<String>? onSearch;
@@ -41,9 +37,6 @@ class BerandaLayout extends StatefulWidget {
     super.key,
     required this.isTernak,
     required this.onSwitch,
-    required this.kategori,
-    required this.selectedKategori,
-    required this.onKategori,
     required this.sectionTitle,
     required this.items,
     this.onSearch,
@@ -120,7 +113,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
               ),
             ),
 
-            // ---------- BANNER, TOGGLE, KATEGORI ----------
+            // ---------- BANNER & TOGGLE ----------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -139,16 +132,6 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                       child: LbTypeToggle(
                         isTernak: widget.isTernak,
                         onChanged: widget.onSwitch,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    LbMuncul(
-                      aktif: _animasi,
-                      urutan: 6,
-                      child: LbKategoriBar(
-                        kategori: widget.kategori,
-                        selected: widget.selectedKategori,
-                        onSelected: widget.onKategori,
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -234,7 +217,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                             style: LbText.heading(15, weight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          'Coba ganti kata kunci, kategori, atau filter lain.',
+                          'Coba ganti kata kunci atau filter harga.',
                           textAlign: TextAlign.center,
                           style: LbText.body(12.5),
                         ),

@@ -20,8 +20,14 @@ class ProdukController extends Controller
                 ->orWhere('kadaluarsa', '>', now('Asia/Jakarta'));
         });
 
+        // PERBAIKAN: aplikasi mengirim tipe=ternak, sedangkan di database
+        // produk ternak disimpan sebagai 'pakan' atau 'kompos'.
         if ($r->filled('tipe')) {
-            $q->where('tipe', $r->tipe);
+            if ($r->tipe === 'ternak') {
+                $q->whereIn('tipe', [Produk::TIPE_PAKAN, Produk::TIPE_KOMPOS]);
+            } else {
+                $q->where('tipe', $r->tipe);
+            }
         }
 
         $kategori = array_values(array_filter((array) $r->input('kategori', [])));
@@ -149,11 +155,18 @@ class ProdukController extends Controller
             $gambarPath = 'produk/' . $namaFile;
         }
 
+        // Tipe produk harus salah satu: dimakan / pakan / kompos.
+        // Kalau yang terkirim 'ternak', ambil tipe dari kategorinya.
+        $tipe = $request->tipe ?? Produk::TIPE_DIMAKAN;
+        if ($tipe === 'ternak') {
+            $tipe = PengalihanKategori::tipeUntuk($request->kategori) ?? Produk::TIPE_PAKAN;
+        }
+
         $produk = Produk::create([
             'id_mitra' => $mitra->id_mitra,
             'nama' => $request->nama,
             'deskripsi' => $request->deskripsi ?? '-',
-            'tipe' => $request->tipe ?? Produk::TIPE_DIMAKAN,
+            'tipe' => $tipe,
             'kategori' => $request->kategori,
             'gambar' => $gambarPath,
             'harga' => $request->harga,

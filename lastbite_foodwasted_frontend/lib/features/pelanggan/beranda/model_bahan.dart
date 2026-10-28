@@ -22,9 +22,13 @@ class BahanItem {
   final String satuan; // "Gratis" / "/paket" / "/karung"
   final String? hargaAsli; // harga coret (opsional)
   final String alamat;
+  final String tipe; // 'dimakan' / 'ternak' (kategori utama produk)
+  final bool sudahDialihkan; // produk dimakan yang kedaluwarsa -> dialihkan
 
   const BahanItem({
     this.id,
+    this.sudahDialihkan = false,
+    this.tipe = 'dimakan',
     required this.nama,
     required this.penjual,
     required this.inisial,
@@ -48,7 +52,11 @@ class BahanItem {
         ? v.toInt().toString()
         : v.toStringAsFixed(1).replaceAll('.', ',');
 
-    final tipe = (j['tipe'] ?? 'dimakan').toString();
+    // Backend memakai 'dimakan' / 'pakan' / 'kompos'; di aplikasi pakan &
+    // kompos digabung menjadi satu jenis: 'ternak'.
+    final tipeRaw = (j['tipe'] ?? 'dimakan').toString();
+    final tipe =
+        (tipeRaw == 'pakan' || tipeRaw == 'kompos') ? 'ternak' : tipeRaw;
     final harga = (j['harga'] as num?)?.toInt() ?? 0;
     final asli = (j['harga_asli'] as num?)?.toInt();
     final stok = (j['stok'] as num?)?.toInt() ?? 0;
@@ -59,6 +67,8 @@ class BahanItem {
 
     return BahanItem(
       id: (j['id'] as num?)?.toInt(),
+      tipe: tipe,
+      sudahDialihkan: j['sudah_dialihkan'] == true,
       nama: (j['nama'] ?? '').toString(),
       penjual: penjual,
       inisial: inisial.isNotEmpty
@@ -83,8 +93,9 @@ class BahanItem {
 
   bool get gratis => harga == 'Rp0';
 
-  bool get untukTernak =>
-      kategori == 'Pakan Ternak' || kategori == 'Bahan Pupuk';
+  /// Ditentukan dari kategori utama (tipe), bukan nama kategori,
+  /// karena nama kategori dikelola admin dan bisa berubah.
+  bool get untukTernak => tipe == 'ternak';
 }
 
 class LbKategori {

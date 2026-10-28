@@ -1,11 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import '../../../core/tema/tema_lb.dart';
 
-const _forest = Color(0xFF2F4F2A);
-const _sage = Color(0xFFA7C957);
-const _sageLight = Color(0xFFEDF3DC);
-const _offWhite = Color(0xFFF8F6F2);
-const _grey = Color(0xFF7B8374);
-
+/// Filter beranda: fokus ke urutan & harga saja.
+/// (Kategori dipindah ke halaman toko, jarak dihapus.)
 class FilterPreferensiScreen extends StatefulWidget {
   final bool isTernak;
 
@@ -24,142 +21,141 @@ class FilterPreferensiScreen extends StatefulWidget {
 }
 
 class _FilterPreferensiScreenState extends State<FilterPreferensiScreen> {
+  static const _urutanList = ['Rekomendasi', 'Harga Terendah'];
+  static const _hargaList = [
+    'Semua Harga',
+    'Di bawah Rp25.000',
+    'Rp25.000–Rp50.000',
+    'Di atas Rp50.000',
+  ];
+
   String urutan = 'Rekomendasi';
-  double jarak = 10;
   bool tersedia = false;
   String harga = 'Semua Harga';
-  late Set<String> kategori;
-
-  List<String> get pilihanKategori => widget.isTernak
-      ? ['Pakan Ternak', 'Bahan Pupuk']
-      : ['Roti & Bakery', 'Makanan Siap Saji', 'Sayur & Buah'];
 
   @override
   void initState() {
     super.initState();
-    kategori = {};
     final i = widget.initial;
     if (i != null) {
-      urutan = (i['urutan'] ?? urutan).toString();
-      jarak = (i['jarak'] as num?)?.toDouble() ?? jarak;
+      final u = (i['urutan'] ?? urutan).toString();
+      urutan = _urutanList.contains(u) ? u : 'Rekomendasi';
       tersedia = i['tersedia'] == true;
       harga = (i['harga'] ?? harga).toString();
-      kategori = Set<String>.from((i['kategori'] as List?) ?? const []);
     }
   }
 
   void reset() => setState(() {
-    urutan = 'Rekomendasi';
-    jarak = 10;
-    tersedia = false;
-    harga = 'Semua Harga';
-    kategori.clear();
-  });
+        urutan = 'Rekomendasi';
+        tersedia = false;
+        harga = 'Semua Harga';
+      });
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.isTernak ? 'Filter Ternak & Pupuk' : 'Filter Untuk Dimakan';
+    final title =
+        widget.isTernak ? 'Filter Ternak & Pupuk' : 'Filter Untuk Dimakan';
+
     return Scaffold(
-      backgroundColor: _offWhite,
+      backgroundColor: LbColors.offWhite,
       appBar: AppBar(
-        backgroundColor: _offWhite,
+        backgroundColor: LbColors.offWhite,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _forest),
+          icon: const Icon(Icons.arrow_back_rounded, color: LbColors.forest),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(title, style: const TextStyle(color: _forest, fontSize: 18, fontWeight: FontWeight.w700)),
+        title: Text(title, style: LbText.heading(18, weight: FontWeight.w700)),
         actions: [
-          TextButton(onPressed: reset, child: const Text('Reset', style: TextStyle(color: _forest))),
+          TextButton(
+            onPressed: reset,
+            child: Text('Reset',
+                style: LbText.heading(13.5,
+                    weight: FontWeight.w600, color: LbColors.sageDeep)),
+          ),
           const SizedBox(width: 8),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          _heading('Urutkan berdasarkan'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in _urutanList)
+                _choice(item, urutan == item,
+                    () => setState(() => urutan = item)),
+            ],
+          ),
+          const SizedBox(height: 28),
+          _heading('Rentang harga'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in _hargaList)
+                _choice(item, harga == item, () => setState(() => harga = item)),
+            ],
+          ),
+          const SizedBox(height: 28),
           Container(
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFEAE7E0)),
+              border: Border.all(color: LbColors.border),
             ),
-            child: Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: const BoxDecoration(color: _sageLight, shape: BoxShape.circle),
-                child: const Icon(Icons.tune_rounded, color: _forest),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Atur preferensimu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _forest)),
-                const SizedBox(height: 3),
-                Text(widget.isTernak
-                    ? 'Temukan bahan pakan dan pupuk sesuai kebutuhan.'
-                    : 'Temukan surplus makanan sesuai seleramu.',
-                  style: const TextStyle(fontSize: 12, color: _grey)),
-              ])),
-            ]),
-          ),
-          const SizedBox(height: 20),
-          _heading('Urutkan berdasarkan', 'Pilih satu'),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            'Rekomendasi', 'Jarak Terdekat', 'Harga Terendah'
-          ].map((item) => _choice(item, urutan == item, () => setState(() => urutan = item))).toList()),
-          const SizedBox(height: 22),
-          _heading('Kategori', 'Bisa pilih lebih dari satu'),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: pilihanKategori.map((item) =>
-            _choice(item, kategori.contains(item), () => setState(() {
-              if (kategori.contains(item)) { kategori.remove(item); } else { kategori.add(item); }
-            }), icon: widget.isTernak ? (item == 'Pakan Ternak' ? Icons.agriculture_rounded : Icons.eco_rounded)
-                                      : (item == 'Roti & Bakery' ? Icons.bakery_dining_rounded : item == 'Makanan Siap Saji' ? Icons.lunch_dining_rounded : Icons.eco_rounded))
-          ).toList()),
-          const SizedBox(height: 22),
-          _heading('Jarak maksimal', '${jarak.toInt()} km'),
-          Slider(
-            value: jarak, min: 1, max: 10, divisions: 9,
-            activeColor: _forest, inactiveColor: _sageLight,
-            label: '${jarak.toInt()} km',
-            onChanged: (v) => setState(() => jarak = v),
-          ),
-          const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('1 km', style: TextStyle(color: _grey, fontSize: 12)),
-            Text('10 km', style: TextStyle(color: _grey, fontSize: 12)),
-          ]),
-          const SizedBox(height: 20),
-          _heading('Rentang harga', 'Pilih satu'),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            'Semua Harga', 'Di bawah Rp25.000', 'Rp25.000–Rp50.000', 'Di atas Rp50.000'
-          ].map((item) => _choice(item, harga == item, () => setState(() => harga = item))).toList()),
-          const SizedBox(height: 18),
-          Container(
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFEAE7E0))),
             child: SwitchListTile(
               value: tersedia,
-              activeColor: _forest,
+              activeColor: Colors.white,
+              activeTrackColor: LbColors.sageDeep,
               onChanged: (v) => setState(() => tersedia = v),
-              title: Text(widget.isTernak ? 'Hanya yang masih tersedia' : 'Hanya makanan yang masih tersedia',
-                style: const TextStyle(color: _forest, fontWeight: FontWeight.w700, fontSize: 13)),
-              subtitle: const Text('Sembunyikan produk yang sudah habis', style: TextStyle(color: _grey, fontSize: 12)),
-              secondary: const Icon(Icons.inventory_2_outlined, color: _forest),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              title: Text(
+                widget.isTernak
+                    ? 'Hanya yang masih tersedia'
+                    : 'Hanya makanan yang masih tersedia',
+                style: LbText.heading(13.5, weight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Sembunyikan produk yang sudah habis',
+                style: LbText.body(12),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _forest, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
-              onPressed: () => Navigator.pop(context, {
-                'urutan': urutan,
-                'jarak': jarak,
-                'tersedia': tersedia,
-                'harga': harga,
-                'kategori': kategori.toList(),
-              }),
-              child: const Text('Terapkan Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 28),
+          GestureDetector(
+            onTap: () => Navigator.pop(context, {
+              'urutan': urutan,
+              'tersedia': tersedia,
+              'harga': harga,
+            }),
+            child: Container(
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: const LinearGradient(
+                  colors: [LbColors.sage, LbColors.sageDeep],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: LbColors.sage.withValues(alpha: 0.45),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Text(
+                'Terapkan Filter',
+                style: LbText.heading(15,
+                    weight: FontWeight.w600, color: Colors.white),
+              ),
             ),
           ),
         ],
@@ -167,31 +163,31 @@ class _FilterPreferensiScreenState extends State<FilterPreferensiScreen> {
     );
   }
 
-  Widget _heading(String title, String trailing) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(title, style: const TextStyle(color: _forest, fontSize: 15, fontWeight: FontWeight.w700)),
-      Text(trailing, style: const TextStyle(color: _grey, fontSize: 11)),
-    ],
-  );
+  Widget _heading(String title) =>
+      Text(title, style: LbText.heading(15, weight: FontWeight.w700));
 
-  Widget _choice(String label, bool selected, VoidCallback onTap, {IconData? icon}) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(24),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-      decoration: BoxDecoration(
-        color: selected ? _forest : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: selected ? _forest : const Color(0xFFE0DED6)),
+  Widget _choice(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? LbColors.sageDeep : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? LbColors.sageDeep : LbColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: LbText.body(
+            12.5,
+            weight: FontWeight.w700,
+            color: selected ? Colors.white : LbColors.forest,
+          ),
+        ),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[
-          Icon(icon, size: 15, color: selected ? Colors.white : _forest),
-          const SizedBox(width: 6),
-        ],
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : _forest)),
-      ]),
-    ),
-  );
+    );
+  }
 }

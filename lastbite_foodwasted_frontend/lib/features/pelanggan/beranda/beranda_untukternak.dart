@@ -16,25 +16,13 @@ class BerandaUntukTernakScreen extends StatefulWidget {
 
 class _BerandaUntukTernakScreenState extends State<BerandaUntukTernakScreen>
     with BerandaLoader<BerandaUntukTernakScreen> {
-  static const List<LbKategori> _kategoriList = [
-    LbKategori('Semua', Icons.apps_rounded),
-    LbKategori('Pakan Ternak', Icons.agriculture_rounded),
-    LbKategori('Bahan Pupuk', Icons.eco_rounded),
-  ];
-
   @override
   bool get isTernak => true;
-
-  @override
-  List<LbKategori> get kategoriList => _kategoriList;
 
   @override
   Widget build(BuildContext context) {
     return BerandaLayout(
       isTernak: true,
-      kategori: _kategoriList,
-      selectedKategori: kategoriIndex,
-      onKategori: pilihKategori,
       onSearch: cariTeks,
       onFilter: bukaFilter,
       filterAktif: filterAktif,
