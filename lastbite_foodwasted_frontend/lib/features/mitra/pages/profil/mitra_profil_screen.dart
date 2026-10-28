@@ -7,6 +7,7 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/dashboard/wid
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widgets/scan_pesanan_bottomsheet.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/welcome_screen.dart';
 
 import 'jam_buka_screen.dart';
 import 'rekening_screen.dart';
@@ -201,13 +202,31 @@ class _MitraProfilScreenState extends State<MitraProfilScreen> {
     );
     if (ya != true || !mounted) return;
 
-    // TODO: hapus sesi/token login di sini, lalu arahkan ke halaman login, mis.:
-    // Navigator.of(context).pushAndRemoveUntil(
-    //   MaterialPageRoute(builder: (_) => const LoginScreen()),
-    //   (route) => false,
-    // );
-    _info('Berhasil keluar dari akun toko');
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // Simpan messenger sebelum pindah halaman, karena context halaman ini
+    // sudah tidak valid setelah semua route dihapus.
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Kalau kamu menyimpan sesi/token login (mis. di MitraSession atau
+    // SharedPreferences), hapus di sini sebelum pindah ke halaman Selamat Datang.
+
+    // Kembali ke halaman Selamat Datang dan hapus semua halaman sebelumnya,
+    // supaya tombol back tidak bisa kembali ke profil/dashboard.
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
+    );
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Berhasil keluar dari akun toko',
+          style: AppColors.body(color: Colors.white),
+        ),
+        backgroundColor: AppColors.textDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   void _info(String pesan) {

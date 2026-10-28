@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DokumenController;
 use App\Http\Controllers\Admin\MitraVerifikasiController;
 use App\Http\Controllers\Admin\ManajemenController;
 use App\Http\Controllers\Admin\AturanHargaController;
+use App\Http\Controllers\Admin\KategoriController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,12 @@ Route::middleware(AdminAuth::class)->group(function () {
     // Aturan harga
     Route::get('/admin/aturan-harga', [AturanHargaController::class, 'index'])->name('admin.aturan');
     Route::post('/admin/aturan-harga', [AturanHargaController::class, 'simpan'])->name('admin.aturan.simpan');
+
+    // Kategori produk
+    Route::get('/admin/kategori', [KategoriController::class, 'index'])->name('admin.kategori');
+    Route::post('/admin/kategori', [KategoriController::class, 'store'])->name('admin.kategori.simpan');
+    Route::put('/admin/kategori/{id}', [KategoriController::class, 'update'])->name('admin.kategori.update');
+    Route::post('/admin/kategori/{id}/toggle', [KategoriController::class, 'toggle'])->name('admin.kategori.toggle');
 
     // Logout
     Route::post('/logout', [AuthController::class, 'adminLogout'])->name('admin.logout');

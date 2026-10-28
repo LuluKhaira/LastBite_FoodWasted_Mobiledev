@@ -65,6 +65,9 @@ class Produk extends Model
             $tujuan = PengalihanKategori::cariTujuan($this->kategori);
             $kategoriTujuan = $tujuan['kategori'];
             $tipeTujuan = $tipeTujuan ?? $tujuan['tipe'];
+        } elseif ($tipeTujuan === null) {
+            // Target pilihan (mitra/admin): tipe diambil dari kategori tujuannya
+            $tipeTujuan = PengalihanKategori::tipeUntuk($kategoriTujuan);
         }
 
         $this->update([

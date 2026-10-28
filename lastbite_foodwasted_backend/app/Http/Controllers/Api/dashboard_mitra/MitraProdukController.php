@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\dashboard_mitra;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kategori;
 use App\Models\Mitra;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class MitraProdukController extends Controller
 {
-    // KATEGORI DIPERBARUI SESUAI FLUTTER
+    // Cadangan bila tabel kategoris belum ada. Sumber utama: tabel kategoris (diatur admin).
     private const KATEGORI = [
         // Kategori Manusia
         'Roti & Pastry', 'Roti Tawar', 'Siap Santap', 'Sayur & Buah', 'Bahan & Olahan Dapur',
@@ -38,7 +39,7 @@ class MitraProdukController extends Controller
             'nama'          => 'required|string|max:255',
             'deskripsi'     => 'nullable|string',
             'tipe'          => 'required|string|in:dimakan,kompos',
-            'kategori'      => ['required', Rule::in(self::KATEGORI)],
+            'kategori'      => ['required', Rule::in($this->namaKategori())],
             'harga_asli'    => 'required|integer|min:1|max:99999999',
             'harga'         => 'required|integer|min:0|lt:harga_asli',
             'stok'          => 'required|integer|min:1|max:999',
@@ -49,6 +50,7 @@ class MitraProdukController extends Controller
             'terbit'        => 'required|boolean',
             'foto'          => 'nullable|image|max:5120',
             'gambar_lama'   => 'nullable|string|max:255',
+            'target_kategori_pengalihan' => 'nullable|string|max:255',
         ], [
             'nama.required'      => 'Nama produk wajib diisi.',
             'kategori.required'  => 'Pilih kategori produk.',
@@ -130,6 +132,11 @@ class MitraProdukController extends Controller
             'waktu_mulai'   => $data['waktu_mulai'] . ':00',
             'waktu_selesai' => $data['waktu_selesai'] . ':00',
             'kadaluarsa'    => $kadaluarsa?->format('Y-m-d H:i:s'),
+            // Kategori tujuan pilihan mitra saat produk kadaluarsa (hanya untuk produk dimakan).
+            // Kosong = pakai mapping default PengalihanKategori::MAP.
+            'target_kategori_pengalihan' => $data['tipe'] === 'dimakan'
+                ? ($data['target_kategori_pengalihan'] ?? null)
+                : null,
             'aktif'         => $terbit ? 1 : 0,
             'created_at'    => now(),
             'updated_at'    => now(),
@@ -205,6 +212,18 @@ class MitraProdukController extends Controller
                 'waktu_selesai' => ["Batas pengambilan ({$selesai}) melewati jam tutup toko ({$atur['tutup']}). Ubah batas pengambilan atau atur ulang Jam Buka."],
             ]);
         }
+    }
+
+    /** Nama kategori aktif dari tabel kategoris (cadangan: daftar tetap di atas). */
+    private function namaKategori(): array
+    {
+        try {
+            $nama = Kategori::aktif()->pluck('nama')->all();
+        } catch (\Throwable $e) {
+            $nama = [];
+        }
+
+        return $nama ?: self::KATEGORI;
     }
 
     private function mitraDariRequest(Request $request): ?Mitra
