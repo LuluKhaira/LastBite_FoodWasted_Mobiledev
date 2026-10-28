@@ -2,6 +2,7 @@
 import 'beranda_widgets.dart';
 import 'beranda_loader.dart';
 import 'detail_paket.dart';
+import 'halaman_toko.dart';
 import 'lb_nav.dart';
 import 'beranda_untukternak.dart';
 
@@ -40,9 +41,13 @@ class _BerandaScreenState extends State<BerandaScreen>
       loading: loading,
       errorMessage: error,
       onRetry: muatData,
-      sectionTitle: 'Paket Kejutan di Sekitarmu',
+      sectionTitle: 'Toko dengan Paket Kejutan',
       items: items,
       onNavTap: (i) => LbNav.go(context, from: 0, to: i),
+      onTokoTap: (toko) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TokoScreen(toko: toko)),
+      ),
       onItemTap: (item) => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DetailPaketScreen(item: item)),

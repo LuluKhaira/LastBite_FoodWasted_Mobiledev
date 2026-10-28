@@ -2,6 +2,7 @@
 import 'beranda_widgets.dart';
 import 'beranda_loader.dart';
 import 'detail_paket.dart';
+import 'halaman_toko.dart';
 import 'lb_nav.dart';
 import 'halaman_beranda.dart';
 
@@ -40,9 +41,13 @@ class _BerandaUntukTernakScreenState extends State<BerandaUntukTernakScreen>
       loading: loading,
       errorMessage: error,
       onRetry: muatData,
-      sectionTitle: 'Pasokan Bahan Organik Terdekat',
+      sectionTitle: 'Penyedia Bahan Organik Terdekat',
       items: items,
       onNavTap: (i) => LbNav.go(context, from: 0, to: i),
+      onTokoTap: (toko) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TokoScreen(toko: toko)),
+      ),
       onItemTap: (item) => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DetailPaketScreen(item: item)),

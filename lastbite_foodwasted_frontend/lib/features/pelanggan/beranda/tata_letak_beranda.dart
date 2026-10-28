@@ -4,6 +4,7 @@ import '../../../core/komponen/animasi_lb.dart';
 import '../../../core/komponen/navbar_bawah.dart';
 import '../../../core/tema/tema_lb.dart';
 import 'model_bahan.dart';
+import 'model_toko.dart';
 import 'widgets/header_beranda.dart';
 import 'widgets/baris_lokasi.dart';
 import 'widgets/bilah_pencarian.dart';
@@ -12,6 +13,7 @@ import 'widgets/toggle_tipe.dart';
 import 'widgets/bilah_kategori.dart';
 import 'widgets/judul_seksi.dart';
 import 'widgets/kartu_paket.dart';
+import 'widgets/kartu_toko.dart';
 
 /// Layout halaman beranda (dipakai mode dimakan & ternak).
 /// Navbar hanya tampil bila [onNavTap] diisi. Di dalam CangkangUtama,
@@ -28,6 +30,7 @@ class BerandaLayout extends StatefulWidget {
   final VoidCallback? onLihatPeta;
   final ValueChanged<int>? onNavTap;
   final ValueChanged<BahanItem>? onItemTap;
+  final ValueChanged<TokoGroup>? onTokoTap;
   final VoidCallback? onFilter;
   final bool filterAktif;
   final bool loading;
@@ -47,6 +50,7 @@ class BerandaLayout extends StatefulWidget {
     this.onLihatPeta,
     this.onNavTap,
     this.onItemTap,
+    this.onTokoTap,
     this.onFilter,
     this.filterAktif = false,
     this.loading = false,
@@ -240,30 +244,33 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                 ),
               )
             else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                sliver: SliverList.separated(
-                  itemCount: widget.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) {
-                    final it = widget.items[i];
-                    return LbMuncul(
-                      // key berubah saat data/mode berubah -> animasi diputar ulang
-                      key: ValueKey('${it.id ?? it.nama}-${widget.isTernak}-$i'),
-                      urutan: i < 6 ? i : 0,
-                      jeda: const Duration(milliseconds: 70),
-                      dari: const Offset(0, 32),
-                      child: BahanCard(
-                        item: it,
-                        index: i,
-                        onTap: widget.onItemTap == null
-                            ? null
-                            : () => widget.onItemTap!(it),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              Builder(builder: (_) {
+                final tokoList = TokoGroup.kelompokkan(widget.items);
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  sliver: SliverList.separated(
+                    itemCount: tokoList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, i) {
+                      final t = tokoList[i];
+                      return LbMuncul(
+                        // key berubah saat data/mode berubah -> animasi diputar ulang
+                        key: ValueKey('${t.nama}-${widget.isTernak}-$i'),
+                        urutan: i < 6 ? i : 0,
+                        jeda: const Duration(milliseconds: 70),
+                        dari: const Offset(0, 32),
+                        child: KartuToko(
+                          toko: t,
+                          onTokoTap: widget.onTokoTap == null
+                              ? null
+                              : () => widget.onTokoTap!(t),
+                          onItemTap: widget.onItemTap,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
           ],
         ),
       ),

@@ -58,39 +58,44 @@ class _LbBannerState extends State<LbBanner>
       ),
       child: Stack(
         children: [
-          // Lingkaran dekorasi yang bernapas
-          AnimatedBuilder(
-            animation: _a,
-            builder: (context, _) {
-              final v = _a.value;
-              return Stack(
-                children: [
-                  Positioned(
-                    right: -34 + 10 * v,
-                    top: -46 + 6 * v,
-                    child: Transform.scale(
-                      scale: 1 + 0.06 * v,
-                      child: _circle(
-                          160, LbColors.sage.withValues(alpha: 0.38)),
+          // Lingkaran dekorasi yang bernapas.
+          // Positioned.fill: Stack di dalamnya mengikuti ukuran banner,
+          // tidak lagi mencari ukuran sendiri (penyebab layar putih).
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _a,
+              builder: (context, _) {
+                final v = _a.value;
+                return Stack(
+                  children: [
+                    Positioned(
+                      right: -34 + 10 * v,
+                      top: -46 + 6 * v,
+                      child: Transform.scale(
+                        scale: 1 + 0.06 * v,
+                        child: _circle(
+                            160, LbColors.sage.withValues(alpha: 0.38)),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    right: -20 - 8 * v,
-                    bottom: -40 + 8 * v,
-                    child: Transform.scale(
-                      scale: 1 + 0.08 * (1 - v),
-                      child: _circle(
-                          104, LbColors.peach.withValues(alpha: 0.6)),
+                    Positioned(
+                      right: -20 - 8 * v,
+                      bottom: -40 + 8 * v,
+                      child: Transform.scale(
+                        scale: 1 + 0.08 * (1 - v),
+                        child: _circle(
+                            104, LbColors.peach.withValues(alpha: 0.6)),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    left: -26 + 8 * v,
-                    bottom: -34,
-                    child: _circle(86, LbColors.sage.withValues(alpha: 0.3)),
-                  ),
-                ],
-              );
-            },
+                    Positioned(
+                      left: -26 + 8 * v,
+                      bottom: -34,
+                      child:
+                          _circle(86, LbColors.sage.withValues(alpha: 0.3)),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
