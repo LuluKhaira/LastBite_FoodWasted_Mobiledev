@@ -24,8 +24,6 @@ class _BerandaUntukTernakScreenState extends State<BerandaUntukTernakScreen>
     return BerandaLayout(
       isTernak: true,
       onSearch: cariTeks,
-      onFilter: bukaFilter,
-      filterAktif: filterAktif,
       loading: loading,
       errorMessage: error,
       onRetry: muatData,

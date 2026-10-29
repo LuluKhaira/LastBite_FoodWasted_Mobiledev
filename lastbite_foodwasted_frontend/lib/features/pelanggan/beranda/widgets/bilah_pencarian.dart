@@ -5,14 +5,10 @@ import '../../../../core/tema/tema_lb.dart';
 /// Kolom pencarian. Bercahaya hijau saat diketik.
 class LbSearchBar extends StatefulWidget {
   final ValueChanged<String>? onChanged;
-  final VoidCallback? onFilter; // dipanggil saat tombol filter ditekan
-  final bool filterAktif; // true = tampilkan titik penanda
 
   const LbSearchBar({
     super.key,
     this.onChanged,
-    this.onFilter,
-    this.filterAktif = false,
   });
 
   @override
@@ -43,7 +39,7 @@ class _LbSearchBarState extends State<LbSearchBar> {
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOut,
       height: 56,
-      padding: const EdgeInsets.only(left: 18, right: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -85,47 +81,6 @@ class _LbSearchBarState extends State<LbSearchBar> {
                 border: InputBorder.none,
                 hintText: 'Cari makanan, resto, atau pakan ternak...',
                 hintStyle: LbText.body(14, color: LbColors.textGrey),
-              ),
-            ),
-          ),
-          LbTekan(
-            onTap: widget.onFilter,
-            skala: 0.9,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 240),
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: widget.filterAktif ? LbColors.sage : LbColors.sageLight,
-                shape: BoxShape.circle,
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 22,
-                    color: widget.filterAktif ? Colors.white : LbColors.forest,
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: AnimatedScale(
-                      scale: widget.filterAktif ? 1 : 0,
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeOutBack,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: BoxDecoration(
-                          color: LbColors.peach,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),

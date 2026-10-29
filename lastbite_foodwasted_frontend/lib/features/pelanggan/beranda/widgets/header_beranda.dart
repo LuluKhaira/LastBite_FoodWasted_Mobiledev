@@ -6,14 +6,10 @@ import 'logo_lb.dart';
 /// Header Hijau Utama Pelanggan (Diselaraskan persis dengan gaya & nuansa Mitra)
 class LbHeaderHijau extends StatelessWidget {
   final List<Widget> children;
-  final VoidCallback? onNotifikasi;
-  final int jumlahNotifikasi;
 
   const LbHeaderHijau({
     super.key,
     required this.children,
-    this.onNotifikasi,
-    this.jumlahNotifikasi = 1,
   });
 
   @override
@@ -44,9 +40,8 @@ class LbHeaderHijau extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Baris Atas: Logo, Judul, & Tombol Notifikasi
+            // Baris Atas: Logo & Judul
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
@@ -80,50 +75,6 @@ class LbHeaderHijau extends StatelessWidget {
                       ],
                     ),
                   ],
-                ),
-                // Tombol Notifikasi Interaktif
-                LbTekan(
-                  onTap: onNotifikasi,
-                  skala: 0.9,
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.notifications_none_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        if (jumlahNotifikasi > 0)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              width: 9,
-                              height: 9,
-                              decoration: BoxDecoration(
-                                color: LbColors.peach,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),

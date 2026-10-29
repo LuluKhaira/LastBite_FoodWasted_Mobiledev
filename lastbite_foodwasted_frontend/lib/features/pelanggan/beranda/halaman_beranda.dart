@@ -23,8 +23,6 @@ class _BerandaScreenState extends State<BerandaScreen>
     return BerandaLayout(
       isTernak: false,
       onSearch: cariTeks,
-      onFilter: bukaFilter,
-      filterAktif: filterAktif,
       loading: loading,
       errorMessage: error,
       onRetry: muatData,

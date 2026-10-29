@@ -27,8 +27,6 @@ class BerandaLayout extends StatefulWidget {
   final ValueChanged<int>? onNavTap;
   final ValueChanged<BahanItem>? onItemTap;
   final ValueChanged<TokoGroup>? onTokoTap;
-  final VoidCallback? onFilter;
-  final bool filterAktif;
   final bool loading;
   final String? errorMessage;
   final VoidCallback? onRetry;
@@ -44,8 +42,6 @@ class BerandaLayout extends StatefulWidget {
     this.onNavTap,
     this.onItemTap,
     this.onTokoTap,
-    this.onFilter,
-    this.filterAktif = false,
     this.loading = false,
     this.errorMessage,
     this.onRetry,
@@ -104,8 +100,6 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                       urutan: 3,
                       child: LbSearchBar(
                         onChanged: widget.onSearch,
-                        onFilter: widget.onFilter,
-                        filterAktif: widget.filterAktif,
                       ),
                     ),
                   ],
@@ -217,7 +211,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                             style: LbText.heading(15, weight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          'Coba ganti kata kunci atau filter harga.',
+                          'Coba ganti kata kunci pencarian.',
                           textAlign: TextAlign.center,
                           style: LbText.body(12.5),
                         ),
