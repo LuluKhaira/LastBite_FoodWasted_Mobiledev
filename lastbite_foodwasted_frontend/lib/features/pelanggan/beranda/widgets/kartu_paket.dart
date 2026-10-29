@@ -63,9 +63,11 @@ class BahanCard extends StatelessWidget {
                         left: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 9, vertical: 4),
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.95),
+                            color: it.isSedekah
+                                ? const Color(0xFF059669)
+                                : Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -75,11 +77,28 @@ class BahanCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: Text(
-                            it.badge,
-                            style: LbText.body(11,
-                                weight: FontWeight.w800,
-                                color: LbColors.forest),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (it.isSedekah) ...[
+                                const Icon(Icons.volunteer_activism_rounded,
+                                    size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Sedekah',
+                                  style: LbText.body(10.5,
+                                      weight: FontWeight.w800,
+                                      color: Colors.white),
+                                ),
+                              ] else ...[
+                                Text(
+                                  it.badge,
+                                  style: LbText.body(11,
+                                      weight: FontWeight.w800,
+                                      color: LbColors.forest),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -204,9 +223,10 @@ class BahanCard extends StatelessWidget {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                it.harga,
-                                style:
-                                    LbText.heading(19, weight: FontWeight.w700),
+                                it.isSedekah ? 'Gratis' : it.harga,
+                                style: LbText.heading(19, weight: FontWeight.w800).copyWith(
+                                  color: it.isSedekah ? const Color(0xFF059669) : null,
+                                ),
                               ),
                             ),
                           ),
@@ -215,19 +235,23 @@ class BahanCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 9, vertical: 3),
                             decoration: BoxDecoration(
-                              color: it.gratis
-                                  ? LbColors.sageLight
-                                  : LbColors.peachLight,
+                              color: it.isSedekah
+                                  ? const Color(0xFFD1FAE5)
+                                  : (it.gratis
+                                      ? LbColors.sageLight
+                                      : LbColors.peachLight),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              it.satuan,
+                              it.isSedekah ? 'Sedekah' : it.satuan,
                               style: LbText.body(
                                 11,
                                 weight: FontWeight.w700,
-                                color: it.gratis
-                                    ? LbColors.sageDeep
-                                    : LbColors.peachDeep,
+                                color: it.isSedekah
+                                    ? const Color(0xFF047857)
+                                    : (it.gratis
+                                        ? LbColors.sageDeep
+                                        : LbColors.peachDeep),
                               ),
                             ),
                           ),

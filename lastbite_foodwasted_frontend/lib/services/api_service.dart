@@ -52,7 +52,7 @@ class ApiService {
   static Future<bool> verifyOtp(String phoneNumber, String otp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/mitra/verify-otp'), // Pastikan ini tujuannya
+        Uri.parse('$baseUrl/mitra/verify-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'phone': phoneNumber, 'otp': otp}),
       );
@@ -126,7 +126,6 @@ class ApiService {
     }
   }
 
-  // Membaca file dari path (mobile/desktop) atau blob URL (web) sebagai bytes
   static Future<http.MultipartFile> _filePart(String field, String path) async {
     final xfile = XFile(path);
     final bytes = await xfile.readAsBytes();
@@ -504,8 +503,6 @@ class ApiService {
     }
   }
 
-  /// Jam operasional toko per hari (hari: 1 = Senin ... 7 = Minggu).
-  /// Mengembalikan list kosong bila belum diatur, null bila gagal memuat.
   static Future<List<Map<String, dynamic>>?> getJamOperasional(
     String phoneNumber,
   ) async {
@@ -564,6 +561,7 @@ class ApiService {
     required String deskripsi,
     required String tipe,
     required String kategori,
+    String skemaHarga = 'diskon',
     required int hargaAsli,
     required int harga,
     required int stok,
@@ -590,7 +588,7 @@ class ApiService {
         'deskripsi': deskripsi,
         'tipe': tipe,
         'kategori': kategori,
-        'kategori_asli': tipe == 'dimakan' ? 'Konsumsi Manusia' : 'Pakan / Kompos',
+        'skema_harga': skemaHarga,
         'harga_asli': '$hargaAsli',
         'harga': '$harga',
         'stok': '$stok',
@@ -683,7 +681,6 @@ class ApiService {
     }
   }
 
-  /// Mengambil opsi kategori tujuan pengalihan pakan / kompos
   static Future<Map<String, dynamic>?> getOpsiPengalihan({String? kategori}) async {
     try {
       final uri = Uri.parse('$baseUrl/produk/opsi-pengalihan').replace(
@@ -702,11 +699,10 @@ class ApiService {
     }
   }
 
-  /// Konfirmasi pengalihan produk yang melewati batas penjualan oleh mitra
   static Future<Map<String, dynamic>> konfirmasiPengalihan({
     required String phoneNumber,
     required int idProduk,
-    required String aksi, // 'alihkan' | 'buang'
+    required String aksi,
     double? beratAktual,
     String? targetKategori,
     int? hargaPerKg,
@@ -744,22 +740,19 @@ class ApiService {
     }
   }
 
-  // ---------- LOGIN MITRA / PELANGGAN ----------
   static Future<Map<String, dynamic>> loginMitra(
     String id,
     String password,
   ) async {
     try {
       final response = await http.post(
-        Uri.parse(
-          '$baseUrl/login-mitra',
-        ), // Pastikan URL sesuai endpoint route Laravel (/login-mitra)
+        Uri.parse('$baseUrl/login-mitra'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'identifier': id, // Diubah dari 'login' menjadi 'identifier' sesuai validasi Laravel
+          'identifier': id,
           'password': password,
         }),
       );
@@ -782,7 +775,6 @@ class ApiService {
     }
   }
 
-  // ---------- REGISTER / PENDAFTARAN AKUN ----------
   static Future<Map<String, dynamic>> register({
     required String name,
     required String identifier,
@@ -791,7 +783,6 @@ class ApiService {
     try {
       final isEmail = identifier.contains('@');
 
-      // Jika user menginput HP, buatkan format email sementara agar pass validasi Laravel
       final String emailValue = isEmail
           ? identifier
           : '${identifier.replaceAll(RegExp(r'\D'), '')}@lastbite.com';
@@ -799,7 +790,7 @@ class ApiService {
 
       final bodyData = {
         'name': name,
-        'email': emailValue, // Memastikan field 'email' selalu terisi
+        'email': emailValue,
         'phone': phoneValue,
         'password': password,
         'password_confirmation': password,
@@ -832,7 +823,6 @@ class ApiService {
     }
   }
 
-  // ---------- VERIFIKASI OTP (MITRA / PELANGGAN) ----------
   static Future<bool> verifikasiOtp(
     String phoneNumber,
     String otp,
@@ -840,9 +830,7 @@ class ApiService {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse(
-          '$baseUrl/mitra/verify-otp',
-        ), // Mengarah ke endpoint verifikasi OTP mitra yang benar
+        Uri.parse('$baseUrl/mitra/verify-otp'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -862,13 +850,10 @@ class ApiService {
     }
   }
 
-  // ---------- KIRIM ULANG OTP ----------
   static Future<bool> kirimUlangOtp(String phoneNumber, String purpose) async {
     try {
       final response = await http.post(
-        Uri.parse(
-          '$baseUrl/mitra/register-phone',
-        ), // Memicu ulang pengiriman OTP via WhatsApp
+        Uri.parse('$baseUrl/mitra/register-phone'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -886,16 +871,11 @@ class ApiService {
     }
   }
 
-  // ======================================================================
-  // AUTH PEMBELI (WhatsApp OTP) -> endpoint /auth/* (AuthController)
-  // Terpisah dari alur mitra (/mitra/*) supaya data masuk ke tabel users.
-  // ======================================================================
   static const Map<String, String> _jsonHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
-  /// Kirim OTP pendaftaran pembeli. Akun dibuat di server SETELAH OTP benar.
   static Future<bool> registerPhonePembeli({
     required String name,
     required String phone,
@@ -923,7 +903,6 @@ class ApiService {
     }
   }
 
-  /// Verifikasi OTP pembeli. Mengembalikan {'ok': bool, 'message': String, 'data': ...}
   static Future<Map<String, dynamic>> verifikasiOtpPembeli(
     String phone,
     String code,
@@ -954,7 +933,6 @@ class ApiService {
     }
   }
 
-  /// Kirim ulang OTP pembeli (purpose: 'register' atau 'login').
   static Future<bool> kirimUlangOtpPembeli(String phone, String purpose) async {
     lastErrorMessage = null;
     try {
@@ -974,8 +952,6 @@ class ApiService {
     }
   }
 
-  /// Login PEMBELI (nomor HP atau email + kata sandi) -> POST /login (tabel users).
-  /// Mengembalikan {'ok': bool, 'message': String, 'data': {user, token}}
   static Future<Map<String, dynamic>> loginPembeli(
     String identifier,
     String password,

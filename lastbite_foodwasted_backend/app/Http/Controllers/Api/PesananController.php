@@ -58,7 +58,7 @@ class PesananController extends Controller
 
             $mitra   = $produk->mitra;
             $makanan = round($produk->berat_kg * $data['qty'], 2);
-            $gratis  = ($produk->harga == 0);
+            $isSedekah = ($produk->skema_harga === 'sedekah') || ((int)$produk->harga === 0);
 
             return Pesanan::create([
                 'kode'              => $this->buatKode(),
@@ -69,14 +69,16 @@ class PesananController extends Controller
                 'inisial'           => $mitra?->inisial ?: 'LB',
                 'alamat'            => $mitra?->alamat ?: 'Alamat toko',
                 'produk'            => $produk->nama,
+                'skema_harga'       => $isSedekah ? 'sedekah' : 'diskon',
+                'nilai_sedekah'     => $isSedekah ? (($produk->harga_asli ?? 0) * $data['qty']) : 0,
                 'gambar'            => $produk->gambar,
                 'qty'               => $data['qty'],
-                'harga_satuan'      => $produk->harga,
+                'harga_satuan'      => $isSedekah ? 0 : $produk->harga,
                 'harga_asli_satuan' => $produk->harga_asli ?? $produk->harga,
-                'biaya_layanan'     => $gratis ? 0 : self::BIAYA_LAYANAN,
-                'metode'            => $data['metode'] ?? 'QRIS',
+                'biaya_layanan'     => $isSedekah ? 0 : self::BIAYA_LAYANAN,
+                'metode'            => $isSedekah ? 'Sedekah (Gratis)' : ($data['metode'] ?? 'QRIS'),
                 'status'            => 'menunggu',
-                'status_bayar'      => $gratis ? 'lunas' : 'belum',
+                'status_bayar'      => $isSedekah ? 'lunas' : 'belum',
                 'makanan'           => $makanan,
                 'co2'               => round($makanan * self::FAKTOR_CO2, 2),
                 'catatan'           => $data['catatan'] ?? null,

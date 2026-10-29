@@ -179,11 +179,15 @@ class _ProdukMini extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: habis ? LbColors.textGrey : LbColors.forest,
+                          color: habis
+                              ? LbColors.textGrey
+                              : (item.isSedekah
+                                  ? const Color(0xFF059669)
+                                  : LbColors.forest),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          item.badge,
+                          item.isSedekah ? 'Sedekah' : item.badge,
                           style: LbText.body(10,
                               weight: FontWeight.w700, color: Colors.white),
                         ),
@@ -207,9 +211,12 @@ class _ProdukMini extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  item.gratis ? 'Gratis' : item.harga,
+                  item.isSedekah ? 'Gratis' : (item.gratis ? 'Gratis' : item.harga),
                   style: LbText.heading(12.5,
-                      weight: FontWeight.w700, color: LbColors.peachDeep),
+                      weight: FontWeight.w700,
+                      color: item.isSedekah
+                          ? const Color(0xFF059669)
+                          : LbColors.peachDeep),
                 ),
                 if (item.hargaAsli != null) ...[
                   const SizedBox(width: 5),

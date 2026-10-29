@@ -48,6 +48,8 @@ class MitraDashboardController extends Controller
         $pendapatanHariIni = (float) (clone $hariIni)->sum(DB::raw('harga_satuan * qty'));
         $porsiHariIni      = (int)   (clone $hariIni)->sum('qty');
         $co2HariIni        = (float) (clone $hariIni)->sum('co2');
+        $porsiSedekah      = (int)   (clone $hariIni)->where('skema_harga', 'sedekah')->sum('qty');
+        $nilaiSedekah      = (float) (clone $hariIni)->where('skema_harga', 'sedekah')->sum('nilai_sedekah');
 
         $surplus = DB::table('produks')
             ->where('id_mitra', $idMitra)
@@ -58,7 +60,7 @@ class MitraDashboardController extends Controller
             ->get([
                 'id as id_produk', 'nama as nama_produk',
                 'harga_asli', 'harga as harga_diskon', 'stok', 'waktu_selesai',
-                'gambar',
+                'skema_harga', 'gambar',
             ])
             ->map(function ($p) {
                 $path = $p->gambar ? ltrim($p->gambar, '/') : null;
@@ -90,6 +92,8 @@ class MitraDashboardController extends Controller
                     'pendapatan_hari_ini' => $pendapatanHariIni,
                     'porsi_terselamatkan' => $porsiHariIni,
                     'co2_kg'              => $co2HariIni,
+                    'porsi_sedekah'       => $porsiSedekah,
+                    'nilai_sedekah'       => $nilaiSedekah,
                 ],
                 'surplus' => $surplus,
             ],

@@ -162,14 +162,18 @@ class ProdukController extends Controller
             $tipe = PengalihanKategori::tipeUntuk($request->kategori) ?? Produk::TIPE_PAKAN;
         }
 
+        $skemaHarga = $request->skema_harga ?? (((int)$request->harga === 0) ? 'sedekah' : 'diskon');
+        $hargaFinal = ($skemaHarga === 'sedekah') ? 0 : (int)$request->harga;
+
         $produk = Produk::create([
             'id_mitra' => $mitra->id_mitra,
             'nama' => $request->nama,
             'deskripsi' => $request->deskripsi ?? '-',
             'tipe' => $tipe,
             'kategori' => $request->kategori,
+            'skema_harga' => $skemaHarga,
             'gambar' => $gambarPath,
-            'harga' => $request->harga,
+            'harga' => $hargaFinal,
             'harga_asli' => $request->harga_asli,
             'stok' => $request->stok,
             'kuota' => $request->kuota ?? $request->stok,

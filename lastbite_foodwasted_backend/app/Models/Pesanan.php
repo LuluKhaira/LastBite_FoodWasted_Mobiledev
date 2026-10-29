@@ -16,10 +16,10 @@ class Pesanan extends Model
 
     protected $fillable = [
         'kode', 'user_id', 'produk_id', 'id_mitra',
-        'penjual', 'inisial', 'alamat', 'produk', 'gambar',
+        'penjual', 'inisial', 'alamat', 'produk', 'skema_harga', 'gambar',
         'metode', 'qty', 'harga_satuan', 'harga_asli_satuan', 'biaya_layanan',
         'co2', 'makanan', 'status', 'rating', 'catatan',
-        'midtrans_order_id', 'status_bayar',
+        'midtrans_order_id', 'status_bayar', 'nilai_sedekah',
         'kode_ambil', 'estimasi_menit', 'siap_at', 'batas_ambil', 'diambil_at',
     ];
 
@@ -88,6 +88,9 @@ class Pesanan extends Model
             'inisial'           => $this->inisial,
             'alamat'            => $this->alamat,
             'produk'            => $this->produk,
+            'skema_harga'       => $this->skema_harga ?? 'diskon',
+            'is_sedekah'        => ($this->skema_harga === 'sedekah') || ((int) $this->harga_satuan === 0),
+            'nilai_sedekah'     => (int) ($this->nilai_sedekah ?? 0),
             'gambar'            => $gambarUrl,
             'image_url'         => $gambarUrl,
             'metode'            => $this->metode ?: 'QRIS',

@@ -111,6 +111,8 @@ class ProdukMitraController extends Controller
                 'satuan'                     => $p->satuan ?? '/paket',
                 'kadaluarsa'                 => $p->kadaluarsa,
                 'dialihkan_pada'             => $p->dialihkan_pada,
+                'skema_harga'                => $p->skema_harga ?? 'diskon',
+                'is_sedekah'                 => ($p->skema_harga === 'sedekah') || ((int)$p->harga === 0),
                 'harga'                      => (int) $p->harga,
                 'harga_asli'                 => (int) $p->harga_asli,
                 'stok'                       => $stok,

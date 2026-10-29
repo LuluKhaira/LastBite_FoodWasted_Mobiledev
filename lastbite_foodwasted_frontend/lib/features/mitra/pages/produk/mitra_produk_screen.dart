@@ -63,8 +63,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
 
   int _pesananAktif = 0;
 
-  // Dibuat dari kategori produk yang benar-benar ada, supaya produk yang
-  // dialihkan ke Pakan Ternak & Ikan ikut punya filter.
   List<String> get _kategoriList {
     final unik = {for (final p in _produk) p.kategori}.toList()..sort();
     return ['Semua Paket', ...unik];
@@ -107,14 +105,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
         _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
       });
     }
-  }
-
-  Future<void> _ubahStatusToko(bool buka) async {
-    setState(() => _isTokoBuka = buka);
-    final ok = await ApiService.setTokoStatus(widget.phoneNumber, buka);
-    if (!mounted || ok) return;
-    setState(() => _isTokoBuka = !buka);
-    _info('Gagal mengubah status toko.');
   }
 
   int _hitung(StatusProduk s) => _produk.where((p) => p.statusUI == s).length;
@@ -264,7 +254,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
     );
   }
 
-  // --- HEADER: blok hijau segar (primary) + tab pill ---
   Widget _buildHeaderTabs() {
     return Container(
       padding: const EdgeInsets.only(top: 20, bottom: 0),
@@ -433,7 +422,6 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
   }
 }
 
-// --- KARTU PRODUK (OVERFLOW DIPERBAIKI) ---
 class _ProductCardRef extends StatelessWidget {
   final Produk produk;
   final String phoneNumber;
@@ -569,34 +557,18 @@ class _ProductCardRef extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          if (produk.harga == 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E9),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: const Color(0xFF81C784)),
-                              ),
-                              child: Text(
-                                'Gratis',
-                                style: AppColors.heading(
-                                  fontSize: 13,
-                                  color: const Color(0xFF2E7D32),
-                                ),
-                              ),
-                            )
-                          else
-                            Flexible(
-                              child: Text(
-                                _rp(produk.harga),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppColors.heading(
-                                    fontSize: 15, color: AppColors.textDark),
-                              ),
+                          Flexible(
+                            child: Text(
+                              produk.isSedekah ? 'Gratis (Sedekah)' : _rp(produk.harga),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppColors.heading(
+                                  fontSize: 15,
+                                  color: produk.isSedekah
+                                      ? const Color(0xFF059669)
+                                      : AppColors.textDark),
                             ),
+                          ),
                           const SizedBox(width: 6),
                           if (produk.adaDiskon)
                             Flexible(
@@ -635,287 +607,11 @@ class _ProductCardRef extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (produk.tampilBadgePakan) ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.orange.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.autorenew,
-                                  size: 11, color: _UI.orangeText),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  produk.labelBadgePakan,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppColors.body(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: _UI.orangeText,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Tersisa ${produk.stok} dari ${produk.kuota}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppColors.body(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: labelColor,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${produk.persen}%',
-                        style: AppColors.body(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: labelColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: produk.rasio.clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: _UI.textSoft.withValues(alpha: 0.1),
-                      valueColor: AlwaysStoppedAnimation(barColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    produk.deskripsi,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppColors.body(fontSize: 11, color: _UI.textSoft),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _UI.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        onTap: () => onUbahStok(produk, -1),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.remove_rounded,
-                            size: 16,
-                            color: _UI.textSoft,
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          '${produk.stok}',
-                          style: AppColors.heading(fontSize: 12),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () => onUbahStok(produk, 1),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.add_rounded,
-                            size: 16,
-                            color: _UI.primaryText,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (produk.isMenungguKonfirmasi) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppColors.orange.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          size: 18,
-                          color: AppColors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Produk kedaluwarsa, masih ada sisa. Alihkan atau buang?',
-                            style: AppColors.heading(
-                              fontSize: 12,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 38,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.orange,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        icon: const Icon(Icons.autorenew_rounded, size: 16),
-                        label: Text(
-                          'Alihkan / Buang',
-                          style: AppColors.body(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                        onPressed: () {
-                          DialogKonfirmasiPengalihan.show(
-                            context,
-                            produk: produk,
-                            phoneNumber: phoneNumber,
-                            onBerhasil: onRefresh,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (produk.draf) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 16),
-                  label: Text(
-                    'Tayangkan',
-                    style: AppColors.body(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                  ),
-                  onPressed: () async {
-                    final res = await ApiService.setProdukAktif(
-                      phoneNumber,
-                      produk.id,
-                      true,
-                    );
-                    if (res['ok'] == true) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(res['message'] ?? 'Produk berhasil ditayangkan!'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
-                      onRefresh();
-                    } else {
-                      if (!context.mounted) return;
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: Row(
-                            children: [
-                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
-                              const SizedBox(width: 8),
-                              Text('Gagal Menayangkan', style: AppColors.heading(fontSize: 15)),
-                            ],
-                          ),
-                          content: Text(
-                            res['message'] ?? 'Produk tidak memenuhi syarat untuk ditayangkan.',
-                            style: AppColors.body(fontSize: 13),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: Text('Tutup', style: AppColors.body(color: AppColors.primary, fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-            ],
           ],
         ),
       ),

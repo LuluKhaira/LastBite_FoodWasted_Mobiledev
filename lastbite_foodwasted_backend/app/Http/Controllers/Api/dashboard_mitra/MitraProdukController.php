@@ -33,15 +33,26 @@ class MitraProdukController extends Controller
             return response()->json(['success' => false, 'message' => 'Akun mitra belum disetujui admin.'], 403);
         }
 
-        // VALIDASI DIPERBARUI (Menambahkan deskripsi, tipe, kuota, waktu_mulai)
+        // VALIDASI DIPERBARUI (Menambahkan skema_harga, deskripsi, tipe, kuota, waktu_mulai)
+        $skemaHarga = $request->input('skema_harga');
+        if (empty($skemaHarga)) {
+            $skemaHarga = ((int) $request->input('harga', 1) === 0) ? 'sedekah' : 'diskon';
+        }
+        $isSedekah = $skemaHarga === 'sedekah';
+
+        $hargaRule = $isSedekah
+            ? 'nullable|integer|in:0'
+            : 'required|integer|min:1|lt:harga_asli';
+
         $data = $request->validate([
             'phone'         => 'required|string',
             'nama'          => 'required|string|max:255',
             'deskripsi'     => 'nullable|string',
             'tipe'          => 'required|string|in:dimakan,kompos',
             'kategori'      => ['required', Rule::in($this->namaKategori())],
+            'skema_harga'   => 'nullable|string|in:diskon,sedekah',
             'harga_asli'    => 'required|integer|min:1|max:99999999',
-            'harga'         => 'required|integer|min:0|lt:harga_asli',
+            'harga'         => $hargaRule,
             'stok'          => 'required|integer|min:1|max:999',
             'kuota'         => 'required|integer|min:1|max:999',
             'waktu_mulai'   => 'required|date_format:H:i',
@@ -59,12 +70,14 @@ class MitraProdukController extends Controller
             'kategori.in'        => 'Kategori tidak valid.',
             'harga_asli.required' => 'Harga asli wajib diisi.',
             'harga_asli.min'     => 'Harga asli harus lebih dari Rp 0.',
-            'harga.required'     => 'Harga diskon wajib diisi (boleh Rp 0 untuk donasi).',
-            'harga.lt'           => 'Harga Lastbite harus lebih hemat dari harga asli.',
+            'harga.required'     => 'Harga diskon wajib diisi.',
+            'harga.min'          => 'Harga diskon harus lebih besar dari Rp 0.',
+            'harga.lt'           => 'Harga Lastbite harus lebih hemat dari harga normal toko.',
+            'harga.in'           => 'Untuk produk Sedekah, harga produk harus Rp 0.',
             'stok.min'           => 'Jumlah stok minimal 1.',
             'waktu_selesai.date_format' => 'Format jam batas pengambilan tidak valid.',
             'kadaluarsa.required' => 'Tanggal dan jam kadaluarsa wajib diisi.',
-            'kadaluarsa.date'     => 'Format tanggal kadaluarsa tidak valid.',
+            'kadaluarsa.date'    => 'Format tanggal kadaluarsa tidak valid.',
             'foto.image'         => 'File harus berupa gambar.',
             'foto.max'           => 'Ukuran foto maksimal 5 MB.',
         ]);
@@ -118,10 +131,11 @@ class MitraProdukController extends Controller
             $gambar = $request->file('foto')->store('produk', 'public');
         }
 
-        // SIMPAN KE DATABASE (Menambahkan kolom yang sebelumnya hilang)
+        $hargaFinal = $isSedekah ? 0 : (int) $data['harga'];
         $kategoriAsli = $request->input('kategori_asli')
             ?? ($data['tipe'] === 'dimakan' ? 'Konsumsi Manusia' : 'Pakan / Kompos');
 
+        // SIMPAN KE DATABASE
         $id = DB::table('produks')->insertGetId([
             'id_mitra'      => $mitra->id_mitra,
             'nama'          => trim($data['nama']),
@@ -129,8 +143,9 @@ class MitraProdukController extends Controller
             'tipe'          => $data['tipe'],
             'kategori'      => $data['kategori'],
             'kategori_asli' => $kategoriAsli,
+            'skema_harga'   => $skemaHarga,
             'gambar'        => $gambar,
-            'harga'         => (int) $data['harga'],
+            'harga'         => $hargaFinal,
             'harga_asli'    => (int) $data['harga_asli'],
             'satuan'        => '/paket',
             'stok'          => (int) $data['stok'],

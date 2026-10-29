@@ -172,11 +172,15 @@ class SurplusSection extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          _rupiah(p['harga_diskon']),
+                          (p['skema_harga'] == 'sedekah' || (num.tryParse('${p['harga_diskon']}') ?? 0) == 0)
+                              ? 'Gratis (Sedekah)'
+                              : _rupiah(p['harga_diskon']),
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
+                            color: (p['skema_harga'] == 'sedekah' || (num.tryParse('${p['harga_diskon']}') ?? 0) == 0)
+                                ? const Color(0xFF059669)
+                                : AppColors.textDark,
                           ),
                         ),
                         if (adaAsli) ...[

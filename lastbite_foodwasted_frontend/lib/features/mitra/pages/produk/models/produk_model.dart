@@ -8,6 +8,7 @@ class Produk {
   final String deskripsi;
   final String tipe;
   final String kategori;
+  final String skemaHarga; // 'diskon' | 'sedekah'
   final String? gambar;
   final int harga;
   final int hargaAsli;
@@ -41,6 +42,7 @@ class Produk {
     required this.deskripsi,
     required this.tipe,
     required this.kategori,
+    this.skemaHarga = 'diskon',
     this.gambar,
     required this.harga,
     required this.hargaAsli,
@@ -94,6 +96,7 @@ class Produk {
           '${j['deskripsi'] ?? 'Kombinasi produk surplus berkualitas'}',
       tipe: '${j['tipe'] ?? 'dimakan'}',
       kategori: '${j['kategori'] ?? 'Umum'}',
+      skemaHarga: j['skema_harga']?.toString() ?? (i(j['harga']) == 0 ? 'sedekah' : 'diskon'),
       gambar: imgUrl,
       harga: i(j['harga']),
       hargaAsli: i(j['harga_asli']),
@@ -131,6 +134,9 @@ class Produk {
     );
   }
 
+  /// Menandakan produk gratis dengan skema sedekah
+  bool get isSedekah => skemaHarga == 'sedekah' || harga == 0;
+
   /// Menunggu konfirmasi penimbangan/pengalihan dari mitra
   bool get isMenungguKonfirmasi =>
       statusPengalihan == 'menunggu' || statusPengalihan == 'menunggu_konfirmasi';
@@ -151,7 +157,7 @@ class Produk {
 
   String get labelBadgePakan {
     if (isMenungguKonfirmasi) return 'Menunggu Konfirmasi Pengalihan';
-    if (isSudahDialihkan) return 'Dialihkan → Pakan/Kompos';
+    if (isSudahDialihkan) return 'Dialihkan â†’ Pakan/Kompos';
     if (isDibuang) return 'Tidak Layak (Dibuang)';
     if (bersediaDialihkan) {
       return 'Siap Dialihkan → ${targetKategoriPengalihan ?? "Pakan/Kompos"}';

@@ -14,6 +14,9 @@ class Produk extends Model
     public const TIPE_PAKAN   = 'pakan';
     public const TIPE_KOMPOS  = 'kompos';
 
+    public const SKEMA_DISKON  = 'diskon';
+    public const SKEMA_SEDEKAH = 'sedekah';
+
     public const STATUS_PENGALIHAN_TIDAK    = 'tidak_dialihkan';
     public const STATUS_PENGALIHAN_AKAN     = 'akan_dialihkan';
     public const STATUS_PENGALIHAN_MENUNGGU  = 'menunggu';
@@ -163,6 +166,8 @@ class Produk extends Model
             'alamat'                    => $m?->alamat,
             'tipe'                      => $this->tipe,
             'kategori'                  => $this->kategori,
+            'skema_harga'               => $this->skema_harga ?? self::SKEMA_DISKON,
+            'is_sedekah'                => ($this->skema_harga === self::SKEMA_SEDEKAH) || ((int) $this->harga === 0),
             'gambar'                    => $gambarUrl,
             'image_url'                 => $gambarUrl,
             'tag'                       => $this->tag,

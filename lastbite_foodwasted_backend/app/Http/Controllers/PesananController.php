@@ -79,6 +79,8 @@ class PesananController extends Controller
             $alamat  = $produk->alamat ?? $mitra->alamat ?? null;
             // --------------------------------------------------------------------------
 
+            $isSedekah = ($produk->skema_harga === 'sedekah') || ((int)$harga === 0);
+
             $pesanan = Pesanan::create([
                 'user_id'           => $r->user()->id,
                 'produk_id'         => $produk->id,
@@ -87,15 +89,18 @@ class PesananController extends Controller
                 'inisial'           => $produk->inisial ?? null,
                 'alamat'            => $alamat,
                 'produk'            => $produk->nama,
+                'skema_harga'       => $isSedekah ? 'sedekah' : 'diskon',
+                'nilai_sedekah'     => $isSedekah ? ($asli * $v['qty']) : 0,
                 'gambar'            => $produk->gambar,
-                'metode'            => $v['metode'],
+                'metode'            => $isSedekah ? 'Sedekah (Gratis)' : $v['metode'],
                 'qty'               => $v['qty'],
-                'harga_satuan'      => $harga,
+                'harga_satuan'      => $isSedekah ? 0 : $harga,
                 'harga_asli_satuan' => $asli,
-                'biaya_layanan'     => $harga === 0 ? 0 : self::BIAYA_LAYANAN,
+                'biaya_layanan'     => $isSedekah ? 0 : self::BIAYA_LAYANAN,
                 'co2'               => round($kgTot * self::CO2_PER_KG, 2),
                 'makanan'           => $kgTot,
                 'status'            => 'menunggu',
+                'status_bayar'      => $isSedekah ? 'lunas' : 'belum',
                 'catatan'           => $v['catatan'] ?? null,
             ]);
 

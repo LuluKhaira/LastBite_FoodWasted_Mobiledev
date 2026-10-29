@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'beranda_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -357,9 +357,11 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
   // HERO
   // ============================================================
   Widget _hero() {
-    final String badge1 = it.gratis
-        ? 'Gratis'
-        : (_hematPct > 0 ? 'Hemat $_hematPct%' : 'Harga Terjangkau');
+    final String badge1 = it.isSedekah
+        ? 'Sedekah • Gratis'
+        : (it.gratis
+            ? 'Gratis'
+            : (_hematPct > 0 ? 'Hemat $_hematPct%' : 'Harga Terjangkau'));
     final String stok = _ternak
         ? 'Tersedia ${it.badge}'
         : 'Tersisa ${_num(it.badge)} paket lagi!';
@@ -406,9 +408,15 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
                   children: [
                     _pill(
                       badge1,
-                      icon: Icons.local_fire_department_rounded,
-                      bg: LbColors.peach,
-                      fg: LbColors.forest,
+                      icon: it.isSedekah
+                          ? Icons.volunteer_activism_rounded
+                          : Icons.local_fire_department_rounded,
+                      bg: it.isSedekah
+                          ? const Color(0xFF059669)
+                          : LbColors.peach,
+                      fg: it.isSedekah
+                          ? Colors.white
+                          : LbColors.forest,
                     ),
                     _pill(
                       _ternak ? 'Bahan Organik Terpilih' : '100% Layak Santap',
@@ -1127,7 +1135,9 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
                       Text(
                         _memproses
                             ? 'Memproses...'
-                            : (_total == 0 ? 'Ambil Gratis' : 'Pesan & Bayar'),
+                            : (_total == 0
+                                ? (it.isSedekah ? 'Klaim Sedekah' : 'Ambil Gratis')
+                                : 'Pesan & Bayar'),
                         style: LbText.heading(
                           15,
                           weight: FontWeight.w600,

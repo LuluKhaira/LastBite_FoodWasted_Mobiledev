@@ -31,6 +31,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   TipeProduk _tipe = TipeProduk.paketKejutan;
   TargetSurplus _target = TargetSurplus.manusia;
   String? _kategori;
+  String _skemaHarga = 'diskon'; // 'diskon' | 'sedekah'
 
   int _stok = 3;
   TimeOfDay _mulaiAmbil = const TimeOfDay(hour: 20, minute: 0);
@@ -233,11 +234,25 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   }
 
   Future<void> _kirim(bool terbit) async {
-    if (_namaCtrl.text.trim().isEmpty)
+    if (_namaCtrl.text.trim().isEmpty) {
       return _snack('Nama produk wajib diisi.');
+    }
     if (_kategori == null) return _snack('Pilih kategori produk.');
     if (_asliCtrl.text.isEmpty) return _snack('Harga asli wajib diisi.');
-    if (_diskonCtrl.text.isEmpty) return _snack('Harga diskon wajib diisi.');
+    final hargaAsliInt = int.tryParse(_asliCtrl.text.replaceAll('.', '')) ?? 0;
+    if (hargaAsliInt <= 0) return _snack('Harga asli harus lebih dari Rp 0.');
+
+    int hargaDiskonInt = 0;
+    if (_skemaHarga == 'sedekah') {
+      hargaDiskonInt = 0;
+    } else {
+      if (_diskonCtrl.text.isEmpty) return _snack('Harga diskon wajib diisi.');
+      hargaDiskonInt = int.tryParse(_diskonCtrl.text.replaceAll('.', '')) ?? 0;
+      if (hargaDiskonInt <= 0) return _snack('Harga diskon harus lebih dari Rp 0.');
+      if (hargaDiskonInt >= hargaAsliInt) {
+        return _snack('Harga diskon harus lebih hemat dari harga normal toko.');
+      }
+    }
     if (terbit &&
         _target == TargetSurplus.manusia &&
         _kadaluarsa.isBefore(DateTime.now())) {
@@ -289,8 +304,9 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
       deskripsi: _catatanCtrl.text.trim(),
       tipe: _target == TargetSurplus.manusia ? 'dimakan' : 'kompos',
       kategori: _kategori!,
-      hargaAsli: int.tryParse(_asliCtrl.text.replaceAll('.', '')) ?? 0,
-      harga: int.tryParse(_diskonCtrl.text.replaceAll('.', '')) ?? 0,
+      skemaHarga: _skemaHarga,
+      hargaAsli: hargaAsliInt,
+      harga: hargaDiskonInt,
       stok: _stok,
       waktuMulai:
           '${_mulaiAmbil.hour.toString().padLeft(2, '0')}:${_mulaiAmbil.minute.toString().padLeft(2, '0')}',
@@ -364,6 +380,15 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                     HargaCard(
                       asliCtrl: _asliCtrl,
                       diskonCtrl: _diskonCtrl,
+                      skemaHarga: _skemaHarga,
+                      onSkemaHargaChanged: (val) => setState(() {
+                        _skemaHarga = val;
+                        if (_skemaHarga == 'sedekah') {
+                          _diskonCtrl.text = '0';
+                        } else if (_diskonCtrl.text == '0') {
+                          _diskonCtrl.clear();
+                        }
+                      }),
                       stok: _stok,
                       satuanLabel: _target == TargetSurplus.manusia
                           ? 'Satuan: Paket'

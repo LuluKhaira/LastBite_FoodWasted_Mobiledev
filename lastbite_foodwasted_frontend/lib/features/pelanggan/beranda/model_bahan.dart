@@ -24,12 +24,14 @@ class BahanItem {
   final String? hargaAsli; // harga coret (opsional)
   final String alamat;
   final String tipe; // 'dimakan' / 'ternak' (kategori utama produk)
+  final String skemaHarga; // 'diskon' / 'sedekah'
   final bool sudahDialihkan; // produk dimakan yang kedaluwarsa -> dialihkan
 
   const BahanItem({
     this.id,
     this.sudahDialihkan = false,
     this.tipe = 'dimakan',
+    this.skemaHarga = 'diskon',
     required this.nama,
     required this.penjual,
     required this.inisial,
@@ -69,6 +71,7 @@ class BahanItem {
     return BahanItem(
       id: (j['id'] as num?)?.toInt(),
       tipe: tipe,
+      skemaHarga: (j['skema_harga'] ?? (harga == 0 ? 'sedekah' : 'diskon')).toString(),
       sudahDialihkan: j['sudah_dialihkan'] == true,
       nama: (j['nama'] ?? '').toString(),
       penjual: penjual,
@@ -92,7 +95,10 @@ class BahanItem {
     );
   }
 
-  bool get gratis => harga == 'Rp0';
+  bool get gratis => harga == 'Rp0' || harga == 'Rp 0' || harga == '0';
+
+  /// Menandakan apakah produk ini merupakan skema sedekah (makanan surplus gratis)
+  bool get isSedekah => skemaHarga == 'sedekah' || gratis;
 
   /// Ditentukan dari kategori utama (tipe), bukan nama kategori,
   /// karena nama kategori dikelola admin dan bisa berubah.
