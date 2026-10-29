@@ -2,26 +2,24 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'beranda_widgets.dart';
-import 'filter_preferensi.dart';
 
 /// Lokasi pembeli sementara (Batam Center) sampai fitur GPS dibuat.
 const double kLatPembeli = 1.1300;
 const double kLngPembeli = 104.0500;
 
 /// Dipakai BerandaScreen & BerandaUntukTernakScreen:
-/// ambil data dari API, cari (debounce), dan filter harga/urutan.
+/// ambil data dari API dan cari (debounce).
 ///
 /// ATURAN KATEGORI UTAMA TOKO:
 /// Toko tampil di beranda sesuai jenis produk yang PALING BANYAK ia unggah
 /// ('dimakan' atau 'ternak'). Kalau jumlahnya sama, toko masuk 'dimakan'.
 /// Toko tetap boleh menjual jenis lain; produk itu ikut tampil di halaman
 /// toko, tetapi tokonya tidak pindah beranda.
-/// Jumlah dihitung dari SEMUA produk toko (tanpa terpengaruh pencarian/filter).
+/// Jumlah dihitung dari SEMUA produk toko (tanpa terpengaruh pencarian).
 mixin BerandaLoader<T extends StatefulWidget> on State<T> {
   bool get isTernak;
 
   String query = '';
-  Map<String, dynamic>? filter;
   List<BahanItem> items = [];
   bool loading = true;
   String? error;
@@ -41,15 +39,6 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
     super.dispose();
   }
 
-  /// true kalau ada filter yang berbeda dari bawaan (untuk titik penanda).
-  bool get filterAktif {
-    final f = filter;
-    if (f == null) return false;
-    return (f['urutan'] ?? 'Rekomendasi') != 'Rekomendasi' ||
-        f['tersedia'] == true ||
-        (f['harga'] ?? 'Semua Harga') != 'Semua Harga';
-  }
-
   static String _kunciToko(BahanItem it) {
     final p = it.penjual.trim();
     return p.isEmpty ? 'Toko' : p;
@@ -59,7 +48,6 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
     final data = await ApiService.getProduk(
       tipe: tipe,
       q: polos ? null : query,
-      filter: polos ? null : filter,
       lat: kLatPembeli,
       lng: kLngPembeli,
     );
@@ -68,9 +56,6 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
     return data.map((j) => BahanItem.fromJson({...j, 'tipe': tipe})).toList();
   }
 
-  static int _angkaHarga(String rp) =>
-      int.tryParse(rp.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-
   Future<void> muatData() async {
     final id = ++_reqId;
     setState(() {
@@ -78,10 +63,10 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
       error = null;
     });
     try {
-      final adaSaringan = query.trim().isNotEmpty || filter != null;
+      final adaSaringan = query.trim().isNotEmpty;
 
       // Daftar lengkap (untuk menghitung kategori utama toko) dan daftar
-      // hasil pencarian/filter. Tanpa pencarian/filter keduanya sama.
+      // hasil pencarian. Tanpa pencarian keduanya sama.
       final lengkap = await Future.wait([
         _ambil('dimakan', polos: true),
         _ambil('ternak', polos: true),
@@ -124,11 +109,6 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
           .where((it) => tokoUtamaTernak(_kunciToko(it)) == isTernak)
           .toList();
 
-      if ((filter?['urutan'] ?? '') == 'Harga Terendah') {
-        tampil.sort(
-            (a, b) => _angkaHarga(a.harga).compareTo(_angkaHarga(b.harga)));
-      }
-
       if (!mounted || id != _reqId) return;
       setState(() {
         items = tampil;
@@ -148,18 +128,5 @@ mixin BerandaLoader<T extends StatefulWidget> on State<T> {
     query = v;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), muatData);
-  }
-
-  Future<void> bukaFilter() async {
-    final hasil = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            FilterPreferensiScreen(isTernak: isTernak, initial: filter),
-      ),
-    );
-    if (hasil == null) return; // ditutup tanpa menerapkan
-    filter = hasil;
-    muatData();
   }
 }

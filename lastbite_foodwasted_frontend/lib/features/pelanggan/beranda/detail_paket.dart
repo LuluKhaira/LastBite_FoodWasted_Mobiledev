@@ -18,66 +18,6 @@ String _rp(int v) {
   return 'Rp$b';
 }
 
-class _PayOpt {
-  final String id;
-  final String name;
-  final String sub;
-  final IconData icon;
-  final String? tag;
-  const _PayOpt(this.id, this.name, this.sub, this.icon, {this.tag});
-}
-
-class _PayGroup {
-  final String title;
-  final String badge;
-  final IconData icon;
-  final List<_PayOpt> opts;
-  const _PayGroup(this.title, this.badge, this.icon, this.opts);
-}
-
-const List<_PayGroup> _payGroups = [
-  _PayGroup(
-    'REKOMENDASI MAHASISWA',
-    'Terpopuler',
-    Icons.verified_rounded,
-    [
-      _PayOpt(
-        'qris',
-        'QRIS Instan',
-        'GoPay, OVO, DANA, ShopeePay, BCA Mobile',
-        Icons.qr_code_2_rounded,
-        tag: 'BEBAS BIAYA',
-      ),
-    ],
-  ),
-  _PayGroup(
-    'DOMPET DIGITAL / E-WALLET',
-    '3 Pilihan',
-    Icons.account_balance_wallet_outlined,
-    [
-      _PayOpt('gopay', 'GoPay', 'Bayar lewat aplikasi Gojek',
-          Icons.account_balance_wallet_rounded),
-      _PayOpt('ovo', 'OVO', 'Bayar lewat aplikasi OVO',
-          Icons.account_balance_wallet_rounded),
-      _PayOpt('dana', 'DANA', 'Bayar lewat aplikasi DANA',
-          Icons.account_balance_wallet_rounded),
-    ],
-  ),
-  _PayGroup(
-    'TRANSFER BANK (VIRTUAL ACCOUNT)',
-    '3 Bank',
-    Icons.account_balance_rounded,
-    [
-      _PayOpt('bca', 'BCA Virtual Account', 'Konfirmasi otomatis',
-          Icons.account_balance_rounded),
-      _PayOpt('mandiri', 'Mandiri Virtual Account', 'Konfirmasi otomatis',
-          Icons.account_balance_rounded),
-      _PayOpt('bni', 'BNI Virtual Account', 'Konfirmasi otomatis',
-          Icons.account_balance_rounded),
-    ],
-  ),
-];
-
 // ============================================================
 // HALAMAN DETAIL
 // ============================================================
@@ -90,22 +30,9 @@ class DetailPaketScreen extends StatefulWidget {
 }
 
 class _DetailPaketScreenState extends State<DetailPaketScreen> {
-  int _pickup = 0;
-  int _openGroup = 0;
-  String _payId = 'qris';
   bool _fav = false;
   final TextEditingController _notes = TextEditingController();
   bool _memproses = false;
-
-  static const Map<String, String> _metodeLabel = {
-    'qris': 'QRIS',
-    'gopay': 'GoPay',
-    'ovo': 'OVO',
-    'dana': 'DANA',
-    'bca': 'BCA VA',
-    'mandiri': 'Mandiri VA',
-    'bni': 'BNI VA',
-  };
 
   @override
   void initState() {
@@ -292,29 +219,6 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
     );
   }
 
-  Widget _radio(bool selected) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: 22,
-      height: 22,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: selected ? LbColors.sageDeep : const Color(0xFFCFCBC0),
-          width: 2,
-        ),
-      ),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: selected ? LbColors.sageDeep : Colors.transparent,
-        ),
-      ),
-    );
-  }
-
   Widget _roundBtn(IconData icon, VoidCallback onTap, {Color? color}) {
     return GestureDetector(
       onTap: onTap,
@@ -358,14 +262,7 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
                     const SizedBox(height: 14),
                     _infoCard(),
                     const SizedBox(height: 14),
-                    _pickupCard(),
-                    const SizedBox(height: 14),
                     _aboutCard(),
-                    if (_total > 0) ...[
-                      const SizedBox(height: 22),
-                      _paymentSection(),
-                    ],
-                    const SizedBox(height: 14),
                     _summaryCard(),
                     const SizedBox(height: 14),
                     _notesCard(),
@@ -413,23 +310,6 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
             child: Text(
               _ternak ? 'Detail Pasokan' : 'Detail Paket',
               style: LbText.heading(19, weight: FontWeight.w700),
-            ),
-          ),
-          Container(
-            width: 42,
-            height: 42,
-            padding: const EdgeInsets.all(2.5),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [LbColors.sage, LbColors.sageDeep],
-              ),
-            ),
-            child: const ClipOval(
-              child: LbNetImage(
-                url: 'https://i.pravatar.cc/150?img=32',
-                fallbackIcon: Icons.person_rounded,
-              ),
             ),
           ),
         ],
@@ -776,176 +656,6 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
   }
 
   // ============================================================
-  // METODE PENGAMBILAN
-  // ============================================================
-  Widget _pickupCard() {
-    return _card(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionHeader(Icons.storefront_rounded, 'Metode Pengambilan Pesanan'),
-          const SizedBox(height: 14),
-
-          // Peringatan
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: LbColors.peachLight,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.warning_amber_rounded,
-                  size: 20,
-                  color: LbColors.peachDeep,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      style: LbText.body(
-                        12,
-                        color: LbColors.forest,
-                        height: 1.4,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Penting: ',
-                          style: LbText.body(
-                            12,
-                            weight: FontWeight.w800,
-                            color: LbColors.peachDeep,
-                          ),
-                        ),
-                        const TextSpan(
-                          text:
-                              'Lastbite tidak menyediakan kurir antar. Anda wajib mengambil langsung ke toko atau memesan ojol mandiri secara terpisah.',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          _pickupOption(
-            index: 0,
-            icon: Icons.storefront_outlined,
-            title: 'Ambil Sendiri ke Toko',
-            tag: 'Rekomendasi',
-            tagBg: LbColors.sage.withValues(alpha: 0.35),
-            tagFg: LbColors.forest,
-            desc:
-                'Datang langsung ke kasir toko dan tunjukkan bukti QR pesanan Anda saat jam pengambilan.',
-          ),
-          const SizedBox(height: 10),
-          _pickupOption(
-            index: 1,
-            icon: Icons.two_wheeler_rounded,
-            title: 'Kirim via Ojol Mandiri',
-            tag: 'Luar Aplikasi',
-            tagBg: const Color(0xFFEDEBE6),
-            tagFg: LbColors.textGrey,
-            desc:
-                'Pesan GoSend / GrabExpress secara mandiri di aplikasi Gojek / Grab Anda.',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pickupOption({
-    required int index,
-    required IconData icon,
-    required String title,
-    required String tag,
-    required Color tagBg,
-    required Color tagFg,
-    required String desc,
-  }) {
-    final sel = _pickup == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _pickup = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: sel ? const Color(0xFFF1F6E6) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: sel ? LbColors.sage : LbColors.border,
-            width: sel ? 1.6 : 1,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: _radio(sel),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, size: 19, color: LbColors.sageDeep),
-                          const SizedBox(width: 6),
-                          Text(
-                            title,
-                            style: LbText.heading(
-                              13.5,
-                              weight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: tagBg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          tag,
-                          style: LbText.body(
-                            10.5,
-                            weight: FontWeight.w800,
-                            color: tagFg,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(desc, style: LbText.body(12, height: 1.4)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
   // TENTANG PAKET / BAHAN
   // ============================================================
   Widget _aboutCard() {
@@ -1094,231 +804,6 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // METODE PEMBAYARAN
-  // ============================================================
-  Widget _paymentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Metode Pembayaran',
-                  style: LbText.heading(16, weight: FontWeight.w600),
-                ),
-              ),
-              const Icon(
-                Icons.lock_outline_rounded,
-                size: 14,
-                color: LbColors.textGrey,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Aman & Terenkripsi',
-                style: LbText.body(11.5, weight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        for (var i = 0; i < _payGroups.length; i++) _payGroup(i, _payGroups[i]),
-      ],
-    );
-  }
-
-  Widget _payGroup(int gi, _PayGroup g) {
-    final open = _openGroup == gi;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _openGroup = open ? -1 : gi),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F6E6),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: LbColors.sage.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(g.icon, size: 18, color: LbColors.sageDeep),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      g.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: LbText.heading(
-                        11,
-                        weight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: gi == 0
-                          ? LbColors.peachLight
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      g.badge,
-                      style: LbText.body(
-                        11,
-                        weight: FontWeight.w800,
-                        color: gi == 0
-                            ? LbColors.peachDeep
-                            : LbColors.textGrey,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: open ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: LbColors.forest,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOut,
-            alignment: Alignment.topCenter,
-            child: open
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Column(
-                      children: g.opts.map(_payOption).toList(),
-                    ),
-                  )
-                : const SizedBox(width: double.infinity),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _payOption(_PayOpt o) {
-    final sel = _payId == o.id;
-
-    return GestureDetector(
-      onTap: () => setState(() => _payId = o.id),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: sel ? LbColors.sage : LbColors.border,
-            width: sel ? 1.6 : 1,
-          ),
-          boxShadow: sel
-              ? [
-                  BoxShadow(
-                    color: LbColors.sage.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: LbColors.sageLight,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(o.icon, size: 25, color: LbColors.sageDeep),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          o.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: LbText.heading(14, weight: FontWeight.w600),
-                        ),
-                      ),
-                      if (o.tag != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: LbColors.sageDeep,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            o.tag!,
-                            style: LbText.body(
-                              9,
-                              weight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    o.sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbText.body(11.5),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            _radio(sel),
-          ],
-        ),
       ),
     );
   }
@@ -1691,7 +1176,7 @@ class _DetailPaketScreenState extends State<DetailPaketScreen> {
 
     setState(() => _memproses = true);
   try {
-    final metode = _total == 0 ? 'Gratis' : (_metodeLabel[_payId] ?? 'QRIS');
+    final metode = _total == 0 ? 'Gratis' : 'Midtrans';
     final hasil = await ApiService.buatPesanan(id, 1, metode, catatan: _notes.text);
     final kode = '${hasil['kode'] ?? ''}';
     if (!mounted) return;

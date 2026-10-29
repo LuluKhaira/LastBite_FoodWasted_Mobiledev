@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/tema/tema_lb.dart';
 import 'detail_paket.dart';
+import 'filter_preferensi.dart';
 import 'model_bahan.dart';
 import 'model_toko.dart';
 import 'widgets/kartu_paket.dart';
+import '../../../core/komponen/animasi_lb.dart';
 
 /// Halaman satu toko/mitra/petani: info toko + paketnya,
 /// dengan tab kategori ala Shopee yang menempel di atas saat di-scroll.
@@ -20,6 +22,10 @@ class _TokoScreenState extends State<TokoScreen> {
   static const _semua = 'Semua';
   String _kategori = _semua;
 
+  /// Hasil dari FilterPreferensiScreen (urutan, tersedia, harga).
+  /// null = belum ada filter.
+  Map<String, dynamic>? _filter;
+
   TokoGroup get toko => widget.toko;
 
   /// "Semua" + kategori unik yang benar-benar ada di toko ini.
@@ -32,9 +38,70 @@ class _TokoScreenState extends State<TokoScreen> {
     return [_semua, ...unik];
   }
 
-  List<BahanItem> get _tampil => _kategori == _semua
-      ? toko.items
-      : toko.items.where((e) => e.kategori.trim() == _kategori).toList();
+  /// Toko ini dianggap "ternak" bila mayoritas produknya untuk ternak
+  /// (hanya menentukan judul/teks di layar filter).
+  bool get _tokoTernak =>
+      toko.items.where((e) => e.untukTernak).length * 2 > toko.items.length;
+
+  bool get _filterAktif {
+    final f = _filter;
+    if (f == null) return false;
+    return (f['urutan'] ?? 'Rekomendasi') != 'Rekomendasi' ||
+        f['tersedia'] == true ||
+        (f['harga'] ?? 'Semua Harga') != 'Semua Harga';
+  }
+
+  static int _angka(String rp) =>
+      int.tryParse(rp.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+  bool _cocokHarga(BahanItem it, String label) {
+    final h = it.gratis ? 0 : _angka(it.harga);
+    switch (label) {
+      case 'Di bawah Rp25.000':
+        return h < 25000;
+      case 'Rp25.000–Rp50.000':
+        return h >= 25000 && h <= 50000;
+      case 'Di atas Rp50.000':
+        return h > 50000;
+      default:
+        return true;
+    }
+  }
+
+  List<BahanItem> get _tampil {
+    var hasil = _kategori == _semua
+        ? List<BahanItem>.of(toko.items)
+        : toko.items.where((e) => e.kategori.trim() == _kategori).toList();
+
+    final f = _filter;
+    if (f != null) {
+      if (f['tersedia'] == true) {
+        hasil = hasil.where((e) => e.badge != 'Habis').toList();
+      }
+      final harga = (f['harga'] ?? 'Semua Harga').toString();
+      hasil = hasil.where((e) => _cocokHarga(e, harga)).toList();
+      if ((f['urutan'] ?? '') == 'Harga Terendah') {
+        hasil.sort((a, b) {
+          final ha = a.gratis ? 0 : _angka(a.harga);
+          final hb = b.gratis ? 0 : _angka(b.harga);
+          return ha.compareTo(hb);
+        });
+      }
+    }
+    return hasil;
+  }
+
+  Future<void> _bukaFilter() async {
+    final hasil = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            FilterPreferensiScreen(isTernak: _tokoTernak, initial: _filter),
+      ),
+    );
+    if (hasil == null) return; // ditutup tanpa menerapkan
+    setState(() => _filter = hasil);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +124,52 @@ class _TokoScreenState extends State<TokoScreen> {
           overflow: TextOverflow.ellipsis,
           style: LbText.heading(16, weight: FontWeight.w700),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: LbTekan(
+              onTap: _bukaFilter,
+              skala: 0.9,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 240),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _filterAktif ? LbColors.sage : LbColors.sageLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.tune_rounded,
+                      size: 22,
+                      color: _filterAktif ? Colors.white : LbColors.forest,
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: AnimatedScale(
+                        scale: _filterAktif ? 1 : 0,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutBack,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: LbColors.peach,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -95,7 +208,10 @@ class _TokoScreenState extends State<TokoScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
-                      child: Text('Belum ada paket di kategori ini',
+                      child: Text(
+                          _filterAktif
+                              ? 'Tidak ada paket yang cocok dengan filter'
+                              : 'Belum ada paket di kategori ini',
                           style: LbText.body(13)),
                     ),
                   ),
