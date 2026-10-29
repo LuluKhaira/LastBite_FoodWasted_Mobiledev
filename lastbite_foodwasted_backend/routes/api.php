@@ -35,10 +35,11 @@ Route::post('/mitra/check-status', [\App\Http\Controllers\Api\MitraStatusControl
 Route::post('/mitra/produk/list', [ProdukMitraController::class, 'index']);
 Route::post('/mitra/produk/stok', [ProdukMitraController::class, 'updateStok']);
 Route::post('/mitra/produk/aktif', [ProdukMitraController::class, 'updateAktif']);
-Route::post('/mitra/produk', [ProdukController::class, 'tambah']);
 Route::post('/mitra/produk/update', [ProdukController::class, 'update']);
 Route::get('/produk/opsi-pengalihan', [ProdukController::class, 'opsiPengalihan']);
 Route::post('/mitra/produk/alihkan', [ProdukController::class, 'alihkanManual']);
+Route::post('/mitra/produk/konfirmasi-pengalihan', [ProdukMitraController::class, 'konfirmasiPengalihan']);
+Route::post('/mitra/produk/menunggu-konfirmasi', [ProdukMitraController::class, 'menungguKonfirmasi']);
 
 // ============================================================
 // AKSES FOTO / GAMBAR PRODUK

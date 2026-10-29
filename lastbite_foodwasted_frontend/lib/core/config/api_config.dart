@@ -37,6 +37,7 @@ class ApiConfig {
   /// Menangani:
   /// - Path relatif (contoh: "produk/foto.jpg" atau "storage/produk/foto.jpg")
   /// - Host "localhost" atau "127.0.0.1" dari respon API (diganti ke IP/host server aktif)
+  /// - Redirect dari path "/storage/..." ke endpoint API streaming "/api/foto/..."
   /// - Fallback aman bila string kosong/null
   static String resolveImageUrl(dynamic raw) {
     if (raw == null) return '';
@@ -50,18 +51,28 @@ class ApiConfig {
     if (str.startsWith('http://') || str.startsWith('https://')) {
       final uri = Uri.tryParse(str);
       if (uri != null && uri.hasAuthority) {
+        Uri targetUri = uri;
         // Jika host dari backend adalah localhost, 127.0.0.1, atau 10.0.2.2,
         // ubah ke host & port server saat ini agar HP fisik / emulator dapat menjangkaunya
         if (uri.host == 'localhost' ||
             uri.host == '127.0.0.1' ||
             uri.host == '10.0.2.2') {
           final serverUri = Uri.parse(serverRoot);
-          return uri.replace(
+          targetUri = uri.replace(
             scheme: serverUri.scheme,
             host: serverUri.host,
             port: serverUri.port,
-          ).toString();
+          );
         }
+
+        // Jika URL mengarah ke /storage/, alihkan ke endpoint API streaming /api/foto/
+        // agar file dapat ditampilkan langsung tanpa bergantung pada symlink web server di Windows/Laragon
+        if (targetUri.path.startsWith('/storage/')) {
+          final subPath = targetUri.path.substring(9);
+          targetUri = targetUri.replace(path: '/api/foto/$subPath');
+        }
+
+        return targetUri.toString();
       }
       return str;
     }
@@ -78,7 +89,7 @@ class ApiConfig {
       return '$serverRoot/$path';
     }
     if (path.startsWith('storage/')) {
-      return '$serverRoot/$path';
+      return '$serverRoot/api/foto/${path.substring(8)}';
     }
 
     return '$serverRoot/api/foto/$path';

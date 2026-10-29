@@ -66,14 +66,14 @@ class Pesanan extends Model
 
         $path = $this->gambar ? ltrim($this->gambar, '/') : null;
         if ($path && !str_starts_with($path, 'http://') && !str_starts_with($path, 'https://')) {
-            if (!str_starts_with($path, 'storage/')) {
-                $path = 'storage/' . $path;
+            if (str_starts_with($path, 'storage/')) {
+                $path = substr($path, 8);
             }
             try {
                 $root = request()->root();
-                $gambarUrl = !empty($root) ? (rtrim($root, '/') . '/' . $path) : asset($path);
+                $gambarUrl = !empty($root) ? (rtrim($root, '/') . '/api/foto/' . $path) : url('api/foto/' . $path);
             } catch (\Throwable $e) {
-                $gambarUrl = asset($path);
+                $gambarUrl = url('api/foto/' . $path);
             }
         } else {
             $gambarUrl = $path;

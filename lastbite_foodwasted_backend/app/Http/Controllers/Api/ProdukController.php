@@ -187,13 +187,15 @@ class ProdukController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric',
-            'nama' => 'required|string',
-            'harga'      => 'required|numeric|min:0|lte:harga_asli',
-            'harga_asli' => 'required|numeric|min:0',
-            'stok' => 'required|numeric',
-            'kadaluarsa' => 'nullable|date',
+            'id'                         => 'required|numeric',
+            'nama'                       => 'required|string',
+            'harga'                      => 'required|numeric|min:0|lte:harga_asli',
+            'harga_asli'                 => 'required|numeric|min:0',
+            'stok'                       => 'required|numeric',
+            'kadaluarsa'                 => 'nullable|date',
+            'bersedia_dialihkan'         => 'nullable|boolean',
             'target_kategori_pengalihan' => 'nullable|string',
+            'perkiraan_berat_per_paket'  => 'nullable|numeric|min:0',
         ]);
 
         $produk = Produk::find($request->id);
@@ -201,17 +203,27 @@ class ProdukController extends Controller
             return response()->json(['message' => 'Produk tidak ditemukan'], 404);
         }
 
+        $bersedia = $request->has('bersedia_dialihkan')
+            ? $request->boolean('bersedia_dialihkan')
+            : $produk->bersedia_dialihkan;
+
         $produk->update([
-            'nama' => $request->nama,
-            'deskripsi' => $request->deskripsi ?? $produk->deskripsi,
-            'harga_asli' => $request->harga_asli,
-            'harga' => $request->harga,
-            'stok' => $request->stok,
-            'kadaluarsa' => $request->kadaluarsa ?? $produk->kadaluarsa,
-            'target_kategori_pengalihan' => $request->target_kategori_pengalihan ?? $produk->target_kategori_pengalihan,
+            'nama'                       => $request->nama,
+            'deskripsi'                  => $request->deskripsi ?? $produk->deskripsi,
+            'harga_asli'                 => $request->harga_asli,
+            'harga'                      => $request->harga,
+            'stok'                       => $request->stok,
+            'kadaluarsa'                 => $request->kadaluarsa ?? $produk->kadaluarsa,
+            'bersedia_dialihkan'         => $bersedia,
+            'target_kategori_pengalihan' => $bersedia
+                ? ($request->target_kategori_pengalihan ?? $produk->target_kategori_pengalihan)
+                : null,
+            'perkiraan_berat_per_paket'  => $bersedia
+                ? ($request->has('perkiraan_berat_per_paket') ? (float) $request->perkiraan_berat_per_paket : $produk->perkiraan_berat_per_paket)
+                : null,
         ]);
 
-        return response()->json(['message' => 'Produk berhasil diperbarui'], 200);
+        return response()->json(['message' => 'Produk berhasil diperbarui', 'data' => $produk->fresh()->toApi()], 200);
     }
 
     /**

@@ -1,6 +1,6 @@
 import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
 
-enum StatusProduk { tayang, terjadwal, habis }
+enum StatusProduk { tayang, terjadwal, habis, menungguKonfirmasi }
 
 class Produk {
   final int id;
@@ -22,6 +22,17 @@ class Produk {
   final String? kategoriAsli;
   final DateTime? dialihkanPada;
 
+  // Fitur Pengalihan Surprise Box ke Pakan / Kompos
+  final bool bersediaDialihkan;
+  final String? targetKategoriPengalihan;
+  final double perkiraanBeratPerPaket;
+  final String statusPengalihan; // tidak_dialihkan | menunggu_konfirmasi | dialihkan | dibuang
+  final double beratAktual;
+  final int? produkSurplusId;
+  final DateTime? dikonfirmasiPada;
+  final String? catatanPengalihan;
+  final double totalPerkiraanBerat;
+
   Produk({
     required this.id,
     required this.nama,
@@ -41,6 +52,15 @@ class Produk {
     this.kadaluarsa,
     this.kategoriAsli,
     this.dialihkanPada,
+    this.bersediaDialihkan = false,
+    this.targetKategoriPengalihan,
+    this.perkiraanBeratPerPaket = 0.0,
+    this.statusPengalihan = 'tidak_dialihkan',
+    this.beratAktual = 0.0,
+    this.produkSurplusId,
+    this.dikonfirmasiPada,
+    this.catatanPengalihan,
+    this.totalPerkiraanBerat = 0.0,
   });
 
   factory Produk.fromJson(Map<String, dynamic> j) {
@@ -55,6 +75,12 @@ class Produk {
     final resolvedUrl = ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']);
     final String? imgUrl = resolvedUrl.isEmpty ? null : resolvedUrl;
 
+    final int stokVal = i(j['stok']);
+    final double perkiraanVal = d(j['perkiraan_berat_per_paket']);
+    final double totalEst = j['total_perkiraan_berat'] != null
+        ? d(j['total_perkiraan_berat'])
+        : (stokVal * perkiraanVal);
+
     return Produk(
       id: i(j['id']),
       nama: '${j['nama'] ?? '-'}',
@@ -66,7 +92,7 @@ class Produk {
       harga: i(j['harga']),
       hargaAsli: i(j['harga_asli']),
       satuan: '${j['satuan'] ?? '/paket'}',
-      stok: i(j['stok']),
+      stok: stokVal,
       kuota: i(j['kuota']),
       waktuMulai: '${j['waktu_mulai'] ?? '00:00'}',
       waktuSelesai: '${j['waktu_selesai'] ?? '00:00'}',
@@ -75,25 +101,40 @@ class Produk {
       kadaluarsa: t(j['kadaluarsa']),
       kategoriAsli: j['kategori_asli']?.toString(),
       dialihkanPada: t(j['dialihkan_pada']),
+      bersediaDialihkan: j['bersedia_dialihkan'] == true || j['bersedia_dialihkan'] == 1,
+      targetKategoriPengalihan: j['target_kategori_pengalihan']?.toString(),
+      perkiraanBeratPerPaket: perkiraanVal,
+      statusPengalihan: j['status_pengalihan']?.toString() ?? 'tidak_dialihkan',
+      beratAktual: d(j['berat_aktual']),
+      produkSurplusId: j['produk_surplus_id'] != null ? i(j['produk_surplus_id']) : null,
+      dikonfirmasiPada: t(j['dikonfirmasi_pada']),
+      catatanPengalihan: j['catatan_pengalihan']?.toString(),
+      totalPerkiraanBerat: totalEst,
     );
   }
 
-  /// Sudah dialihkan otomatis ke kategori pakan oleh scheduler.
-  bool get sudahDialihkan => dialihkanPada != null;
+  /// Menunggu konfirmasi penimbangan/pengalihan dari mitra
+  bool get isMenungguKonfirmasi => statusPengalihan == 'menunggu_konfirmasi';
 
-  /// Sudah lewat kadaluarsa tapi scheduler belum sempat mengalihkan.
-  bool get kadaluarsaBelumDialihkan =>
-      !sudahDialihkan &&
-      tipe == 'dimakan' &&
-      kadaluarsa != null &&
-      DateTime.now().isAfter(kadaluarsa!);
+  /// Sudah dialihkan ke kategori pakan/kompos setelah dikonfirmasi mitra
+  bool get isSudahDialihkan =>
+      statusPengalihan == 'dialihkan' || dialihkanPada != null;
 
-  bool get tampilBadgePakan => sudahDialihkan || kadaluarsaBelumDialihkan;
+  /// Dibuang / dinilai tidak layak oleh mitra
+  bool get isDibuang => statusPengalihan == 'dibuang';
 
-  String get labelBadgePakan =>
-      sudahDialihkan ? 'Expired â†’ Pakan' : 'Kadaluarsa â€¢ segera jadi pakan';
+  /// Badge status untuk kategori Pakan/Kompos
+  bool get tampilBadgePakan => isSudahDialihkan || isMenungguKonfirmasi || isDibuang;
+
+  String get labelBadgePakan {
+    if (isMenungguKonfirmasi) return 'Menunggu Konfirmasi Pengalihan';
+    if (isSudahDialihkan) return 'Dialihkan → Pakan/Kompos';
+    if (isDibuang) return 'Tidak Layak (Dibuang)';
+    return 'Pakan / Kompos';
+  }
 
   StatusProduk get statusUI {
+    if (isMenungguKonfirmasi) return StatusProduk.menungguKonfirmasi;
     if (!aktif) return StatusProduk.habis;
     if (stok == 0) return StatusProduk.habis;
     return StatusProduk.tayang;

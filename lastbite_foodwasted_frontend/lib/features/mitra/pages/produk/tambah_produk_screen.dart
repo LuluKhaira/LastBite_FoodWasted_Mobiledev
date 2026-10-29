@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,6 +12,7 @@ import 'widgets/harga_card.dart';
 import 'widgets/jadwal_card.dart';
 import 'widgets/bottom_action_bar.dart';
 import 'widgets/warna_lokal.dart';
+import 'widgets/pengalihan_section_card.dart';
 
 class TambahProdukScreen extends StatefulWidget {
   final String phoneNumber;
@@ -47,12 +48,35 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
 
   bool _saving = false;
 
+  // Konfigurasi Pengalihan Sisa ke Pakan/Kompos (Default NONAKTIF)
+  bool _bersediaDialihkan = false;
+  String? _targetKategoriPengalihan;
+  final _beratPerPaketCtrl = TextEditingController(text: '0.5');
+  List<Map<String, dynamic>> _opsiPengalihan = [];
+
   @override
   void initState() {
     super.initState();
     _asliCtrl.addListener(() => setState(() {}));
     _diskonCtrl.addListener(() => setState(() {}));
     _muatJamToko();
+    _muatOpsiPengalihan();
+  }
+
+  Future<void> _muatOpsiPengalihan() async {
+    final res = await ApiService.getOpsiPengalihan();
+    if (res != null && mounted) {
+      final list = (res['opsi_tujuan'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      setState(() {
+        _opsiPengalihan = list;
+        if (_targetKategoriPengalihan == null && list.isNotEmpty) {
+          _targetKategoriPengalihan = list.first['kategori'];
+        }
+      });
+    }
   }
 
   int _menit(TimeOfDay t) => t.hour * 60 + t.minute;
@@ -96,6 +120,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     _catatanCtrl.dispose();
     _asliCtrl.dispose();
     _diskonCtrl.dispose();
+    _beratPerPaketCtrl.dispose();
     super.dispose();
   }
 
@@ -225,11 +250,42 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     if (terbit && _tokoLibur) {
       return _snack('Toko kamu diatur libur hari ini. Ubah di menu Jam Buka untuk menerbitkan produk.');
     }
+    if (terbit) {
+      final sekarang = TimeOfDay.now();
+      final tutup = _jamTutupToko;
+      if (tutup != null && _menit(sekarang) >= _menit(tutup)) {
+        return _snack(
+          'Toko sudah tutup (jam tutup ${_fmtJam(tutup)}). Pilih jam setelah sekarang, '
+          'atau ubah jam tutup di menu Jam Buka.',
+        );
+      }
+      if (_menit(_batasMaksimal) <= _menit(sekarang)) {
+        return _snack(
+          'Batas pengambilan (${_fmtJam(_batasMaksimal)}) sudah lewat. '
+          'Pilih jam setelah sekarang (${_fmtJam(sekarang)}).',
+        );
+      }
+      if (_menit(_mulaiAmbil) >= _menit(_batasMaksimal)) {
+        return _snack('Jam mulai ambil harus lebih awal dari batas pengambilan.');
+      }
+    }
+
     final tutupToko = _jamTutupToko;
     if (terbit && tutupToko != null && _menit(_batasMaksimal) > _menit(tutupToko)) {
       return _snack(
         'Batas pengambilan (${_fmtJam(_batasMaksimal)}) melewati jam tutup toko (${_fmtJam(tutupToko)}).',
       );
+    }
+
+    if (_target == TargetSurplus.manusia && _bersediaDialihkan) {
+      if (_targetKategoriPengalihan == null || _targetKategoriPengalihan!.isEmpty) {
+        return _snack('Pilih kategori tujuan pengalihan Pakan/Kompos.');
+      }
+      final beratStr = _beratPerPaketCtrl.text.trim().replaceAll(',', '.');
+      final berat = double.tryParse(beratStr);
+      if (berat == null || berat <= 0) {
+        return _snack('Perkiraan berat per paket harus berupa angka positif (> 0 kg).');
+      }
     }
 
     setState(() => _saving = true);
@@ -252,6 +308,13 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
           ? _kadaluarsa.toIso8601String()
           : '',
       terbit: terbit,
+      bersediaDialihkan: _target == TargetSurplus.manusia && _bersediaDialihkan,
+      targetKategoriPengalihan: _target == TargetSurplus.manusia && _bersediaDialihkan
+          ? _targetKategoriPengalihan
+          : null,
+      perkiraanBeratPerPaket: _target == TargetSurplus.manusia && _bersediaDialihkan
+          ? double.tryParse(_beratPerPaketCtrl.text.trim().replaceAll(',', '.'))
+          : null,
       fotoBytes: _fotoBytes,
       fotoNama: _fotoNama,
     );
@@ -330,6 +393,19 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                       onPilihBatas: () => _pilihWaktu(false),
                       onPilihKadaluarsa: _pilihKadaluarsa,
                     ),
+                    if (_target == TargetSurplus.manusia) ...[
+                      const SizedBox(height: 16),
+                      PengalihanSectionCard(
+                        bersedia: _bersediaDialihkan,
+                        onBersediaChanged: (val) =>
+                            setState(() => _bersediaDialihkan = val),
+                        targetKategori: _targetKategoriPengalihan,
+                        onTargetKategoriChanged: (val) =>
+                            setState(() => _targetKategoriPengalihan = val),
+                        beratPerPaketCtrl: _beratPerPaketCtrl,
+                        opsiKategori: _opsiPengalihan,
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -14,16 +14,25 @@ class Produk extends Model
     public const TIPE_PAKAN   = 'pakan';
     public const TIPE_KOMPOS  = 'kompos';
 
+    public const STATUS_PENGALIHAN_TIDAK    = 'tidak_dialihkan';
+    public const STATUS_PENGALIHAN_MENUNGGU  = 'menunggu_konfirmasi';
+    public const STATUS_PENGALIHAN_DIALIHKAN = 'dialihkan';
+    public const STATUS_PENGALIHAN_DIBUANG   = 'dibuang';
+
     protected $guarded = [];
 
     protected $casts = [
-        'aktif' => 'boolean',
-        'rating' => 'float',
-        'berat_kg' => 'float',
-        'harga'      => 'float',
-        'harga_asli' => 'float',
-        'kadaluarsa'     => 'datetime',
-        'dialihkan_pada' => 'datetime',
+        'aktif'                     => 'boolean',
+        'rating'                    => 'float',
+        'berat_kg'                  => 'float',
+        'harga'                     => 'float',
+        'harga_asli'                => 'float',
+        'kadaluarsa'                => 'datetime',
+        'dialihkan_pada'            => 'datetime',
+        'bersedia_dialihkan'        => 'boolean',
+        'perkiraan_berat_per_paket' => 'float',
+        'berat_aktual'              => 'float',
+        'dikonfirmasi_pada'         => 'datetime',
     ];
 
     public function mitra()
@@ -31,53 +40,28 @@ class Produk extends Model
         return $this->belongsTo(Mitra::class, 'id_mitra', 'id_mitra');
     }
 
-    /** Produk yang sudah lewat kadaluarsa tapi belum dialihkan. */
-    public function scopePerluDialihkan($query)
+    public function produkSurplus()
     {
-        return $query->where('tipe', self::TIPE_DIMAKAN)
-            ->whereNotNull('kadaluarsa')
-            ->whereNull('dialihkan_pada')
-            ->where('kadaluarsa', '<=', now('Asia/Jakarta'));
+        return $this->belongsTo(self::class, 'produk_surplus_id');
     }
 
-    /** Produk yang sudah dialihkan. */
-    public function scopeSudahDialihkan($query)
+    public function produkAsal()
     {
-        return $query->whereNotNull('dialihkan_pada');
+        return $this->hasOne(self::class, 'produk_surplus_id');
     }
 
-    /**
-     * Alihkan produk ini ke kategori tujuan.
-     * Prioritas: parameter -> target pilihan mitra -> mapping default.
-     * Idempotent: kalau sudah dialihkan, tidak melakukan apa-apa.
-     */
-    public function alihkan(?string $kategoriTujuan = null, ?string $tipeTujuan = null): bool
+    /** Produk yang menunggu konfirmasi pengalihan dari mitra. */
+    public function scopeMenungguKonfirmasi($query)
     {
-        if ($this->dialihkan_pada !== null) {
-            return false;
-        }
+        return $query->where('status_pengalihan', self::STATUS_PENGALIHAN_MENUNGGU);
+    }
 
-        if ($kategoriTujuan === null) {
-            $kategoriTujuan = $this->target_kategori_pengalihan;
-        }
-
-        if ($kategoriTujuan === null) {
-            $tujuan = PengalihanKategori::cariTujuan($this->kategori);
-            $kategoriTujuan = $tujuan['kategori'];
-            $tipeTujuan = $tipeTujuan ?? $tujuan['tipe'];
-        } elseif ($tipeTujuan === null) {
-            // Target pilihan (mitra/admin): tipe diambil dari kategori tujuannya
-            $tipeTujuan = PengalihanKategori::tipeUntuk($kategoriTujuan);
-        }
-
-        $this->update([
-            'kategori_asli'  => $this->kategori_asli ?? $this->kategori,
-            'kategori'       => $kategoriTujuan,
-            'tipe'           => $tipeTujuan ?? self::TIPE_PAKAN,
-            'dialihkan_pada' => now('Asia/Jakarta'),
-        ]);
-
-        return true;
+    /** Menghitung estimasi sisa berat berdasarkan stok tersisa * perkiraan berat per paket */
+    public function totalPerkiraanBeratSisa(): float
+    {
+        $stok = (int) ($this->stok ?? 0);
+        $perkiraan = (float) ($this->perkiraan_berat_per_paket ?? 0);
+        return round($stok * $perkiraan, 2);
     }
 
     public function getGambarUrlAttribute(): ?string
@@ -120,36 +104,46 @@ class Produk extends Model
         $gambarUrl = $this->gambar_url;
 
         return [
-            'id'         => $this->id,
-            'nama'       => $this->nama,
-            'deskripsi'  => $this->deskripsi,
-            'penjual'    => $m?->nama_usaha,
-            'inisial'    => $m?->inisial,
-            'alamat'     => $m?->alamat,
-            'tipe'       => $this->tipe,
-            'kategori'   => $this->kategori,
-            'gambar'     => $gambarUrl,
-            'image_url'  => $gambarUrl,
-            'tag'        => $this->tag,
-            'harga'      => $this->harga,
-            'harga_asli' => $this->harga_asli,
-            'satuan'     => $this->satuan,
-            'stok'       => $this->stok,
-            'berat_kg'   => $this->berat_kg,
-            'rating'     => $this->rating,
-            'waktu'      => $this->waktu_mulai && $this->waktu_selesai
+            'id'                        => $this->id,
+            'nama'                      => $this->nama,
+            'deskripsi'                 => $this->deskripsi,
+            'penjual'                   => $m?->nama_usaha,
+            'inisial'                   => $m?->inisial,
+            'alamat'                    => $m?->alamat,
+            'tipe'                      => $this->tipe,
+            'kategori'                  => $this->kategori,
+            'gambar'                    => $gambarUrl,
+            'image_url'                 => $gambarUrl,
+            'tag'                       => $this->tag,
+            'harga'                     => $this->harga,
+            'harga_asli'                => $this->harga_asli,
+            'satuan'                    => $this->satuan,
+            'stok'                      => $this->stok,
+            'berat_kg'                  => $this->berat_kg,
+            'rating'                    => $this->rating,
+            'waktu'                     => $this->waktu_mulai && $this->waktu_selesai
                 ? substr($this->waktu_mulai, 0, 5) . ' - ' . substr($this->waktu_selesai, 0, 5) . ' WIB'
                 : null,
-            'jarak_km'   => $jarak,
-            'kadaluarsa'     => $this->kadaluarsa
+            'jarak_km'                  => $jarak,
+            'kadaluarsa'                => $this->kadaluarsa
                 ? Carbon::parse($this->kadaluarsa, 'Asia/Jakarta')->toIso8601String()
                 : null,
-            'kategori_asli'  => $this->kategori_asli,
-            'dialihkan_pada' => $this->dialihkan_pada
+            'kategori_asli'             => $this->kategori_asli,
+            'dialihkan_pada'            => $this->dialihkan_pada
                 ? Carbon::parse($this->dialihkan_pada, 'Asia/Jakarta')->toIso8601String()
                 : null,
-            'sudah_dialihkan' => $this->dialihkan_pada !== null,
+            'sudah_dialihkan'           => $this->dialihkan_pada !== null || $this->status_pengalihan === self::STATUS_PENGALIHAN_DIALIHKAN,
             'target_kategori_pengalihan' => $this->target_kategori_pengalihan,
+            'bersedia_dialihkan'        => (bool) $this->bersedia_dialihkan,
+            'perkiraan_berat_per_paket' => (float) ($this->perkiraan_berat_per_paket ?? 0),
+            'status_pengalihan'         => $this->status_pengalihan ?? self::STATUS_PENGALIHAN_TIDAK,
+            'berat_aktual'              => (float) ($this->berat_aktual ?? 0),
+            'produk_surplus_id'         => $this->produk_surplus_id,
+            'dikonfirmasi_pada'         => $this->dikonfirmasi_pada
+                ? Carbon::parse($this->dikonfirmasi_pada, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'catatan_pengalihan'        => $this->catatan_pengalihan,
+            'total_perkiraan_berat'     => $this->totalPerkiraanBeratSisa(),
         ];
     }
 

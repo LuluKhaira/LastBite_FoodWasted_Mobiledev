@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'models/produk_model.dart';
+import 'widgets/pengalihan_section_card.dart';
+import 'widgets/dialog_konfirmasi_pengalihan.dart';
 
 class _UI {
   static Color get primary => AppColors.primary;
@@ -42,6 +44,11 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
   late TextEditingController _hargaCtrl;
   late TextEditingController _hargaAsliCtrl;
   late TextEditingController _stokCtrl;
+  late TextEditingController _perkiraanBeratCtrl;
+
+  bool _bersediaDialihkan = false;
+  String? _targetKategoriPengalihan;
+  List<Map<String, dynamic>> _opsiPengalihan = [];
 
   @override
   void initState() {
@@ -53,6 +60,30 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
     _hargaAsliCtrl =
         TextEditingController(text: _dataProduk!.hargaAsli.toString());
     _stokCtrl = TextEditingController(text: _dataProduk!.stok.toString());
+    _bersediaDialihkan = _dataProduk!.bersediaDialihkan;
+    _targetKategoriPengalihan = _dataProduk!.targetKategoriPengalihan;
+    _perkiraanBeratCtrl = TextEditingController(
+      text: _dataProduk!.perkiraanBeratPerPaket > 0
+          ? _dataProduk!.perkiraanBeratPerPaket.toString()
+          : '0.5',
+    );
+    _muatOpsiPengalihan();
+  }
+
+  Future<void> _muatOpsiPengalihan() async {
+    final res = await ApiService.getOpsiPengalihan();
+    if (res != null && mounted) {
+      final list = (res['opsi_tujuan'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      setState(() {
+        _opsiPengalihan = list;
+        if (_targetKategoriPengalihan == null && list.isNotEmpty) {
+          _targetKategoriPengalihan = list.first['kategori'];
+        }
+      });
+    }
   }
 
   @override
@@ -62,6 +93,7 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
     _hargaCtrl.dispose();
     _hargaAsliCtrl.dispose();
     _stokCtrl.dispose();
+    _perkiraanBeratCtrl.dispose();
     super.dispose();
   }
 
@@ -81,7 +113,21 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
       return;
     }
 
+    if (_dataProduk!.tipe == 'dimakan' && _bersediaDialihkan) {
+      if (_targetKategoriPengalihan == null || _targetKategoriPengalihan!.isEmpty) {
+        _tampilkanPesan('Pilih kategori tujuan pengalihan Pakan/Kompos!', isError: true);
+        return;
+      }
+      final berat = double.tryParse(_perkiraanBeratCtrl.text.trim().replaceAll(',', '.'));
+      if (berat == null || berat <= 0) {
+        _tampilkanPesan('Perkiraan berat per paket harus angka positif (> 0 kg)!', isError: true);
+        return;
+      }
+    }
+
     setState(() => _isSaving = true);
+
+    final beratVal = double.tryParse(_perkiraanBeratCtrl.text.trim().replaceAll(',', '.'));
 
     final hasil = await ApiService.updateProdukLengkap(
       phoneNumber: widget.phoneNumber,
@@ -91,6 +137,9 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
       hargaAsli: int.tryParse(_hargaAsliCtrl.text) ?? 0,
       harga: int.tryParse(_hargaCtrl.text) ?? 0,
       stok: int.tryParse(_stokCtrl.text) ?? 0,
+      bersediaDialihkan: _bersediaDialihkan,
+      targetKategoriPengalihan: _bersediaDialihkan ? _targetKategoriPengalihan : null,
+      perkiraanBeratPerPaket: _bersediaDialihkan ? beratVal : null,
     );
 
     if (!mounted) return;
@@ -116,6 +165,18 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
           waktuSelesai: _dataProduk!.waktuSelesai,
           rating: _dataProduk!.rating,
           aktif: _dataProduk!.aktif,
+          kadaluarsa: _dataProduk!.kadaluarsa,
+          kategoriAsli: _dataProduk!.kategoriAsli,
+          dialihkanPada: _dataProduk!.dialihkanPada,
+          bersediaDialihkan: _bersediaDialihkan,
+          targetKategoriPengalihan: _bersediaDialihkan ? _targetKategoriPengalihan : null,
+          perkiraanBeratPerPaket: _bersediaDialihkan ? (beratVal ?? 0.0) : 0.0,
+          statusPengalihan: _dataProduk!.statusPengalihan,
+          beratAktual: _dataProduk!.beratAktual,
+          produkSurplusId: _dataProduk!.produkSurplusId,
+          dikonfirmasiPada: _dataProduk!.dikonfirmasiPada,
+          catatanPengalihan: _dataProduk!.catatanPengalihan,
+          totalPerkiraanBerat: _bersediaDialihkan ? ((int.tryParse(_stokCtrl.text) ?? _dataProduk!.stok) * (beratVal ?? 0.0)) : 0.0,
         );
       });
       _tampilkanPesan('Produk berhasil diperbarui!');
@@ -388,6 +449,121 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // Bagian Konfirmasi / Pengaturan Pengalihan Pakan & Kompos
+                  if (_isEditMode && _dataProduk!.tipe == 'dimakan') ...[
+                    PengalihanSectionCard(
+                      bersedia: _bersediaDialihkan,
+                      onBersediaChanged: (val) =>
+                          setState(() => _bersediaDialihkan = val),
+                      targetKategori: _targetKategoriPengalihan,
+                      onTargetKategoriChanged: (val) =>
+                          setState(() => _targetKategoriPengalihan = val),
+                      beratPerPaketCtrl: _perkiraanBeratCtrl,
+                      opsiKategori: _opsiPengalihan,
+                    ),
+                    const SizedBox(height: 24),
+                  ] else if (!_isEditMode && _dataProduk!.isMenungguKonfirmasi) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.autorenew_rounded, color: AppColors.orange),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Perlu Konfirmasi Pengalihan',
+                                  style: AppColors.heading(fontSize: 14, color: AppColors.textDark),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Produk ini telah melewati batas penjualan dan masih memiliki sisa ${_dataProduk!.stok} paket. Segera timbang dan konfirmasi untuk menerbitkan ke Pakan/Kompos.',
+                            style: AppColors.body(fontSize: 12, height: 1.3),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _UI.primaryText,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                DialogKonfirmasiPengalihan.show(
+                                  context,
+                                  produk: _dataProduk!,
+                                  phoneNumber: widget.phoneNumber,
+                                  onBerhasil: () {
+                                    Navigator.pop(context, true);
+                                  },
+                                );
+                              },
+                              child: Text(
+                                'Konfirmasi Pengalihan Sekarang',
+                                style: AppColors.body(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ] else if (!_isEditMode && _dataProduk!.tipe == 'dimakan') ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _UI.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Pengalihan Pakan / Kompos', style: AppColors.heading(fontSize: 14)),
+                          const SizedBox(height: 10),
+                          _buildInfoRow(
+                            Icons.check_circle_outline,
+                            'Persetujuan Pengalihan',
+                            _dataProduk!.bersediaDialihkan ? 'Bersedia (Aktif)' : 'Tidak Bersedia',
+                            iconColor: _dataProduk!.bersediaDialihkan ? _UI.primaryText : Colors.grey,
+                          ),
+                          if (_dataProduk!.bersediaDialihkan) ...[
+                            const Divider(height: 20),
+                            _buildInfoRow(
+                              Icons.category_outlined,
+                              'Kategori Tujuan',
+                              _dataProduk!.targetKategoriPengalihan ?? 'Pakan Ternak & Ikan',
+                            ),
+                            const Divider(height: 20),
+                            _buildInfoRow(
+                              Icons.scale_outlined,
+                              'Perkiraan Berat / Paket',
+                              '${_dataProduk!.perkiraanBeratPerPaket} kg',
+                            ),
+                            const Divider(height: 20),
+                            _buildInfoRow(
+                              Icons.info_outline,
+                              'Status Pengalihan',
+                              _dataProduk!.statusPengalihan,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
                   Text('Sisa Kuota', style: AppColors.heading(fontSize: 16)),
                   const SizedBox(height: 8),
                   Row(

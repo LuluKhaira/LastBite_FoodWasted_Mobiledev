@@ -10,7 +10,6 @@ use Illuminate\Validation\Rule;
 
 class KategoriController extends Controller
 {
-    // Nama view. Sesuaikan bila file kategori.blade.php kamu simpan di folder lain.
     private const VIEW = 'pages.admin.kategori';
 
     public function index()
@@ -38,22 +37,27 @@ class KategoriController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nama'      => ['required', 'string', 'max:100', 'unique:kategoris,nama'],
-            'tipe'      => ['required', Rule::in(Kategori::TIPE)],
-            'tujuan_id' => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'nama'         => ['required', 'string', 'max:100', 'unique:kategoris,nama'],
+            'tipe'         => ['required', Rule::in(Kategori::TIPE)],
+            'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
         ], [
-            'nama.required' => 'Nama kategori wajib diisi.',
-            'nama.unique'   => 'Nama kategori sudah dipakai.',
-            'tipe.required' => 'Pilih tipe kategori.',
+            'nama.required'    => 'Nama kategori wajib diisi.',
+            'nama.unique'      => 'Nama kategori sudah dipakai.',
+            'tipe.required'    => 'Pilih tipe kategori.',
             'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
+            'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
         ]);
 
+        $hargaPerKg = in_array($data['tipe'], ['pakan', 'kompos']) ? (int) ($request->harga_per_kg ?? 0) : 0;
+
         Kategori::create([
-            'nama'      => trim($data['nama']),
-            'tipe'      => $data['tipe'],
-            'tujuan_id' => $data['tipe'] === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
-            'urutan'    => ((int) Kategori::max('urutan')) + 1,
-            'aktif'     => true,
+            'nama'         => trim($data['nama']),
+            'tipe'         => $data['tipe'],
+            'tujuan_id'    => $data['tipe'] === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
+            'harga_per_kg' => $hargaPerKg,
+            'urutan'       => ((int) Kategori::max('urutan')) + 1,
+            'aktif'        => true,
         ]);
 
         return back()->with('success', 'Kategori berhasil ditambahkan.');
@@ -64,18 +68,23 @@ class KategoriController extends Controller
         $kategori = Kategori::findOrFail($id);
 
         $data = $request->validate([
-            'nama'      => ['required', 'string', 'max:100', Rule::unique('kategoris', 'nama')->ignore($kategori->id)],
-            'urutan'    => ['nullable', 'integer', 'min:0', 'max:999'],
-            'tujuan_id' => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'nama'         => ['required', 'string', 'max:100', Rule::unique('kategoris', 'nama')->ignore($kategori->id)],
+            'urutan'       => ['nullable', 'integer', 'min:0', 'max:999'],
+            'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
         ], [
             'nama.unique'      => 'Nama kategori sudah dipakai.',
             'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
+            'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
         ]);
 
         $lama = $kategori->nama;
         $baru = trim($data['nama']);
+        $hargaPerKg = in_array($kategori->tipe, ['pakan', 'kompos'])
+            ? (int) ($request->harga_per_kg ?? $kategori->harga_per_kg ?? 0)
+            : 0;
 
-        DB::transaction(function () use ($kategori, $data, $lama, $baru) {
+        DB::transaction(function () use ($kategori, $data, $lama, $baru, $hargaPerKg) {
             // Nama berubah: samakan semua produk yang memakai nama lama
             if ($lama !== $baru) {
                 foreach (['kategori', 'kategori_asli', 'target_kategori_pengalihan'] as $kolom) {
@@ -84,9 +93,10 @@ class KategoriController extends Controller
             }
 
             $kategori->update([
-                'nama'      => $baru,
-                'urutan'    => $data['urutan'] ?? $kategori->urutan,
-                'tujuan_id' => $kategori->tipe === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
+                'nama'         => $baru,
+                'urutan'       => $data['urutan'] ?? $kategori->urutan,
+                'tujuan_id'    => $kategori->tipe === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
+                'harga_per_kg' => $hargaPerKg,
             ]);
         });
 
