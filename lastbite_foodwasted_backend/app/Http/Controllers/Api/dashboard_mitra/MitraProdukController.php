@@ -119,12 +119,16 @@ class MitraProdukController extends Controller
         }
 
         // SIMPAN KE DATABASE (Menambahkan kolom yang sebelumnya hilang)
+        $kategoriAsli = $request->input('kategori_asli')
+            ?? ($data['tipe'] === 'dimakan' ? 'Konsumsi Manusia' : 'Pakan / Kompos');
+
         $id = DB::table('produks')->insertGetId([
             'id_mitra'      => $mitra->id_mitra,
             'nama'          => trim($data['nama']),
             'deskripsi'     => $data['deskripsi'] ?? null,
             'tipe'          => $data['tipe'],
             'kategori'      => $data['kategori'],
+            'kategori_asli' => $kategoriAsli,
             'gambar'        => $gambar,
             'harga'         => (int) $data['harga'],
             'harga_asli'    => (int) $data['harga_asli'],
@@ -142,8 +146,11 @@ class MitraProdukController extends Controller
             'perkiraan_berat_per_paket'  => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
                 ? (float) ($data['perkiraan_berat_per_paket'] ?? 0)
                 : null,
-            'status_pengalihan'         => \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
+            'status_pengalihan'         => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
+                ? \App\Models\Produk::STATUS_PENGALIHAN_AKAN
+                : \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
             'aktif'         => $terbit ? 1 : 0,
+            'draf'          => ! $terbit,
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);

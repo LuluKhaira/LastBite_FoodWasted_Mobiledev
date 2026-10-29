@@ -22,10 +22,12 @@ class AlihkanProdukExpired extends Command
         // Ambil produk konsumsi manusia yang aktif atau belum diproses kadaluarsanya
         // dan status_pengalihannya masih default ('tidak_dialihkan')
         $candidates = Produk::where('tipe', Produk::TIPE_DIMAKAN)
-            ->where('status_pengalihan', Produk::STATUS_PENGALIHAN_TIDAK)
             ->where(function ($q) {
                 $q->where('aktif', true)
-                  ->orWhereNull('dialihkan_pada');
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('dialihkan_pada')
+                         ->whereIn('status_pengalihan', [Produk::STATUS_PENGALIHAN_TIDAK, Produk::STATUS_PENGALIHAN_AKAN]);
+                  });
             })
             ->get();
 
@@ -109,7 +111,7 @@ class AlihkanProdukExpired extends Command
                     DB::transaction(function () use ($p, $now) {
                         $p->update([
                             'aktif'              => false,
-                            'status_pengalihan'  => Produk::STATUS_PENGALIHAN_TIDAK,
+                            'status_pengalihan'  => Produk::STATUS_PENGALIHAN_SELESAI,
                             'dialihkan_pada'     => $now,
                         ]);
                     });

@@ -40,10 +40,26 @@ class DialogKonfirmasiPengalihan extends StatefulWidget {
 
 class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan> {
   late TextEditingController _beratAktualCtrl;
+  late TextEditingController _hargaPerKgCtrl;
   final TextEditingController _catatanCtrl = TextEditingController();
   String? _targetKategori;
   bool _loading = false;
   List<Map<String, dynamic>> _opsiTujuan = [];
+
+  int _getKategoriMaxHarga([String? kat]) {
+    final target = kat ?? _targetKategori;
+    if (target == null) return 5000;
+    for (final opt in _opsiTujuan) {
+      if (opt['kategori'] == target) {
+        return (opt['harga_per_kg'] as num?)?.toInt() ?? 5000;
+      }
+    }
+    if (target == 'Pakan Ternak & Ikan') return 5000;
+    if (target == 'Bahan Kompos & Pupuk') return 3000;
+    if (target == 'Ampas Kelapa & Kopi') return 2500;
+    if (target == 'Limbah Organik') return 2000;
+    return 5000;
+  }
 
   @override
   void initState() {
@@ -56,6 +72,10 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
     _beratAktualCtrl = TextEditingController(
       text: est > 0 ? est.toStringAsFixed(1) : '',
     );
+
+    // Pre-fill harga per kg dengan harga maksimal kategori
+    final defaultHarga = _getKategoriMaxHarga(_targetKategori);
+    _hargaPerKgCtrl = TextEditingController(text: '$defaultHarga');
 
     _muatOpsiKategori();
   }
@@ -72,6 +92,9 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
         if (_targetKategori == null && list.isNotEmpty) {
           _targetKategori = list.first['kategori'];
         }
+        if (_hargaPerKgCtrl.text.isEmpty) {
+          _hargaPerKgCtrl.text = '${_getKategoriMaxHarga(_targetKategori)}';
+        }
       });
     }
   }
@@ -79,6 +102,7 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
   @override
   void dispose() {
     _beratAktualCtrl.dispose();
+    _hargaPerKgCtrl.dispose();
     _catatanCtrl.dispose();
     super.dispose();
   }
@@ -99,13 +123,27 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
       final beratStr = _beratAktualCtrl.text.trim().replaceAll(',', '.');
       final berat = double.tryParse(beratStr);
 
-      if (berat == null || berat <= 0) {
-        _snack('Masukkan berat aktual yang valid (harus lebih dari 0 kg).', error: true);
+      if (berat == null || berat < 1.0) {
+        _snack('Berat sisa minimal 1 kg.', error: true);
         return;
       }
 
       if (_targetKategori == null || _targetKategori!.isEmpty) {
         _snack('Pilih kategori tujuan akhir pengalihan.', error: true);
+        return;
+      }
+
+      final hargaStr = _hargaPerKgCtrl.text.trim().replaceAll('.', '').replaceAll(',', '');
+      final harga = int.tryParse(hargaStr);
+      final maxHarga = _getKategoriMaxHarga();
+
+      if (harga == null || harga < 0) {
+        _snack('Harga per kg tidak valid (minimal Rp 0 untuk gratis/sedekah).', error: true);
+        return;
+      }
+
+      if (maxHarga > 0 && harga > maxHarga) {
+        _snack('Harga per kg tidak boleh melebihi harga kategori (maks. Rp $maxHarga/kg).', error: true);
         return;
       }
 
@@ -117,6 +155,7 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
         aksi: 'alihkan',
         beratAktual: berat,
         targetKategori: _targetKategori,
+        hargaPerKg: harga,
         catatan: _catatanCtrl.text.trim().isEmpty ? null : _catatanCtrl.text.trim(),
       );
 
@@ -333,7 +372,16 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
                       ),
                     );
                   }).toList(),
-                  onChanged: (val) => setState(() => _targetKategori = val),
+                  onChanged: (val) {
+                    setState(() {
+                      _targetKategori = val;
+                      final maxH = _getKategoriMaxHarga(val);
+                      final currH = int.tryParse(_hargaPerKgCtrl.text.replaceAll('.', '')) ?? 0;
+                      if (currH > maxH || (_hargaPerKgCtrl.text.isEmpty)) {
+                        _hargaPerKgCtrl.text = '$maxH';
+                      }
+                    });
+                  },
                 ),
               ),
             ),
@@ -371,6 +419,152 @@ class _DialogKonfirmasiPengalihanState extends State<DialogKonfirmasiPengalihan>
               'Hasil timbangan riil sisa produk. Nilai ini menjadi stok resmi produk Pakan/Kompos.',
               style: AppColors.body(fontSize: 10.5, color: WarnaLokal.textSoft),
             ),
+            const SizedBox(height: 14),
+
+            // Form Input Harga per kg & Tombol Gratis (sedekah)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'HARGA PER KG (RP)',
+                  style: AppColors.body(fontSize: 11, fontWeight: FontWeight.w800, color: WarnaLokal.textSoft),
+                ),
+                if (_getKategoriMaxHarga() > 0)
+                  Text(
+                    'Maks. Rp ${_getKategoriMaxHarga()}/kg',
+                    style: AppColors.body(fontSize: 11, fontWeight: FontWeight.w600, color: WarnaLokal.primaryDark),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _hargaPerKgCtrl,
+              keyboardType: TextInputType.number,
+              style: AppColors.heading(fontSize: 16),
+              decoration: InputDecoration(
+                prefixText: 'Rp ',
+                prefixStyle: AppColors.heading(fontSize: 16, color: WarnaLokal.textDark),
+                suffixText: '/kg',
+                suffixStyle: AppColors.heading(fontSize: 16, color: WarnaLokal.primaryDark),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: WarnaLokal.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: WarnaLokal.primary, width: 2),
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _hargaPerKgCtrl.text = '0';
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: (_hargaPerKgCtrl.text.trim() == '0')
+                          ? const Color(0xFFE8F5E9)
+                          : Colors.grey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (_hargaPerKgCtrl.text.trim() == '0')
+                            ? const Color(0xFF4CAF50)
+                            : Colors.grey.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.volunteer_activism_rounded,
+                          size: 15,
+                          color: (_hargaPerKgCtrl.text.trim() == '0')
+                              ? const Color(0xFF2E7D32)
+                              : WarnaLokal.textSoft,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Gratis (sedekah)',
+                          style: AppColors.body(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: (_hargaPerKgCtrl.text.trim() == '0')
+                                ? const Color(0xFF2E7D32)
+                                : WarnaLokal.textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _hargaPerKgCtrl.text = '${_getKategoriMaxHarga()}';
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: (_hargaPerKgCtrl.text.trim() == '${_getKategoriMaxHarga()}')
+                          ? WarnaLokal.mint.withValues(alpha: 0.5)
+                          : Colors.grey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (_hargaPerKgCtrl.text.trim() == '${_getKategoriMaxHarga()}')
+                            ? WarnaLokal.primary
+                            : Colors.grey.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      'Harga Maks (Rp ${_getKategoriMaxHarga()})',
+                      style: AppColors.body(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: (_hargaPerKgCtrl.text.trim() == '${_getKategoriMaxHarga()}')
+                            ? WarnaLokal.primaryDark
+                            : WarnaLokal.textSoft,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_hargaPerKgCtrl.text.trim() == '0') ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF2E7D32)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Produk surplus ini akan berstatus Gratis / Sedekah untuk peternak & pengolah kompos.',
+                        style: AppColors.body(fontSize: 10.5, color: const Color(0xFF2E7D32)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
 
             // Form Catatan (opsional)

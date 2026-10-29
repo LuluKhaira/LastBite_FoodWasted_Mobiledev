@@ -466,7 +466,7 @@ class ApiService {
     }
   }
 
-  static Future<bool> setProdukAktif(
+  static Future<Map<String, dynamic>> setProdukAktif(
     String phoneNumber,
     int idProduk,
     bool aktif,
@@ -484,10 +484,23 @@ class ApiService {
           'aktif': aktif,
         }),
       );
-      return response.statusCode == 200;
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'ok': true,
+          'message': body['message'] ?? 'Berhasil mengubah status produk',
+        };
+      }
+      return {
+        'ok': false,
+        'message': body['message'] ?? _pesanError(response),
+      };
     } catch (e) {
       debugPrint('Error setProdukAktif: $e');
-      return false;
+      return {
+        'ok': false,
+        'message': 'Gagal terhubung ke server. Pastikan backend aktif.',
+      };
     }
   }
 
@@ -577,6 +590,7 @@ class ApiService {
         'deskripsi': deskripsi,
         'tipe': tipe,
         'kategori': kategori,
+        'kategori_asli': tipe == 'dimakan' ? 'Konsumsi Manusia' : 'Pakan / Kompos',
         'harga_asli': '$hargaAsli',
         'harga': '$harga',
         'stok': '$stok',
@@ -695,6 +709,7 @@ class ApiService {
     required String aksi, // 'alihkan' | 'buang'
     double? beratAktual,
     String? targetKategori,
+    int? hargaPerKg,
     String? catatan,
   }) async {
     try {
@@ -710,6 +725,7 @@ class ApiService {
           'aksi': aksi,
           'berat_aktual': beratAktual,
           'target_kategori': targetKategori,
+          if (hargaPerKg != null) 'harga_per_kg': hargaPerKg,
           'catatan': catatan,
         }),
       );

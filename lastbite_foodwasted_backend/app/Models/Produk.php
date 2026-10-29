@@ -15,7 +15,9 @@ class Produk extends Model
     public const TIPE_KOMPOS  = 'kompos';
 
     public const STATUS_PENGALIHAN_TIDAK    = 'tidak_dialihkan';
-    public const STATUS_PENGALIHAN_MENUNGGU  = 'menunggu_konfirmasi';
+    public const STATUS_PENGALIHAN_AKAN     = 'akan_dialihkan';
+    public const STATUS_PENGALIHAN_MENUNGGU  = 'menunggu';
+    public const STATUS_PENGALIHAN_SELESAI   = 'selesai';
     public const STATUS_PENGALIHAN_DIALIHKAN = 'dialihkan';
     public const STATUS_PENGALIHAN_DIBUANG   = 'dibuang';
 
@@ -23,6 +25,7 @@ class Produk extends Model
 
     protected $casts = [
         'aktif'                     => 'boolean',
+        'draf'                      => 'boolean',
         'rating'                    => 'float',
         'berat_kg'                  => 'float',
         'harga'                     => 'float',
@@ -62,6 +65,52 @@ class Produk extends Model
         $stok = (int) ($this->stok ?? 0);
         $perkiraan = (float) ($this->perkiraan_berat_per_paket ?? 0);
         return round($stok * $perkiraan, 2);
+    }
+
+    /**
+     * Konfirmasi pengalihan produk surplus ke pakan/kompos.
+     * Menyimpan harga_per_kg yang ditentukan ke kolom harga dan harga_asli.
+     */
+    public function konfirmasiPengalihan(Kategori $kategori, float $beratAktual, ?int $hargaPerKg = null, ?string $catatan = null): self
+    {
+        $maxHarga = (int) ($kategori->harga_per_kg ?? 0);
+        $hargaFinal = ($hargaPerKg !== null) ? min($maxHarga, max(0, $hargaPerKg)) : $maxHarga;
+
+        $surplus = self::create([
+            'id_mitra'                   => $this->id_mitra,
+            'nama'                       => 'Surplus ' . $kategori->nama . ' - ' . $this->nama,
+            'deskripsi'                  => 'Bahan surplus dialihkan dari ' . $this->nama . ' (' . $beratAktual . ' kg). ' . ($catatan ?? 'Kondisi telah diperiksa mitra.'),
+            'tipe'                       => $kategori->tipe,
+            'kategori'                   => $kategori->nama,
+            'kategori_asli'              => $this->kategori_asli ?? 'Konsumsi Manusia',
+            'gambar'                     => $this->gambar,
+            'harga'                      => (int) $hargaFinal,
+            'harga_asli'                 => (int) $hargaFinal,
+            'satuan'                     => '/kg',
+            'stok'                       => max(1, (int) floor($beratAktual)),
+            'kuota'                      => max(1, (int) floor($beratAktual)),
+            'berat_kg'                   => $beratAktual,
+            'waktu_mulai'                => '00:00:00',
+            'waktu_selesai'              => '23:59:00',
+            'aktif'                      => true,
+            'bersedia_dialihkan'         => false,
+            'status_pengalihan'          => self::STATUS_PENGALIHAN_TIDAK,
+            'created_at'                 => now(),
+            'updated_at'                 => now(),
+        ]);
+
+        $this->update([
+            'aktif'                      => false,
+            'status_pengalihan'          => self::STATUS_PENGALIHAN_DIALIHKAN,
+            'berat_aktual'               => $beratAktual,
+            'target_kategori_pengalihan' => $kategori->nama,
+            'produk_surplus_id'          => $surplus->id,
+            'dialihkan_pada'             => now('Asia/Jakarta'),
+            'dikonfirmasi_pada'          => now('Asia/Jakarta'),
+            'catatan_pengalihan'         => $catatan,
+        ]);
+
+        return $surplus;
     }
 
     public function getGambarUrlAttribute(): ?string
@@ -107,6 +156,8 @@ class Produk extends Model
             'id'                        => $this->id,
             'nama'                      => $this->nama,
             'deskripsi'                 => $this->deskripsi,
+            'aktif'                     => (bool) $this->aktif,
+            'draf'                      => (bool) $this->draf,
             'penjual'                   => $m?->nama_usaha,
             'inisial'                   => $m?->inisial,
             'alamat'                    => $m?->alamat,
@@ -138,6 +189,7 @@ class Produk extends Model
             'perkiraan_berat_per_paket' => (float) ($this->perkiraan_berat_per_paket ?? 0),
             'status_pengalihan'         => $this->status_pengalihan ?? self::STATUS_PENGALIHAN_TIDAK,
             'berat_aktual'              => (float) ($this->berat_aktual ?? 0),
+            'berat_sisa_kg'             => (float) ($this->berat_aktual ?? 0),
             'produk_surplus_id'         => $this->produk_surplus_id,
             'dikonfirmasi_pada'         => $this->dikonfirmasi_pada
                 ? Carbon::parse($this->dikonfirmasi_pada, 'Asia/Jakarta')->toIso8601String()

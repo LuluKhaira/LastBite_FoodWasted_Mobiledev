@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/tambah_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/mitra_produk_screen.dart';
+import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/produk/draf_produk_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/widgets/shimmer_loading/app_shimmer_loading.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/profil/mitra_profil_screen.dart';
 import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/mitra_pesanan_screen.dart';
@@ -27,6 +28,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
   String _namaToko = 'Mitra Dashboard';
   int _pesananAktif = 0;
   int _pesananHariIni = 0;
+  int _drafCount = 0;
   List<Map<String, dynamic>> _surplus = [];
 
   @override
@@ -47,6 +49,14 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
       return;
     }
 
+    int hitungDraf = 0;
+    try {
+      final produkList = await ApiService.getMitraProduk(widget.phoneNumber);
+      if (produkList != null) {
+        hitungDraf = produkList.where((p) => p['draf'] == true || p['draf'] == 1 || p['status'] == 'draf').length;
+      }
+    } catch (_) {}
+
     final toko = Map<String, dynamic>.from(data['toko'] ?? {});
     setState(() {
       _isLoading = false;
@@ -55,6 +65,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
       _pesananAktif = int.tryParse('${data['pesanan_aktif']}') ?? 0;
       _pesananHariIni =
           int.tryParse('${data['ringkasan']?['pesanan_hari_ini']}') ?? 0;
+      _drafCount = hitungDraf;
       _surplus = ((data['surplus'] ?? []) as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
@@ -386,9 +397,21 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                 onTap: () => _showSnackBar('Fitur segera hadir'),
               ),
               _menuKategori(
-                icon: Icons.headset_mic,
-                title: 'Bantuan',
-                onTap: () => _showSnackBar('Fitur segera hadir'),
+                icon: Icons.drafts_outlined,
+                title: 'Draf',
+                count: _drafCount,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DrafProdukScreen(
+                        phoneNumber: widget.phoneNumber,
+                        namaToko: _namaToko,
+                      ),
+                    ),
+                  );
+                  _muatDashboard();
+                },
               ),
               _menuKategori(
                 icon: Icons.inventory_2,
@@ -428,6 +451,7 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    int? count,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -465,6 +489,24 @@ class _MitraDashboardScreenState extends State<MitraDashboardScreen> {
                 ),
               ),
             ),
+            if (count != null && count > 0) ...[
+              Container(
+                margin: const EdgeInsets.only(right: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
             const Icon(Icons.chevron_right,
                 size: 16, color: AppColors.textSoft),
           ],

@@ -1,6 +1,6 @@
 import 'package:lastbite_foodwasted_mobiledev/core/config/api_config.dart';
 
-enum StatusProduk { tayang, terjadwal, habis, menungguKonfirmasi }
+enum StatusProduk { tayang, terjadwal, habis, draf }
 
 class Produk {
   final int id;
@@ -18,6 +18,7 @@ class Produk {
   final String waktuSelesai;
   final double rating;
   final bool aktif;
+  final bool draf;
   final DateTime? kadaluarsa;
   final String? kategoriAsli;
   final DateTime? dialihkanPada;
@@ -26,8 +27,9 @@ class Produk {
   final bool bersediaDialihkan;
   final String? targetKategoriPengalihan;
   final double perkiraanBeratPerPaket;
-  final String statusPengalihan; // tidak_dialihkan | menunggu_konfirmasi | dialihkan | dibuang
+  final String statusPengalihan; // tidak_dialihkan | menunggu | dialihkan | dibuang | selesai
   final double beratAktual;
+  final double beratSisaKg;
   final int? produkSurplusId;
   final DateTime? dikonfirmasiPada;
   final String? catatanPengalihan;
@@ -49,6 +51,7 @@ class Produk {
     required this.waktuSelesai,
     required this.rating,
     required this.aktif,
+    this.draf = false,
     this.kadaluarsa,
     this.kategoriAsli,
     this.dialihkanPada,
@@ -57,6 +60,7 @@ class Produk {
     this.perkiraanBeratPerPaket = 0.0,
     this.statusPengalihan = 'tidak_dialihkan',
     this.beratAktual = 0.0,
+    this.beratSisaKg = 0.0,
     this.produkSurplusId,
     this.dikonfirmasiPada,
     this.catatanPengalihan,
@@ -71,7 +75,6 @@ class Produk {
       return s.isEmpty ? null : DateTime.tryParse(s);
     }
 
-    // Menggunakan helper terpusat ApiConfig untuk menangani path gambar & host
     final resolvedUrl = ApiConfig.resolveImageUrl(j['gambar'] ?? j['image_url']);
     final String? imgUrl = resolvedUrl.isEmpty ? null : resolvedUrl;
 
@@ -80,6 +83,9 @@ class Produk {
     final double totalEst = j['total_perkiraan_berat'] != null
         ? d(j['total_perkiraan_berat'])
         : (stokVal * perkiraanVal);
+
+    final bool isDraf = j['draf'] == true || j['draf'] == 1 || '${j['status']}' == 'draf';
+    final double beratSisa = d(j['berat_sisa_kg'] ?? j['berat_aktual'] ?? j['berat_kg'] ?? totalEst);
 
     return Produk(
       id: i(j['id']),
@@ -94,10 +100,21 @@ class Produk {
       satuan: '${j['satuan'] ?? '/paket'}',
       stok: stokVal,
       kuota: i(j['kuota']),
-      waktuMulai: '${j['waktu_mulai'] ?? '00:00'}',
-      waktuSelesai: '${j['waktu_selesai'] ?? '00:00'}',
+      waktuMulai: j['waktu_mulai'] != null && j['waktu_mulai'].toString().isNotEmpty
+          ? (j['waktu_mulai'].toString().length >= 5
+              ? j['waktu_mulai'].toString().substring(0, 5)
+              : j['waktu_mulai'].toString())
+          : '00:00',
+      waktuSelesai: j['waktu_selesai'] != null && j['waktu_selesai'].toString().isNotEmpty
+          ? (j['waktu_selesai'].toString().length >= 5
+              ? j['waktu_selesai'].toString().substring(0, 5)
+              : j['waktu_selesai'].toString())
+          : (j['jam'] != null && j['jam'].toString().isNotEmpty && j['jam'] != '-'
+              ? j['jam'].toString()
+              : '00:00'),
       rating: d(j['rating']),
       aktif: j['aktif'] == true || j['aktif'] == 1,
+      draf: isDraf,
       kadaluarsa: t(j['kadaluarsa']),
       kategoriAsli: j['kategori_asli']?.toString(),
       dialihkanPada: t(j['dialihkan_pada']),
@@ -106,6 +123,7 @@ class Produk {
       perkiraanBeratPerPaket: perkiraanVal,
       statusPengalihan: j['status_pengalihan']?.toString() ?? 'tidak_dialihkan',
       beratAktual: d(j['berat_aktual']),
+      beratSisaKg: beratSisa,
       produkSurplusId: j['produk_surplus_id'] != null ? i(j['produk_surplus_id']) : null,
       dikonfirmasiPada: t(j['dikonfirmasi_pada']),
       catatanPengalihan: j['catatan_pengalihan']?.toString(),
@@ -114,7 +132,8 @@ class Produk {
   }
 
   /// Menunggu konfirmasi penimbangan/pengalihan dari mitra
-  bool get isMenungguKonfirmasi => statusPengalihan == 'menunggu_konfirmasi';
+  bool get isMenungguKonfirmasi =>
+      statusPengalihan == 'menunggu' || statusPengalihan == 'menunggu_konfirmasi';
 
   /// Sudah dialihkan ke kategori pakan/kompos setelah dikonfirmasi mitra
   bool get isSudahDialihkan =>
@@ -123,18 +142,25 @@ class Produk {
   /// Dibuang / dinilai tidak layak oleh mitra
   bool get isDibuang => statusPengalihan == 'dibuang';
 
+  /// Selesai (misal expired tapi stok habis)
+  bool get isSelesai => statusPengalihan == 'selesai';
+
   /// Badge status untuk kategori Pakan/Kompos
-  bool get tampilBadgePakan => isSudahDialihkan || isMenungguKonfirmasi || isDibuang;
+  bool get tampilBadgePakan =>
+      isSudahDialihkan || isMenungguKonfirmasi || isDibuang || bersediaDialihkan;
 
   String get labelBadgePakan {
     if (isMenungguKonfirmasi) return 'Menunggu Konfirmasi Pengalihan';
     if (isSudahDialihkan) return 'Dialihkan → Pakan/Kompos';
     if (isDibuang) return 'Tidak Layak (Dibuang)';
+    if (bersediaDialihkan) {
+      return 'Siap Dialihkan → ${targetKategoriPengalihan ?? "Pakan/Kompos"}';
+    }
     return 'Pakan / Kompos';
   }
 
   StatusProduk get statusUI {
-    if (isMenungguKonfirmasi) return StatusProduk.menungguKonfirmasi;
+    if (draf) return StatusProduk.draf;
     if (!aktif) return StatusProduk.habis;
     if (stok == 0) return StatusProduk.habis;
     return StatusProduk.tayang;

@@ -459,7 +459,6 @@ class _DetailProdukScreenState extends State<DetailProdukScreen> {
                       targetKategori: _targetKategoriPengalihan,
                       onTargetKategoriChanged: (val) =>
                           setState(() => _targetKategoriPengalihan = val),
-                      beratPerPaketCtrl: _perkiraanBeratCtrl,
                       opsiKategori: _opsiPengalihan,
                     ),
                     const SizedBox(height: 24),

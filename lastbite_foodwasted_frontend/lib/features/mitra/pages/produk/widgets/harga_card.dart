@@ -8,18 +8,16 @@ class HargaCard extends StatelessWidget {
   final TextEditingController asliCtrl;
   final TextEditingController diskonCtrl;
   final int stok;
-  final bool tutupOtomatis;
   final ValueChanged<int> onStokChanged;
-  final ValueChanged<bool> onTutupOtomatisChanged;
+  final String satuanLabel;
 
   const HargaCard({
     super.key,
     required this.asliCtrl,
     required this.diskonCtrl,
     required this.stok,
-    required this.tutupOtomatis,
     required this.onStokChanged,
-    required this.onTutupOtomatisChanged,
+    this.satuanLabel = 'Satuan: Paket',
   });
 
   int? get _hematPersen {
@@ -128,7 +126,7 @@ class HargaCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Jumlah Kuota', style: AppColors.heading(fontSize: 13, color: WarnaLokal.textDark)),
-                  Text('Satuan: Karung (15 Kg)', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
+                  Text(satuanLabel, style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
                 ],
               ),
               Container(
@@ -158,24 +156,6 @@ class HargaCard extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tutup Otomatis', style: AppColors.heading(fontSize: 13, color: WarnaLokal.textDark)),
-                  Text('Nonaktifkan saat kuota habis', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
-                ],
-              ),
-              Switch(
-                value: tutupOtomatis,
-                onChanged: onTutupOtomatisChanged,
-                activeColor: WarnaLokal.primaryDark,
               ),
             ],
           ),

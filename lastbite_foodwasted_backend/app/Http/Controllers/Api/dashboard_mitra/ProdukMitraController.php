@@ -24,6 +24,50 @@ class ProdukMitraController extends Controller
             ]);
         }
 
+        // Auto-sinkronisasi produk kadaluarsa milik mitra ini secara realtime
+        $now = now('Asia/Jakarta');
+        $activeProducts = DB::table('produks')
+            ->where('id_mitra', $mitra->id_mitra)
+            ->where('tipe', Produk::TIPE_DIMAKAN)
+            ->where('aktif', 1)
+            ->get();
+
+        foreach ($activeProducts as $ap) {
+            $isExpired = false;
+            if (!empty($ap->kadaluarsa)) {
+                $exp = \Illuminate\Support\Carbon::parse($ap->kadaluarsa, 'Asia/Jakarta');
+                if ($exp->lessThanOrEqualTo($now)) {
+                    $isExpired = true;
+                }
+            }
+            if (!empty($ap->waktu_selesai)) {
+                try {
+                    $jamBatas = \Illuminate\Support\Carbon::today('Asia/Jakarta')->setTimeFromTimeString($ap->waktu_selesai);
+                    if ($jamBatas->lessThanOrEqualTo($now)) {
+                        $isExpired = true;
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            if ($isExpired) {
+                $stokSisa = (int) ($ap->stok ?? 0);
+                $bersedia = (bool) ($ap->bersedia_dialihkan ?? false);
+                $newStatus = Produk::STATUS_PENGALIHAN_TIDAK;
+                if ($bersedia && $stokSisa > 0) {
+                    $newStatus = Produk::STATUS_PENGALIHAN_MENUNGGU;
+                } elseif ($stokSisa <= 0) {
+                    $newStatus = Produk::STATUS_PENGALIHAN_SELESAI;
+                }
+
+                DB::table('produks')->where('id', $ap->id)->update([
+                    'aktif'             => 0,
+                    'status_pengalihan' => $newStatus,
+                    'dialihkan_pada'    => $now,
+                    'updated_at'        => now(),
+                ]);
+            }
+        }
+
         // 2. Ambil produk berdasarkan id_mitra
         $produks = DB::table('produks')
             ->where('id_mitra', $mitra->id_mitra)
@@ -46,9 +90,12 @@ class ProdukMitraController extends Controller
             $perkiraanBerat = (float) ($p->perkiraan_berat_per_paket ?? 0);
             $totalEst = round($stok * $perkiraanBerat, 2);
 
+            $isDraf = (bool) ($p->draf ?? false);
             $statusPengalihan = $p->status_pengalihan ?? Produk::STATUS_PENGALIHAN_TIDAK;
             $statusUI = 'tayang';
-            if ($statusPengalihan === Produk::STATUS_PENGALIHAN_MENUNGGU) {
+            if ($isDraf) {
+                $statusUI = 'draf';
+            } elseif ($statusPengalihan === Produk::STATUS_PENGALIHAN_MENUNGGU) {
                 $statusUI = 'menunggu_konfirmasi';
             } elseif ($p->aktif != 1 || $stok <= 0) {
                 $statusUI = 'habis';
@@ -70,8 +117,11 @@ class ProdukMitraController extends Controller
                 'kuota'                      => (int) $p->kuota,
                 'hari'                       => 'Hari ini',
                 'jam'                        => $p->waktu_selesai ? date('H:i', strtotime($p->waktu_selesai)) : '-',
+                'waktu_mulai'                => $p->waktu_mulai ? substr($p->waktu_mulai, 0, 5) : '00:00',
+                'waktu_selesai'              => $p->waktu_selesai ? substr($p->waktu_selesai, 0, 5) : '00:00',
                 'status'                     => $statusUI,
                 'aktif'                      => $p->aktif == 1,
+                'draf'                       => $isDraf,
                 'image_url'                  => $img,
                 'gambar'                     => $img,
                 // Kolom fitur pengalihan
@@ -80,6 +130,7 @@ class ProdukMitraController extends Controller
                 'perkiraan_berat_per_paket'  => $perkiraanBerat,
                 'status_pengalihan'          => $statusPengalihan,
                 'berat_aktual'               => (float) ($p->berat_aktual ?? 0),
+                'berat_sisa_kg'              => (float) ($p->berat_aktual ?? 0),
                 'produk_surplus_id'          => $p->produk_surplus_id,
                 'dikonfirmasi_pada'          => $p->dikonfirmasi_pada,
                 'catatan_pengalihan'         => $p->catatan_pengalihan,
@@ -128,13 +179,13 @@ class ProdukMitraController extends Controller
             'phone'           => 'required|string',
             'id'              => 'required|integer',
             'aksi'            => 'required|string|in:alihkan,buang',
-            'berat_aktual'    => 'required_if:aksi,alihkan|nullable|numeric|min:0.01',
+            'berat_aktual'    => 'required_if:aksi,alihkan|nullable|numeric|min:1',
             'target_kategori' => 'required_if:aksi,alihkan|nullable|string',
             'catatan'         => 'nullable|string|max:500',
         ], [
             'aksi.in'                    => 'Aksi harus berupa alihkan atau buang.',
             'berat_aktual.required_if'   => 'Berat aktual wajib diisi saat menyetujui pengalihan.',
-            'berat_aktual.min'           => 'Berat aktual harus berupa angka positif lebih dari 0 kg.',
+            'berat_aktual.min'           => 'Berat aktual sisa produk minimal 1 kg.',
             'target_kategori.required_if'=> 'Kategori tujuan pengalihan wajib dipilih.',
         ]);
 
@@ -191,12 +242,33 @@ class ProdukMitraController extends Controller
             ], 422);
         }
 
-        // Validasi harga per kg dari tabel kategori admin
-        if (!$kategori->harga_per_kg || $kategori->harga_per_kg <= 0) {
+        // Validasi harga per kg dari tabel kategori admin sebagai harga MAKSIMAL
+        $maxHarga = (int) ($kategori->harga_per_kg ?? 0);
+        if ($maxHarga <= 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Kategori "' . $kategori->nama . '" belum memiliki harga per kilogram yang valid dari admin (Rp 0). Harap hubungi admin untuk melengkapi konfigurasi harga.',
+                'message' => 'Kategori "' . $kategori->nama . '" belum memiliki konfigurasi harga per kilogram maksimal dari admin. Harap hubungi admin.',
             ], 422);
+        }
+
+        // Tentukan harga per kg (opsional, min 0, max harga_per_kg kategori tujuan; bila kosong pakai harga kategori)
+        if ($request->has('harga_per_kg') && $request->harga_per_kg !== null && $request->harga_per_kg !== '') {
+            $hargaInput = (int) $request->harga_per_kg;
+            if ($hargaInput < 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Harga per kg minimal Rp 0 (gratis/sedekah).',
+                ], 422);
+            }
+            if ($hargaInput > $maxHarga) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Harga per kg tidak boleh melebihi harga maksimal kategori "' . $kategori->nama . '" (Rp ' . number_format($maxHarga, 0, ',', '.') . '/kg).',
+                ], 422);
+            }
+            $hargaFinal = $hargaInput;
+        } else {
+            $hargaFinal = $maxHarga;
         }
 
         $beratAktual = (float) $request->berat_aktual;
@@ -208,42 +280,8 @@ class ProdukMitraController extends Controller
         }
 
         $surplus = null;
-        DB::transaction(function () use ($produk, $mitra, $kategori, $beratAktual, $request, &$surplus) {
-            // 1. Buat produk surplus baru di kategori Pakan/Kompos dalam satuan kg
-            $surplus = Produk::create([
-                'id_mitra'                   => $mitra->id_mitra,
-                'nama'                       => 'Surplus ' . $kategori->nama . ' - ' . $produk->nama,
-                'deskripsi'                  => 'Bahan surplus dialihkan dari ' . $produk->nama . ' (' . $beratAktual . ' kg). ' . ($request->catatan ?? 'Kondisi telah diperiksa mitra.'),
-                'tipe'                       => $kategori->tipe,
-                'kategori'                   => $kategori->nama,
-                'kategori_asli'              => $produk->kategori,
-                'gambar'                     => $produk->gambar,
-                'harga'                      => (int) $kategori->harga_per_kg,
-                'harga_asli'                 => (int) $kategori->harga_per_kg,
-                'satuan'                     => 'kg',
-                'stok'                       => max(1, (int) ceil($beratAktual)),
-                'kuota'                      => max(1, (int) ceil($beratAktual)),
-                'berat_kg'                   => $beratAktual,
-                'waktu_mulai'                => '00:00:00',
-                'waktu_selesai'              => '23:59:00',
-                'aktif'                      => true,
-                'bersedia_dialihkan'         => false,
-                'status_pengalihan'          => Produk::STATUS_PENGALIHAN_TIDAK,
-                'created_at'                 => now(),
-                'updated_at'                 => now(),
-            ]);
-
-            // 2. Perbarui produk asal: nonaktif dan ubah status menjadi dialihkan
-            $produk->update([
-                'aktif'                      => false,
-                'status_pengalihan'          => Produk::STATUS_PENGALIHAN_DIALIHKAN,
-                'berat_aktual'               => $beratAktual,
-                'target_kategori_pengalihan' => $kategori->nama,
-                'produk_surplus_id'          => $surplus->id,
-                'dialihkan_pada'             => now('Asia/Jakarta'),
-                'dikonfirmasi_pada'          => now('Asia/Jakarta'),
-                'catatan_pengalihan'         => $request->catatan,
-            ]);
+        DB::transaction(function () use ($produk, $kategori, $beratAktual, $hargaFinal, $request, &$surplus) {
+            $surplus = $produk->konfirmasiPengalihan($kategori, $beratAktual, $hargaFinal, $request->catatan);
         });
 
         return response()->json([
@@ -271,18 +309,88 @@ class ProdukMitraController extends Controller
         return response()->json(['ok' => true, 'message' => 'Stok berhasil diubah']);
     }
 
-    // 3. Untuk mengubah status aktif/nonaktif
+    // 3. Untuk mengubah status aktif/nonaktif dan aktivasi draf
     public function updateAktif(Request $request)
     {
         $request->validate([
-            'id' => 'required',
+            'id'    => 'required|integer',
             'aktif' => 'required|boolean',
         ]);
 
-        DB::table('produks')
-            ->where('id', $request->id)
-            ->update(['aktif' => $request->aktif]);
+        $produk = DB::table('produks')->where('id', $request->id)->first();
+        if (!$produk) {
+            return response()->json(['ok' => false, 'message' => 'Produk tidak ditemukan.'], 404);
+        }
 
-        return response()->json(['ok' => true, 'message' => 'Status berhasil diubah']);
+        $aktifTarget = $request->boolean('aktif');
+
+        // Jika mengaktifkan produk yang masih berstatus draf: lakukan validasi kelayakan tayang
+        if ($aktifTarget && ($produk->draf ?? false)) {
+            // 1. Validasi foto wajib ada
+            if (empty($produk->gambar)) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Foto makanan wajib diunggah sebelum produk dapat ditayangkan.',
+                ], 422);
+            }
+
+            // 2. Untuk tipe dimakan, waktu kadaluarsa harus di masa depan
+            if ($produk->tipe === Produk::TIPE_DIMAKAN) {
+                if (empty($produk->kadaluarsa)) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'Tanggal dan jam kedaluwarsa wajib diisi sebelum produk dapat ditayangkan.',
+                    ], 422);
+                }
+
+                $kadaluarsa = \Illuminate\Support\Carbon::parse($produk->kadaluarsa, 'Asia/Jakarta');
+                if ($kadaluarsa->lessThanOrEqualTo(now('Asia/Jakarta'))) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'Waktu kedaluwarsa sudah lewat. Perbarui tanggal dan jam kedaluwarsa terlebih dahulu.',
+                    ], 422);
+                }
+            }
+
+            // 3. Batas jam pengambilan (waktu_selesai) hari ini belum lewat
+            if (!empty($produk->waktu_selesai)) {
+                try {
+                    $jamBatas = \Illuminate\Support\Carbon::today('Asia/Jakarta')->setTimeFromTimeString($produk->waktu_selesai);
+                    if ($jamBatas->lessThanOrEqualTo(now('Asia/Jakarta'))) {
+                        return response()->json([
+                            'ok'      => false,
+                            'message' => 'Batas jam pengambilan hari ini (' . substr($produk->waktu_selesai, 0, 5) . ' WIB) sudah lewat. Perbarui jam pengambilan terlebih dahulu.',
+                        ], 422);
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            // Lolos semua validasi: set draf = false dan aktif = 1
+            DB::table('produks')
+                ->where('id', $produk->id)
+                ->update([
+                    'aktif'      => 1,
+                    'draf'       => 0,
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json([
+                'ok'      => true,
+                'message' => 'Produk berhasil ditayangkan!',
+            ]);
+        }
+
+        // Pengubahan status aktif biasa (bukan aktivasi draf)
+        DB::table('produks')
+            ->where('id', $produk->id)
+            ->update([
+                'aktif'      => $aktifTarget ? 1 : 0,
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'ok'      => true,
+            'message' => $aktifTarget ? 'Produk berhasil diaktifkan' : 'Produk berhasil dinonaktifkan',
+        ]);
     }
 }

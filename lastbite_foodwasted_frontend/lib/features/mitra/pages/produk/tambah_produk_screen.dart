@@ -35,7 +35,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   int _stok = 3;
   TimeOfDay _mulaiAmbil = const TimeOfDay(hour: 20, minute: 0);
   TimeOfDay _batasMaksimal = const TimeOfDay(hour: 21, minute: 30);
-  bool _tutupOtomatis = true;
   DateTime _kadaluarsa = DateTime.now().add(const Duration(hours: 4));
 
   // Jam operasional hari ini (dari menu Jam Buka). null = belum diatur.
@@ -51,7 +50,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   // Konfigurasi Pengalihan Sisa ke Pakan/Kompos (Default NONAKTIF)
   bool _bersediaDialihkan = false;
   String? _targetKategoriPengalihan;
-  final _beratPerPaketCtrl = TextEditingController(text: '0.5');
   List<Map<String, dynamic>> _opsiPengalihan = [];
 
   @override
@@ -120,7 +118,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     _catatanCtrl.dispose();
     _asliCtrl.dispose();
     _diskonCtrl.dispose();
-    _beratPerPaketCtrl.dispose();
     super.dispose();
   }
 
@@ -281,11 +278,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
       if (_targetKategoriPengalihan == null || _targetKategoriPengalihan!.isEmpty) {
         return _snack('Pilih kategori tujuan pengalihan Pakan/Kompos.');
       }
-      final beratStr = _beratPerPaketCtrl.text.trim().replaceAll(',', '.');
-      final berat = double.tryParse(beratStr);
-      if (berat == null || berat <= 0) {
-        return _snack('Perkiraan berat per paket harus berupa angka positif (> 0 kg).');
-      }
     }
 
     setState(() => _saving = true);
@@ -311,9 +303,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
       bersediaDialihkan: _target == TargetSurplus.manusia && _bersediaDialihkan,
       targetKategoriPengalihan: _target == TargetSurplus.manusia && _bersediaDialihkan
           ? _targetKategoriPengalihan
-          : null,
-      perkiraanBeratPerPaket: _target == TargetSurplus.manusia && _bersediaDialihkan
-          ? double.tryParse(_beratPerPaketCtrl.text.trim().replaceAll(',', '.'))
           : null,
       fotoBytes: _fotoBytes,
       fotoNama: _fotoNama,
@@ -376,10 +365,10 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                       asliCtrl: _asliCtrl,
                       diskonCtrl: _diskonCtrl,
                       stok: _stok,
-                      tutupOtomatis: _tutupOtomatis,
+                      satuanLabel: _target == TargetSurplus.manusia
+                          ? 'Satuan: Paket'
+                          : 'Satuan: Karung (15 Kg)',
                       onStokChanged: (val) => setState(() => _stok = val),
-                      onTutupOtomatisChanged: (val) =>
-                          setState(() => _tutupOtomatis = val),
                     ),
                     const SizedBox(height: 16),
                     JadwalCard(
@@ -402,7 +391,6 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         targetKategori: _targetKategoriPengalihan,
                         onTargetKategoriChanged: (val) =>
                             setState(() => _targetKategoriPengalihan = val),
-                        beratPerPaketCtrl: _beratPerPaketCtrl,
                         opsiKategori: _opsiPengalihan,
                       ),
                     ],

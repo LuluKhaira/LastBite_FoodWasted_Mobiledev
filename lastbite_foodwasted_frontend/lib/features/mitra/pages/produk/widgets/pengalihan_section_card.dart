@@ -8,7 +8,7 @@ class PengalihanSectionCard extends StatelessWidget {
   final ValueChanged<bool> onBersediaChanged;
   final String? targetKategori;
   final ValueChanged<String?> onTargetKategoriChanged;
-  final TextEditingController beratPerPaketCtrl;
+  final TextEditingController? beratPerPaketCtrl;
   final List<Map<String, dynamic>> opsiKategori;
 
   const PengalihanSectionCard({
@@ -17,7 +17,7 @@ class PengalihanSectionCard extends StatelessWidget {
     required this.onBersediaChanged,
     required this.targetKategori,
     required this.onTargetKategoriChanged,
-    required this.beratPerPaketCtrl,
+    this.beratPerPaketCtrl,
     this.opsiKategori = const [],
   });
 
@@ -189,49 +189,9 @@ class PengalihanSectionCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Input Perkiraan Berat per Paket (kg)
-            Text(
-              'PERKIRAAN BERAT PER PAKET (KG)',
-              style: AppColors.body(fontSize: 11, fontWeight: FontWeight.w800, color: WarnaLokal.textSoft),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: beratPerPaketCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: AppColors.body(fontSize: 13, fontWeight: FontWeight.w700),
-              decoration: InputDecoration(
-                hintText: 'Contoh: 0.5',
-                hintStyle: AppColors.body(fontSize: 12, color: WarnaLokal.textSoft),
-                suffixText: 'kg / paket',
-                suffixStyle: AppColors.body(fontSize: 12, fontWeight: FontWeight.w700, color: WarnaLokal.textDark),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: WarnaLokal.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: WarnaLokal.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: WarnaLokal.primary, width: 1.5),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Berat perkiraan harus berupa angka positif (misal 0.3 atau 0.5 kg).',
-              style: AppColors.body(fontSize: 10, color: WarnaLokal.textSoft),
-            ),
           ],
         ],
       ),
     );
   }
 }
-

@@ -11,6 +11,7 @@ import 'package:lastbite_foodwasted_mobiledev/features/mitra/pages/pesanan/widge
 
 import 'detail_produk_screen.dart';
 import 'models/produk_model.dart';
+import 'widgets/dialog_konfirmasi_pengalihan.dart';
 
 class _UI {
   static Color get primary => AppColors.primary;
@@ -25,6 +26,7 @@ class _UI {
 }
 
 String _rp(int v) {
+  if (v == 0) return 'Gratis';
   final s = v.toString();
   final buf = StringBuffer();
   for (int i = 0; i < s.length; i++) {
@@ -337,7 +339,7 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
                   label,
                   overflow: TextOverflow.ellipsis,
                   style: AppColors.body(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: isActive
                         ? AppColors.textDark
@@ -346,10 +348,10 @@ class _MitraProdukScreenState extends State<MitraProdukScreen> {
                 ),
               ),
               if (count > 0) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: 3),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
                     color: isActive
                         ? AppColors.orange
@@ -567,15 +569,34 @@ class _ProductCardRef extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Flexible(
-                            child: Text(
-                              _rp(produk.harga),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppColors.heading(
-                                  fontSize: 15, color: AppColors.textDark),
+                          if (produk.harga == 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: const Color(0xFF81C784)),
+                              ),
+                              child: Text(
+                                'Gratis',
+                                style: AppColors.heading(
+                                  fontSize: 13,
+                                  color: const Color(0xFF2E7D32),
+                                ),
+                              ),
+                            )
+                          else
+                            Flexible(
+                              child: Text(
+                                _rp(produk.harga),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppColors.heading(
+                                    fontSize: 15, color: AppColors.textDark),
+                              ),
                             ),
-                          ),
                           const SizedBox(width: 6),
                           if (produk.adaDiskon)
                             Flexible(
@@ -754,6 +775,147 @@ class _ProductCardRef extends StatelessWidget {
                 ),
               ],
             ),
+            if (produk.isMenungguKonfirmasi) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.orange.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: AppColors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Produk kedaluwarsa, masih ada sisa. Alihkan atau buang?',
+                            style: AppColors.heading(
+                              fontSize: 12,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.orange,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.autorenew_rounded, size: 16),
+                        label: Text(
+                          'Alihkan / Buang',
+                          style: AppColors.body(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        onPressed: () {
+                          DialogKonfirmasiPengalihan.show(
+                            context,
+                            produk: produk,
+                            phoneNumber: phoneNumber,
+                            onBerhasil: onRefresh,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (produk.draf) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 16),
+                  label: Text(
+                    'Tayangkan',
+                    style: AppColors.body(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                  onPressed: () async {
+                    final res = await ApiService.setProdukAktif(
+                      phoneNumber,
+                      produk.id,
+                      true,
+                    );
+                    if (res['ok'] == true) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(res['message'] ?? 'Produk berhasil ditayangkan!'),
+                          backgroundColor: AppColors.primary,
+                        ),
+                      );
+                      onRefresh();
+                    } else {
+                      if (!context.mounted) return;
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          title: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
+                              const SizedBox(width: 8),
+                              Text('Gagal Menayangkan', style: AppColors.heading(fontSize: 15)),
+                            ],
+                          ),
+                          content: Text(
+                            res['message'] ?? 'Produk tidak memenuhi syarat untuk ditayangkan.',
+                            style: AppColors.body(fontSize: 13),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text('Tutup', style: AppColors.body(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
