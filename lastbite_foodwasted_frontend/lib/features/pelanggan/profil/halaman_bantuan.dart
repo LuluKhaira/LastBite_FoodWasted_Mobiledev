@@ -7,8 +7,6 @@ import 'profil_widgets.dart';
 
 // ============================================================
 // PUSAT BANTUAN & FAQ
-// FAQ dari database (GET /api/faq). Live Chat CS memakai
-// GET/POST /api/bantuan/pesan (riwayat + balasan CS dari database).
 // ============================================================
 class BantuanScreen extends StatefulWidget {
   const BantuanScreen({super.key});
@@ -22,12 +20,12 @@ class _BantuanScreenState extends State<BantuanScreen> {
   final FocusNode _fokus = FocusNode();
   Timer? _debounce;
 
-  List<Map<String, dynamic>> _faq = [];
-  List<String> _kategori = [];
-  Map<String, dynamic> _kontak = {};
-  String? _pilih; // null = Semua Topik
+  List _faq = [];
+  List _kategori = [];
+  Map _kontak = {};
+  String? _pilih;
   String _q = '';
-  int _buka = 0; // index FAQ yang terbuka
+  int _buka = 0;
   bool _loading = true;
   String? _error;
   int _reqId = 0;
@@ -58,9 +56,9 @@ class _BantuanScreenState extends State<BantuanScreen> {
       final j = await ApiService.getFaq(q: _q, kategori: _pilih);
       if (!mounted || id != _reqId) return;
       setState(() {
-        _faq = List<Map<String, dynamic>>.from(j['data'] ?? const []);
-        _kategori = List<String>.from((j['kategori'] ?? const []).map((e) => '$e'));
-        _kontak = Map<String, dynamic>.from(j['kontak'] ?? const {});
+        _faq = List.from(j['data'] ?? const []);
+        _kategori = List.from((j['kategori'] ?? const []).map((e) => '$e'));
+        _kontak = Map.from(j['kontak'] ?? const {});
         _loading = false;
         _error = null;
         _buka = _faq.isEmpty ? -1 : 0;
@@ -80,7 +78,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     _debounce = Timer(const Duration(milliseconds: 350), _muat);
   }
 
-  bool get _csBuka => _kontak['buka'] == true;
   String get _jamText => '${_kontak['jam'] ?? 'Setiap hari, 08.00 – 22.00 WIB'}';
 
   Future<void> _salin(String teks, String label) async {
@@ -89,14 +86,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     pkSnack(context, '$label disalin');
   }
 
-  void _mulaiLiveChat() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const _LiveChatScreen()),
-    );
-  }
-
-  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,8 +112,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
                   children: [
                     _hero(),
                     const SizedBox(height: 22),
-                    _bantuanLangsung(),
-                    const SizedBox(height: 22),
                     _chipKategori(),
                     const SizedBox(height: 14),
                     _daftarFaq(),
@@ -140,10 +127,9 @@ class _BantuanScreenState extends State<BantuanScreen> {
     );
   }
 
-  // ---------- hero + pencarian ----------
   Widget _hero() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F6E6),
         borderRadius: BorderRadius.circular(28),
@@ -213,117 +199,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     );
   }
 
-  // ---------- bantuan langsung ----------
-  Widget _bantuanLangsung() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Bantuan Langsung',
-            style: LbText.heading(16, weight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        _kartuLayanan(
-          icon: Icons.headset_mic_outlined,
-          chip: _csBuka ? 'Aktif' : 'Offline',
-          chipOk: _csBuka,
-          judul: 'Live Chat CS',
-          sub: 'Tulis pertanyaanmu, balasan tim CS muncul di riwayat percakapan',
-          aksi: 'Mulai Chat',
-          onTap: _mulaiLiveChat,
-        ),
-      ],
-    );
-  }
-
-  Widget _kartuLayanan({
-    required IconData icon,
-    required String chip,
-    required bool chipOk,
-    required String judul,
-    required String sub,
-    required String aksi,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: pkKartuDeco(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(
-                      color: LbColors.sageLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, size: 21, color: LbColors.forest),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: chipOk ? LbColors.sageLight : const Color(0xFFEDEBE6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (chip == 'Aktif' || chip == 'Offline') ...[
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: chipOk
-                                  ? LbColors.sageDeep
-                                  : LbColors.textGrey,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                        Text(chip,
-                            style: LbText.body(11,
-                                weight: FontWeight.w800,
-                                color: chipOk
-                                    ? LbColors.forest
-                                    : LbColors.textGrey)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(judul, style: LbText.heading(15, weight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(sub, style: LbText.body(12, height: 1.35)),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Text(aksi,
-                      style: LbText.heading(13,
-                          weight: FontWeight.w700, color: LbColors.sageDeep)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded,
-                      size: 17, color: LbColors.sageDeep),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ---------- kategori ----------
   Widget _chipKategori() {
     Widget chip(String label, bool sel, VoidCallback onTap) => GestureDetector(
           onTap: onTap,
@@ -362,7 +237,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     );
   }
 
-  // ---------- daftar FAQ ----------
   Widget _daftarFaq() {
     if (_loading) {
       return const Padding(
@@ -413,7 +287,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
     );
   }
 
-  Widget _itemFaq(int i, Map<String, dynamic> f) {
+  Widget _itemFaq(int i, dynamic f) {
     final open = _buka == i;
     final tip = '${f['tip'] ?? ''}'.trim();
 
@@ -496,7 +370,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
     );
   }
 
-  // ---------- kontak ----------
   Widget _kartuKontak() {
     final email = '${_kontak['email'] ?? ''}'.trim();
     final telp = '${_kontak['telepon'] ?? ''}'.trim();
@@ -596,310 +469,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
               textAlign: TextAlign.center,
               style: LbText.body(13, color: LbColors.forest, height: 1.5)
                   .copyWith(fontStyle: FontStyle.italic),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// LIVE CHAT CS — riwayat pesan + balasan CS (dari database)
-// ============================================================
-class _LiveChatScreen extends StatefulWidget {
-  const _LiveChatScreen();
-
-  @override
-  State<_LiveChatScreen> createState() => _LiveChatScreenState();
-}
-
-class _LiveChatScreenState extends State<_LiveChatScreen> {
-  final TextEditingController _input = TextEditingController();
-  final ScrollController _scroll = ScrollController();
-  List<Map<String, dynamic>> _pesan = [];
-  bool _loading = true;
-  bool _kirim = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _muat();
-  }
-
-  @override
-  void dispose() {
-    _input.dispose();
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  Future<void> _muat({bool senyap = false}) async {
-    if (!senyap) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final d = await ApiService.getPesanBantuan();
-      if (!mounted) return;
-      setState(() {
-        _pesan = d;
-        _loading = false;
-        _error = null;
-      });
-      _keBawah();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        if (_pesan.isEmpty) _error = pkPesanError(e);
-      });
-      if (senyap) pkSnack(context, pkPesanError(e));
-    }
-  }
-
-  void _keBawah() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  Future<void> _kirimPesan() async {
-    final t = _input.text.trim();
-    if (t.isEmpty || _kirim) return;
-    setState(() => _kirim = true);
-    try {
-      final j = await ApiService.kirimBantuan(t, kanal: 'live');
-      if (!mounted) return;
-      _input.clear();
-      setState(() => _kirim = false);
-      pkSnack(context, '${j['message'] ?? 'Pesan terkirim'}');
-      _muat(senyap: true);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _kirim = false);
-      pkSnack(context, pkPesanError(e));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: LbColors.offWhite,
-      body: SafeArea(
-        child: Column(
-          children: [
-            PkHeader(
-              title: 'Live Chat CS',
-              trailing: IconButton(
-                onPressed: () => _muat(senyap: true),
-                icon: const Icon(Icons.refresh_rounded,
-                    color: LbColors.forest, size: 24),
-              ),
-            ),
-            Expanded(child: _isi()),
-            _kolomInput(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _isi() {
-    if (_loading) {
-      return const Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(
-              strokeWidth: 3, color: LbColors.sageDeep),
-        ),
-      );
-    }
-    if (_error != null) return PkError(pesan: _error!, onRetry: _muat);
-
-    return RefreshIndicator(
-      color: LbColors.sageDeep,
-      onRefresh: () => _muat(senyap: true),
-      child: ListView(
-        controller: _scroll,
-        physics:
-            const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        children: [
-          _sapaan(),
-          const SizedBox(height: 14),
-          for (final p in _pesan) ...[
-            _gelembungUser(p),
-            if ('${p['balasan'] ?? ''}'.trim().isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _gelembungCs(p),
-            ],
-            const SizedBox(height: 14),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _sapaan() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LbColors.sageLight,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.headset_mic_outlined,
-              size: 22, color: LbColors.sageDeep),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Halo! Tulis pertanyaanmu di bawah. Tim CS membalas pada jam operasional, dan balasannya akan muncul di sini (tarik layar ke bawah untuk memuat ulang).',
-              style: LbText.body(12.5, color: LbColors.forest, height: 1.45),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _gelembungUser(Map<String, dynamic> p) {
-    final status = '${p['status'] ?? ''}';
-    final info = status == 'terkirim'
-        ? 'Terkirim ke CS'
-        : 'Tersimpan';
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LbColors.sage, LbColors.sageDeep],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(6),
-                ),
-              ),
-              child: Text('${p['pesan']}',
-                  style: LbText.body(14, color: Colors.white, height: 1.4)),
-            ),
-            const SizedBox(height: 4),
-            Text('${p['waktu'] ?? ''} • $info', style: LbText.body(10.5)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _gelembungCs(Map<String, dynamic> p) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: LbColors.border),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(6),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Text('${p['balasan']}',
-                  style: LbText.body(14, color: LbColors.forest, height: 1.4)),
-            ),
-            const SizedBox(height: 4),
-            Text('Tim CS Lastbite ${p['dibalas'] ?? ''}'.trim(),
-                style: LbText.body(10.5)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _kolomInput() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: LbColors.border)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: LbColors.offWhite,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: LbColors.border),
-              ),
-              child: TextField(
-                controller: _input,
-                minLines: 1,
-                maxLines: 4,
-                maxLength: 1000,
-                textInputAction: TextInputAction.newline,
-                style: LbText.body(14, color: LbColors.forest),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  counterText: '',
-                  hintText: 'Tulis pesan untuk CS…',
-                  hintStyle: LbText.body(13.5),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _kirimPesan,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [LbColors.sage, LbColors.sageDeep],
-                ),
-              ),
-              child: _kirim
-                  ? const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.4, color: Colors.white),
-                    )
-                  : const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 21),
             ),
           ),
         ],
