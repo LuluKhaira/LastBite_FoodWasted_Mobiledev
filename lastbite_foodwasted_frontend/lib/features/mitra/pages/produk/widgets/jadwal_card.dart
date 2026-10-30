@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+
 import 'base_card.dart';
 import 'warna_lokal.dart';
 
@@ -27,12 +28,28 @@ class JadwalCard extends StatelessWidget {
     this.tokoLibur = false,
   });
 
+  Widget _labelWajib(String teks, TextStyle style) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(text: teks, style: style),
+          const TextSpan(
+            text: ' *',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatJam(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   String get _teksToko {
     if (tokoLibur) return 'Toko libur hari ini';
-    if (jamTutupToko != null) return 'Toko tutup ${_formatJam(jamTutupToko!)}';
+    if (jamTutupToko != null) {
+      return 'Toko tutup ${_formatJam(jamTutupToko!)}';
+    }
     return 'Jam buka belum diatur';
   }
 
@@ -41,6 +58,7 @@ class JadwalCard extends StatelessWidget {
     final mm = d.month.toString().padLeft(2, '0');
     final hh = d.hour.toString().padLeft(2, '0');
     final mi = d.minute.toString().padLeft(2, '0');
+
     return '$dd/$mm/${d.year}  $hh:$mi';
   }
 
@@ -51,18 +69,46 @@ class JadwalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: AppColors.body(fontSize: 10, fontWeight: FontWeight.w700, color: WarnaLokal.textSoft)),
+            _labelWajib(
+              label,
+              AppColors.body(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: WarnaLokal.textSoft,
+              ),
+            ),
+
             const SizedBox(height: 6),
+
             GestureDetector(
               onTap: onTap,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: WarnaLokal.border)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: WarnaLokal.border),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(_formatJam(time), style: AppColors.heading(fontSize: 14, color: WarnaLokal.textDark)),
-                    Text('WIB', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
+                    Text(
+                      _formatJam(time),
+                      style: AppColors.heading(
+                        fontSize: 14,
+                        color: WarnaLokal.textDark,
+                      ),
+                    ),
+                    Text(
+                      'WIB',
+                      style: AppColors.body(
+                        fontSize: 11,
+                        color: WarnaLokal.textSoft,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -79,17 +125,34 @@ class JadwalCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('JADWAL PENGAMBILAN', style: AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft)),
+              _labelWajib(
+                'JADWAL PENGAMBILAN',
+                AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft),
+              ),
+
               Row(
                 children: [
-                  Icon(Icons.storefront, size: 14, color: tokoLibur ? Colors.red : WarnaLokal.primaryDark),
+                  Icon(
+                    Icons.storefront,
+                    size: 14,
+                    color: tokoLibur ? Colors.red : WarnaLokal.primaryDark,
+                  ),
                   const SizedBox(width: 4),
-                  Text(_teksToko, style: AppColors.body(fontSize: 11, fontWeight: FontWeight.w700, color: tokoLibur ? Colors.red : WarnaLokal.primaryDark)),
+                  Text(
+                    _teksToko,
+                    style: AppColors.body(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: tokoLibur ? Colors.red : WarnaLokal.primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
+
           const SizedBox(height: 16),
+
           Row(
             children: [
               timeBox('MULAI AMBIL', mulaiAmbil, onPilihMulai),
@@ -97,49 +160,99 @@ class JadwalCard extends StatelessWidget {
               timeBox('BATAS MAKSIMAL', batasMaksimal, onPilihBatas),
             ],
           ),
+
           if (tampilKadaluarsa) ...[
             const SizedBox(height: 16),
-            Text('KADALUARSA PRODUK', style: AppColors.body(fontSize: 10, fontWeight: FontWeight.w700, color: WarnaLokal.textSoft)),
+
+            _labelWajib(
+              'KADALUARSA PRODUK',
+              AppColors.body(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: WarnaLokal.textSoft,
+              ),
+            ),
+
             const SizedBox(height: 6),
+
             GestureDetector(
               onTap: onPilihKadaluarsa,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: WarnaLokal.border)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: WarnaLokal.border),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.event_busy_outlined, size: 16, color: WarnaLokal.primaryDark),
+                        Icon(
+                          Icons.event_busy_outlined,
+                          size: 16,
+                          color: WarnaLokal.primaryDark,
+                        ),
                         const SizedBox(width: 8),
-                        Text(_formatTanggalJam(kadaluarsa), style: AppColors.heading(fontSize: 14, color: WarnaLokal.textDark)),
+                        Text(
+                          _formatTanggalJam(kadaluarsa),
+                          style: AppColors.heading(
+                            fontSize: 14,
+                            color: WarnaLokal.textDark,
+                          ),
+                        ),
                       ],
                     ),
-                    Text('WIB', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
+                    Text(
+                      'WIB',
+                      style: AppColors.body(
+                        fontSize: 11,
+                        color: WarnaLokal.textSoft,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
+
             const SizedBox(height: 8),
+
             Row(
               children: [
                 Icon(Icons.autorenew, size: 16, color: WarnaLokal.primaryDark),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Setelah lewat waktu ini, produk otomatis pindah ke kategori Pakan Ternak & Ikan.', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
+                  child: Text(
+                    'Setelah lewat waktu ini, produk otomatis pindah ke kategori Pakan Ternak & Ikan.',
+                    style: AppColors.body(
+                      fontSize: 11,
+                      color: WarnaLokal.textSoft,
+                    ),
+                  ),
                 ),
               ],
             ),
           ],
+
           const SizedBox(height: 12),
+
           Row(
             children: [
               Icon(Icons.info_outline, size: 16, color: WarnaLokal.primaryDark),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('Pelanggan mengambil pesanan langsung sebelum toko tutup.', style: AppColors.body(fontSize: 11, color: WarnaLokal.textSoft)),
+                child: Text(
+                  'Pelanggan mengambil pesanan langsung sebelum toko tutup.',
+                  style: AppColors.body(
+                    fontSize: 11,
+                    color: WarnaLokal.textSoft,
+                  ),
+                ),
               ),
             ],
           ),

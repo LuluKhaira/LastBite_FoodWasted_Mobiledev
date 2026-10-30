@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
+
 import 'base_card.dart';
 import 'warna_lokal.dart';
 
 class HargaCard extends StatelessWidget {
   final TextEditingController asliCtrl;
   final TextEditingController diskonCtrl;
-  final String skemaHarga; // 'diskon' | 'sedekah'
+  final String skemaHarga;
   final ValueChanged<String> onSkemaHargaChanged;
   final int stok;
   final ValueChanged<int> onStokChanged;
@@ -27,11 +28,27 @@ class HargaCard extends StatelessWidget {
 
   bool get _isSedekah => skemaHarga == 'sedekah';
 
+  Widget _labelWajib(String teks, TextStyle style) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(text: teks, style: style),
+          const TextSpan(
+            text: ' *',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
   int? get _hematPersen {
     final asli = _angka(asliCtrl.text);
     if (asli <= 0 || diskonCtrl.text.isEmpty) return null;
+
     final diskon = _angka(diskonCtrl.text);
     if (diskon >= asli) return null;
+
     return (((asli - diskon) / asli) * 100).round();
   }
 
@@ -48,13 +65,17 @@ class HargaCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              _labelWajib(
                 'SKEMA & HARGA PRODUK',
-                style: AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft),
+                AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft),
               ),
+
               if (_isSedekah)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFD1FAE5),
                     borderRadius: BorderRadius.circular(8),
@@ -63,7 +84,11 @@ class HargaCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.volunteer_activism_rounded, size: 13, color: Color(0xFF047857)),
+                      const Icon(
+                        Icons.volunteer_activism_rounded,
+                        size: 13,
+                        color: Color(0xFF047857),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Sedekah • Rp 0',
@@ -78,7 +103,10 @@ class HargaCard extends StatelessWidget {
                 )
               else if (hemat != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: WarnaLokal.mintDeep,
                     borderRadius: BorderRadius.circular(8),
@@ -94,6 +122,7 @@ class HargaCard extends StatelessWidget {
                 ),
             ],
           ),
+
           const SizedBox(height: 14),
 
           Container(
@@ -135,6 +164,7 @@ class HargaCard extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 14),
 
           if (_isSedekah)
@@ -151,7 +181,11 @@ class HargaCard extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 2),
-                    child: Icon(Icons.favorite_rounded, color: Color(0xFF059669), size: 18),
+                    child: Icon(
+                      Icons.favorite_rounded,
+                      color: Color(0xFF059669),
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -175,10 +209,18 @@ class HargaCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Nilai Asli Toko', style: AppColors.body(fontSize: 12, color: WarnaLokal.textDark)),
+                    _labelWajib(
+                      'Nilai Asli Toko',
+                      AppColors.body(fontSize: 12, color: WarnaLokal.textDark),
+                    ),
+
                     const SizedBox(height: 6),
+
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
@@ -186,14 +228,23 @@ class HargaCard extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Text('Rp', style: AppColors.body(fontSize: 14, color: WarnaLokal.textSoft)),
+                          Text(
+                            'Rp',
+                            style: AppColors.body(
+                              fontSize: 14,
+                              color: WarnaLokal.textSoft,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: TextField(
                               controller: asliCtrl,
                               keyboardType: TextInputType.number,
                               inputFormatters: [_RibuanFormatter()],
-                              style: AppColors.heading(fontSize: 16, color: WarnaLokal.textDark),
+                              style: AppColors.heading(
+                                fontSize: 16,
+                                color: WarnaLokal.textDark,
+                              ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 isDense: true,
@@ -207,29 +258,48 @@ class HargaCard extends StatelessWidget {
                   ],
                 ),
               ),
+
               const SizedBox(width: 12),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _isSedekah ? 'Harga Penyaluran' : 'Harga Rescue',
-                      style: AppColors.body(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _isSedekah ? const Color(0xFF059669) : WarnaLokal.primaryDark,
+                    if (_isSedekah)
+                      Text(
+                        'Harga Penyaluran',
+                        style: AppColors.body(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF059669),
+                        ),
+                      )
+                    else
+                      _labelWajib(
+                        'Harga Rescue',
+                        AppColors.body(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: WarnaLokal.primaryDark,
+                        ),
                       ),
-                    ),
+
                     const SizedBox(height: 6),
+
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: _isSedekah
                             ? const Color(0xFFD1FAE5).withValues(alpha: 0.5)
                             : WarnaLokal.mintDeep.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _isSedekah ? const Color(0xFF059669) : WarnaLokal.primaryDark,
+                          color: _isSedekah
+                              ? const Color(0xFF059669)
+                              : WarnaLokal.primaryDark,
                           width: _isSedekah ? 1.5 : 1.0,
                         ),
                       ),
@@ -239,7 +309,9 @@ class HargaCard extends StatelessWidget {
                             'Rp',
                             style: AppColors.body(
                               fontSize: 14,
-                              color: _isSedekah ? const Color(0xFF059669) : WarnaLokal.primaryDark,
+                              color: _isSedekah
+                                  ? const Color(0xFF059669)
+                                  : WarnaLokal.primaryDark,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -251,7 +323,9 @@ class HargaCard extends StatelessWidget {
                               inputFormatters: [_RibuanFormatter()],
                               style: AppColors.heading(
                                 fontSize: 16,
-                                color: _isSedekah ? const Color(0xFF059669) : WarnaLokal.primaryDark,
+                                color: _isSedekah
+                                    ? const Color(0xFF059669)
+                                    : WarnaLokal.primaryDark,
                               ),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
@@ -324,16 +398,29 @@ class HargaCard extends StatelessWidget {
 
 class _RibuanFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     if (newValue.text.isEmpty) return newValue;
+
     final angka = newValue.text.replaceAll('.', '');
+
     if (int.tryParse(angka) == null) return oldValue;
+
     final s = int.parse(angka).toString();
     final buf = StringBuffer();
+
     for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      if (i > 0 && (s.length - i) % 3 == 0) {
+        buf.write('.');
+      }
       buf.write(s[i]);
     }
-    return TextEditingValue(text: buf.toString(), selection: TextSelection.collapsed(offset: buf.length));
+
+    return TextEditingValue(
+      text: buf.toString(),
+      selection: TextSelection.collapsed(offset: buf.length),
+    );
   }
 }

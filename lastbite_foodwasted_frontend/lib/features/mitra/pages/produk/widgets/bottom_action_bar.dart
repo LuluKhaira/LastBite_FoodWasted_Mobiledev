@@ -29,25 +29,35 @@ class BottomActionBar extends StatelessWidget {
             child: OutlinedButton(
               onPressed: saving ? null : onSimpanDraf,
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                 side: BorderSide(color: WarnaLokal.border),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('Simpan Draf', style: AppColors.heading(fontSize: 14, color: WarnaLokal.textDark)),
+              child: Text(
+                'Simpan Draf',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppColors.heading(fontSize: 13, color: WarnaLokal.textDark),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: ElevatedButton.icon(
               onPressed: saving ? null : onTayangkan,
               icon: saving 
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.send_outlined, size: 18),
-              label: Text('Tayangkan Sekarang', style: AppColors.heading(fontSize: 14, color: Colors.white)),
+                  : const Icon(Icons.send_outlined, size: 16),
+              label: Text(
+                'Tayangkan',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppColors.heading(fontSize: 13, color: Colors.white),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: WarnaLokal.primaryDark,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
