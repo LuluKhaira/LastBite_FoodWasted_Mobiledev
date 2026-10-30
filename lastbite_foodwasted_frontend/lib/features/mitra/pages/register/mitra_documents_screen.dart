@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // LastBite - Daftar Mitra, Langkah 5 dari 6 (Dokumen Pendukung)
 // ============================================================
 
@@ -554,18 +554,32 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700),
-        ),
-        Text(
-          subtitle,
-          style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+      color: AppColors.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSoft,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

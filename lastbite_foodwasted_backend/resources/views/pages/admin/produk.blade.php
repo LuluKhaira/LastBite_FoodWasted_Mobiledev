@@ -30,7 +30,6 @@
                         <th class="px-4 py-4">Harga Diskon</th>
                         <th class="px-4 py-4">Sisa Kuota</th>
                         <th class="px-4 py-4 text-center">Status</th>
-                        <th class="px-4 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,29 +74,9 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-4 py-4 text-center">
-                                @if($isAnomali || !$produk->aktif)
-                                    <form action="{{ route('admin.produk.toggle', $produk->getKey()) }}" method="POST"
-                                          onsubmit="return confirm('{{ $produk->aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} produk {{ addslashes($produk->nama) }}?')">
-                                        @csrf
-                                        @method('PATCH')
-                                        @if($produk->aktif)
-                                            <button type="submit" class="inline-flex items-center gap-1 rounded-xl bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700 transition">
-                                                <span class="material-symbols-outlined text-[16px]">block</span> Nonaktifkan
-                                            </button>
-                                        @else
-                                            <button type="submit" class="inline-flex items-center gap-1 rounded-xl bg-[#2F5D34] px-3 py-2 text-xs font-bold text-white hover:bg-[#235139] transition">
-                                                <span class="material-symbols-outlined text-[16px]">check_circle</span> Aktifkan
-                                            </button>
-                                        @endif
-                                    </form>
-                                @else
-                                    <span class="text-gray-400">-</span>
-                                @endif
-                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-6 py-10 text-center text-[#4E7554]">Belum ada data produk.</td></tr>
+                        <tr><td colspan="6" class="px-6 py-10 text-center text-[#4E7554]">Belum ada data produk.</td></tr>
                     @endforelse
                 </tbody>
             </table>

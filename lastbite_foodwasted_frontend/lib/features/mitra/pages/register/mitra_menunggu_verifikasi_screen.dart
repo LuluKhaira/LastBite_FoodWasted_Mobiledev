@@ -1,17 +1,12 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import 'package:lastbite_foodwasted_mobiledev/services/api_service.dart';
 import 'mitra_disetujui_screen.dart';
 import 'mitra_session.dart';
-
-const _bg = Color(0xFFEAFDE1);
-const _primary = Color(0xFF006B1E);
-const _cardBg = Color(0xFFF3FAF0);
-const _textDark = Color(0xFF10260F);
-const _textSoft = Color(0xFF3F4A3C);
 
 class MitraMenungguVerifikasiScreen extends StatefulWidget {
   final String phoneNumber;
@@ -47,6 +42,31 @@ class _MitraMenungguVerifikasiScreenState
   String? _alasan;
 
   bool get _ditolak => _status == 'ditolak';
+  bool get _disetujui => _status == 'disetujui';
+
+  Color get _statusBgColor {
+    if (_ditolak) return AppColors.merahMuda;
+    if (_disetujui) return AppColors.hijauMuda;
+    return AppColors.orange.withValues(alpha: 0.15);
+  }
+
+  Color get _statusDotColor {
+    if (_ditolak) return AppColors.merah;
+    if (_disetujui) return AppColors.primary;
+    return AppColors.orange;
+  }
+
+  Color get _statusTextColor {
+    if (_ditolak) return AppColors.merah;
+    if (_disetujui) return AppColors.hijauTua;
+    return AppColors.orange;
+  }
+
+  String get _statusLabel {
+    if (_ditolak) return 'Ditolak';
+    if (_disetujui) return 'Disetujui';
+    return 'Sedang Diverifikasi';
+  }
 
   @override
   void initState() {
@@ -74,7 +94,11 @@ class _MitraMenungguVerifikasiScreenState
 
   void _snack(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+      SnackBar(
+        content: Text(text, style: AppColors.body(color: Colors.white)),
+        backgroundColor: AppColors.textDark,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -128,19 +152,20 @@ class _MitraMenungguVerifikasiScreenState
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _ditolak ? Colors.redAccent : _primary;
+    final statusColor = _ditolak ? AppColors.merah : AppColors.primary;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
+            const _Header(title: 'Daftar Mitra', subtitle: 'Status Pendaftaran'),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
 
                     // ---- Main White Card ----
                     Container(
@@ -160,8 +185,8 @@ class _MitraMenungguVerifikasiScreenState
                                 height: 100,
                                 decoration: BoxDecoration(
                                   color: _ditolak
-                                      ? const Color(0xFFFFECEB)
-                                      : const Color(0xFFE2F5DD),
+                                      ? AppColors.merahMuda
+                                      : AppColors.hijauMuda,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -170,8 +195,8 @@ class _MitraMenungguVerifikasiScreenState
                                       : Icons.hourglass_top_rounded,
                                   size: 48,
                                   color: _ditolak
-                                      ? Colors.redAccent
-                                      : const Color(0xFF2E7D32),
+                                      ? AppColors.merah
+                                      : AppColors.hijauTua,
                                 ),
                               ),
                               Container(
@@ -197,10 +222,9 @@ class _MitraMenungguVerifikasiScreenState
                                 ? 'Pendaftaran\nDitolak'
                                 : 'Pendaftaran Sedang\nDitinjau',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppColors.heading(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: _textDark,
                               height: 1.2,
                             ),
                           ),
@@ -215,10 +239,10 @@ class _MitraMenungguVerifikasiScreenState
                                     'Biasanya selesai dalam 1x24 jam. Kami akan\n'
                                     'kabari lewat WhatsApp begitu disetujui.',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppColors.body(
                               fontSize: 13.5,
                               height: 1.5,
-                              color: _textSoft,
+                              color: AppColors.textSoft,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -227,7 +251,7 @@ class _MitraMenungguVerifikasiScreenState
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE8F6E4),
+                              color: AppColors.hijauMuda,
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: Row(
@@ -235,7 +259,7 @@ class _MitraMenungguVerifikasiScreenState
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: const BoxDecoration(
-                                    color: _primary,
+                                    color: AppColors.hijauTua,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -252,17 +276,16 @@ class _MitraMenungguVerifikasiScreenState
                                     children: [
                                       Text(
                                         'Jaminan Keamanan Data',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppColors.heading(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w800,
-                                          color: _textDark,
                                         ),
                                       ),
                                       Text(
                                         'Informasi tokomu tersimpan rahasia & terenkripsi.',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppColors.body(
                                           fontSize: 12,
-                                          color: _textSoft,
+                                          color: AppColors.textSoft,
                                         ),
                                       ),
                                     ],
@@ -277,7 +300,7 @@ class _MitraMenungguVerifikasiScreenState
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: _cardBg,
+                              color: AppColors.latar,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Column(
@@ -288,26 +311,26 @@ class _MitraMenungguVerifikasiScreenState
                                   children: [
                                     Text(
                                       'RINGKASAN PENDAFTARAN',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppColors.heading(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w800,
-                                        color: _textSoft,
+                                        color: AppColors.textSoft,
                                         letterSpacing: 0.5,
                                       ),
                                     ),
                                     Text(
                                       'ID: $_regId',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppColors.heading(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w800,
-                                        color: _primary,
+                                        color: AppColors.hijauTua,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const Divider(
+                                Divider(
                                   height: 20,
-                                  color: Color(0xFFD3E7CD),
+                                  color: AppColors.textSoft.withValues(alpha: 0.2),
                                 ),
                                 _SummaryRow(
                                   icon: Icons.storefront_outlined,
@@ -332,14 +355,14 @@ class _MitraMenungguVerifikasiScreenState
                                         const Icon(
                                           Icons.autorenew,
                                           size: 18,
-                                          color: _textSoft,
+                                          color: AppColors.textSoft,
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           'Status',
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: AppColors.body(
                                             fontSize: 13,
-                                            color: _textSoft,
+                                            color: AppColors.textSoft,
                                           ),
                                         ),
                                       ],
@@ -350,7 +373,7 @@ class _MitraMenungguVerifikasiScreenState
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFECEB),
+                                        color: _statusBgColor,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Row(
@@ -359,20 +382,18 @@ class _MitraMenungguVerifikasiScreenState
                                           Container(
                                             width: 6,
                                             height: 6,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.redAccent,
+                                            decoration: BoxDecoration(
+                                              color: _statusDotColor,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            _ditolak
-                                                ? 'Ditolak'
-                                                : 'Sedang Diverifikasi',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            _statusLabel,
+                                            style: AppColors.heading(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w800,
-                                              color: Colors.redAccent,
+                                              color: _statusTextColor,
                                             ),
                                           ),
                                         ],
@@ -398,7 +419,7 @@ class _MitraMenungguVerifikasiScreenState
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCF3D5),
+                        color: AppColors.hijauMuda,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -412,7 +433,7 @@ class _MitraMenungguVerifikasiScreenState
                             ),
                             child: const Icon(
                               Icons.chat_outlined,
-                              color: _primary,
+                              color: AppColors.hijauTua,
                               size: 20,
                             ),
                           ),
@@ -423,19 +444,18 @@ class _MitraMenungguVerifikasiScreenState
                               children: [
                                 Text(
                                   'Konfirmasi Melalui WhatsApp',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppColors.heading(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
-                                    color: _textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Pastikan nomor ponsel yang didaftarkan aktif untuk menerima tautan aktivasi akun dan panduan onboarding perdana.',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppColors.body(
                                     fontSize: 12,
                                     height: 1.4,
-                                    color: _textSoft,
+                                    color: AppColors.textSoft,
                                   ),
                                 ),
                               ],
@@ -461,8 +481,9 @@ class _MitraMenungguVerifikasiScreenState
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : () => _cekStatus(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
+                        backgroundColor: AppColors.orange,
                         foregroundColor: Colors.white,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -483,9 +504,10 @@ class _MitraMenungguVerifikasiScreenState
                                 const SizedBox(width: 8),
                                 Text(
                                   'Cek Status',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppColors.heading(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
@@ -503,14 +525,14 @@ class _MitraMenungguVerifikasiScreenState
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.arrow_back, size: 16, color: _primary),
+                        const Icon(Icons.arrow_back, size: 16, color: AppColors.textSoft),
                         const SizedBox(width: 6),
                         Text(
                           'Kembali ke Beranda Awal',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppColors.heading(
                             fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: _primary,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSoft,
                           ),
                         ),
                       ],
@@ -521,6 +543,44 @@ class _MitraMenungguVerifikasiScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _Header({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+      color: AppColors.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSoft,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -546,13 +606,13 @@ class _SummaryRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 18, color: _textSoft),
+            Icon(icon, size: 18, color: AppColors.textSoft),
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppColors.body(
                 fontSize: 13,
-                color: _textSoft,
+                color: AppColors.textSoft,
               ),
             ),
           ],
@@ -562,10 +622,9 @@ class _SummaryRow extends StatelessWidget {
             value,
             textAlign: TextAlign.right,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppColors.heading(
               fontSize: 13.5,
               fontWeight: boldValue ? FontWeight.w800 : FontWeight.w600,
-              color: _textDark,
             ),
           ),
         ),

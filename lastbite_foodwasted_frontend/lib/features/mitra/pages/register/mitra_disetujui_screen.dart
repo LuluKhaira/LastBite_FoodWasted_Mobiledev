@@ -1,13 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:lastbite_foodwasted_mobiledev/core/theme/app_colors.dart';
 import '../dashboard/mitra_dashboard_screen.dart';
-
-const _bg = Color(0xFFF8F6F2); // Off White
-const _primary = Color(0xFFA7C957); // Hijau Sage
-const _orange = Color(0xFFFFB07C); // Oranye Peach
-const _textDark = Color(0xFF2B3A28); // Dark Forest
-const _textSoft = Color(0xFF5A6856); // Muted Sage
 
 class MitraDisetujuiScreen extends StatefulWidget {
   final String? phoneNumber;
@@ -51,7 +46,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -70,7 +65,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                         width: 130,
                         height: 130,
                         decoration: BoxDecoration(
-                          color: _primary.withValues(alpha: 0.25),
+                          color: AppColors.primary.withValues(alpha: 0.25),
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
@@ -78,7 +73,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                           width: 95,
                           height: 95,
                           decoration: const BoxDecoration(
-                            color: _primary,
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -99,7 +94,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                       style: GoogleFonts.poppins(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: _textDark,
+                        color: AppColors.textDark,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -108,7 +103,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                       textAlign: TextAlign.center,
                       style: GoogleFonts.nunito(
                         fontSize: 15,
-                        color: _textSoft,
+                        color: AppColors.textSoft,
                         height: 1.4,
                       ),
                     ),
@@ -136,7 +131,7 @@ class _MitraDisetujuiScreenState extends State<MitraDisetujuiScreen>
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
+                    backgroundColor: AppColors.orange,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
