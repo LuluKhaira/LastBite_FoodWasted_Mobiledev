@@ -367,6 +367,37 @@ class ProdukMitraController extends Controller
                 } catch (\Throwable $e) {}
             }
 
+            // 4. Validasi aturan harga platform
+            $aturan = \App\Models\AturanHarga::aktif();
+            $hargaVal = (int) $produk->harga;
+            $hargaAsliVal = (int) $produk->harga_asli;
+            $isSedekah = ($produk->skema_harga === 'sedekah') || ($hargaVal === 0);
+
+            if ($hargaVal > $hargaAsliVal) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Harga jual tidak boleh lebih besar dari harga asli.',
+                ], 422);
+            }
+
+            if ($produk->tipe === Produk::TIPE_DIMAKAN && !$isSedekah) {
+                if ($aturan->min_harga > 0 && $hargaVal < $aturan->min_harga) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'Harga jual (Rp ' . number_format($hargaVal, 0, ',', '.') . ') di bawah harga minimal platform (Rp ' . number_format($aturan->min_harga, 0, ',', '.') . ').',
+                    ], 422);
+                }
+                if ($hargaAsliVal > 0) {
+                    $diskon = (($hargaAsliVal - $hargaVal) / $hargaAsliVal) * 100;
+                    if ($diskon > $aturan->max_diskon) {
+                        return response()->json([
+                            'ok'      => false,
+                            'message' => 'Diskon produk (' . round($diskon, 1) . '%) melebihi batas maksimal platform (' . $aturan->max_diskon . '%).',
+                        ], 422);
+                    }
+                }
+            }
+
             // Lolos semua validasi: set draf = false dan aktif = 1
             DB::table('produks')
                 ->where('id', $produk->id)

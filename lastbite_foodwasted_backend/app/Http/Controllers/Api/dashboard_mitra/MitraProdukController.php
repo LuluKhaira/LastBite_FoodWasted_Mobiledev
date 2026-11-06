@@ -84,6 +84,35 @@ class MitraProdukController extends Controller
 
         $terbit = $request->boolean('terbit');
 
+        // Validasi Aturan Harga Platform
+        $aturan = \App\Models\AturanHarga::aktif();
+        $hargaVal = $isSedekah ? 0 : (int) $data['harga'];
+        $hargaAsliVal = (int) $data['harga_asli'];
+
+        if ($hargaVal > $hargaAsliVal) {
+            throw ValidationException::withMessages([
+                'harga' => ['Harga jual tidak boleh lebih besar dari harga asli.'],
+            ]);
+        }
+
+        // Pengecualian: produk pakan/kompos dan produk skema sedekah (gratis/Rp 0)
+        // dikecualikan dari batas minimal harga platform dan batas maksimal diskon.
+        if ($data['tipe'] === 'dimakan' && !$isSedekah) {
+            if ($aturan->min_harga > 0 && $hargaVal < $aturan->min_harga) {
+                throw ValidationException::withMessages([
+                    'harga' => ['Harga minimal Rp ' . number_format($aturan->min_harga, 0, ',', '.') . '.'],
+                ]);
+            }
+            if ($hargaAsliVal > 0) {
+                $diskon = (($hargaAsliVal - $hargaVal) / $hargaAsliVal) * 100;
+                if ($diskon > $aturan->max_diskon) {
+                    throw ValidationException::withMessages([
+                        'harga' => ['Diskon maksimal ' . $aturan->max_diskon . '% (diskon saat ini ' . round($diskon, 1) . '%).'],
+                    ]);
+                }
+            }
+        }
+
         // Input dari Flutter dianggap waktu WIB bila tidak membawa offset zona waktu
         $kadaluarsa = ! empty($data['kadaluarsa'])
             ? Carbon::parse($data['kadaluarsa'], 'Asia/Jakarta')->setTimezone('Asia/Jakarta')

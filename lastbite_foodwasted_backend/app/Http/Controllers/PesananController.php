@@ -80,6 +80,10 @@ class PesananController extends Controller
             // --------------------------------------------------------------------------
 
             $isSedekah = ($produk->skema_harga === 'sedekah') || ((int)$harga === 0);
+            $aturan = \App\Models\AturanHarga::aktif();
+            $biayaLayanan = $isSedekah ? 0 : (int) $aturan->biaya_layanan;
+            $hargaSatuan = $isSedekah ? 0 : $harga;
+            $total = ($v['qty'] * $hargaSatuan) + $biayaLayanan;
 
             $pesanan = Pesanan::create([
                 'user_id'           => $r->user()->id,
@@ -94,9 +98,10 @@ class PesananController extends Controller
                 'gambar'            => $produk->gambar,
                 'metode'            => $isSedekah ? 'Sedekah (Gratis)' : $v['metode'],
                 'qty'               => $v['qty'],
-                'harga_satuan'      => $isSedekah ? 0 : $harga,
+                'harga_satuan'      => $hargaSatuan,
                 'harga_asli_satuan' => $asli,
-                'biaya_layanan'     => $isSedekah ? 0 : self::BIAYA_LAYANAN,
+                'biaya_layanan'     => $biayaLayanan,
+                'total'             => $total,
                 'co2'               => round($kgTot * self::CO2_PER_KG, 2),
                 'makanan'           => $kgTot,
                 'status'            => 'menunggu',

@@ -11,6 +11,10 @@ class AturanHarga extends Model
 
     public static function aktif(): self
     {
-        return static::firstOrCreate([]);
+        return static::firstOrCreate([], [
+            'max_diskon'    => 100,
+            'min_harga'     => 0,
+            'biaya_layanan' => 2000,
+        ]);
     }
 }

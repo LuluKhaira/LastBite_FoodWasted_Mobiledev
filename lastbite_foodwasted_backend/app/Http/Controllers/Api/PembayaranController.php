@@ -40,6 +40,10 @@ class PembayaranController extends Controller
         }
 
         $total = ($pesanan->qty * $pesanan->harga_satuan) + $pesanan->biaya_layanan;
+        if ((int) $pesanan->total !== (int) $total) {
+            $pesanan->total = $total;
+            $pesanan->save();
+        }
         if ($total <= 0) {
             $pesanan->status_bayar = 'lunas';
             $pesanan->save();

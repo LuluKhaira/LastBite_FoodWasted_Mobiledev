@@ -163,7 +163,33 @@ class ProdukController extends Controller
         }
 
         $skemaHarga = $request->skema_harga ?? (((int)$request->harga === 0) ? 'sedekah' : 'diskon');
-        $hargaFinal = ($skemaHarga === 'sedekah') ? 0 : (int)$request->harga;
+        $isSedekah = ($skemaHarga === 'sedekah') || ((int)$request->harga === 0);
+        $hargaFinal = $isSedekah ? 0 : (int)$request->harga;
+        $hargaAsliVal = (int)$request->harga_asli;
+
+        if ($hargaFinal > $hargaAsliVal) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'harga' => ['Harga jual tidak boleh lebih besar dari harga asli.'],
+            ]);
+        }
+
+        // Validasi Aturan Harga Platform
+        $aturan = \App\Models\AturanHarga::aktif();
+        if ($tipe === Produk::TIPE_DIMAKAN && !$isSedekah) {
+            if ($aturan->min_harga > 0 && $hargaFinal < $aturan->min_harga) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'harga' => ['Harga minimal Rp ' . number_format($aturan->min_harga, 0, ',', '.') . '.'],
+                ]);
+            }
+            if ($hargaAsliVal > 0) {
+                $diskon = (($hargaAsliVal - $hargaFinal) / $hargaAsliVal) * 100;
+                if ($diskon > $aturan->max_diskon) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'harga' => ['Diskon maksimal ' . $aturan->max_diskon . '% (diskon saat ini ' . round($diskon, 1) . '%).'],
+                    ]);
+                }
+            }
+        }
 
         $produk = Produk::create([
             'id_mitra' => $mitra->id_mitra,
@@ -205,6 +231,34 @@ class ProdukController extends Controller
         $produk = Produk::find($request->id);
         if (!$produk) {
             return response()->json(['message' => 'Produk tidak ditemukan'], 404);
+        }
+
+        $hargaVal = (int) $request->harga;
+        $hargaAsliVal = (int) $request->harga_asli;
+        $isSedekah = ($produk->skema_harga === 'sedekah') || ($hargaVal === 0);
+
+        if ($hargaVal > $hargaAsliVal) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'harga' => ['Harga jual tidak boleh lebih besar dari harga asli.'],
+            ]);
+        }
+
+        // Validasi Aturan Harga Platform
+        $aturan = \App\Models\AturanHarga::aktif();
+        if ($produk->tipe === Produk::TIPE_DIMAKAN && !$isSedekah) {
+            if ($aturan->min_harga > 0 && $hargaVal < $aturan->min_harga) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'harga' => ['Harga minimal Rp ' . number_format($aturan->min_harga, 0, ',', '.') . '.'],
+                ]);
+            }
+            if ($hargaAsliVal > 0) {
+                $diskon = (($hargaAsliVal - $hargaVal) / $hargaAsliVal) * 100;
+                if ($diskon > $aturan->max_diskon) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'harga' => ['Diskon maksimal ' . $aturan->max_diskon . '% (diskon saat ini ' . round($diskon, 1) . '%).'],
+                    ]);
+                }
+            }
         }
 
         $bersedia = $request->has('bersedia_dialihkan')

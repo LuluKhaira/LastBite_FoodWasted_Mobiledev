@@ -17,11 +17,18 @@ class Pesanan extends Model
     protected $fillable = [
         'kode', 'user_id', 'produk_id', 'id_mitra',
         'penjual', 'inisial', 'alamat', 'produk', 'skema_harga', 'gambar',
-        'metode', 'qty', 'harga_satuan', 'harga_asli_satuan', 'biaya_layanan',
+        'metode', 'qty', 'harga_satuan', 'harga_asli_satuan', 'biaya_layanan', 'total',
         'co2', 'makanan', 'status', 'rating', 'catatan',
         'midtrans_order_id', 'status_bayar', 'nilai_sedekah',
         'kode_ambil', 'estimasi_menit', 'siap_at', 'batas_ambil', 'diambil_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Pesanan $p) {
+            $p->attributes['total'] = (int) (($p->qty * $p->harga_satuan) + $p->biaya_layanan);
+        });
+    }
 
     protected $casts = [
         'co2' => 'float', 'makanan' => 'float', 'qty' => 'integer', 'rating' => 'integer',

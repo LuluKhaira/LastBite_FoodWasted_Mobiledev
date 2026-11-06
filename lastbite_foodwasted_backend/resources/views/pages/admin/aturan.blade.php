@@ -28,7 +28,7 @@
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-4 pr-12 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                     <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[#4E7554]">%</span>
                 </div>
-                <p class="mt-2 text-xs text-[#4E7554]">Produk dengan diskon di atas batas ini ditandai <b class="text-red-500">Anomali Harga</b>. Isi <b>100</b> jika produk gratis diperbolehkan.</p>
+                <p class="mt-2 text-xs text-[#4E7554]">Produk dengan diskon di atas batas ini ditolak atau ditandai anomali. Isi <b>100</b> jika produk gratis diperbolehkan.</p>
             </div>
 
             {{-- Batas Minimal Harga --}}
@@ -39,7 +39,7 @@
                     <input type="number" name="min_harga" value="{{ old('min_harga', $aturan->min_harga ?? 0) }}" min="0" step="500"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] py-3 pl-12 pr-4 text-sm font-bold text-[#2F5D34] focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                 </div>
-                <p class="mt-2 text-xs text-[#4E7554]">Harga jual di bawah nilai ini ditandai anomali. Produk gratis (Rp 0) selalu diperbolehkan. Isi 0 untuk menonaktifkan.</p>
+                <p class="mt-2 text-xs text-[#4E7554]">Harga jual produk konsumsi berbayar tidak boleh di bawah nilai ini. Isi 0 untuk menonaktifkan.</p>
             </div>
 
             {{-- Biaya Layanan --}}

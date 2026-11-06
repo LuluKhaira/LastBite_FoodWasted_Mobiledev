@@ -59,6 +59,10 @@ class PesananController extends Controller
             $mitra   = $produk->mitra;
             $makanan = round($produk->berat_kg * $data['qty'], 2);
             $isSedekah = ($produk->skema_harga === 'sedekah') || ((int)$produk->harga === 0);
+            $aturan = \App\Models\AturanHarga::aktif();
+            $biayaLayanan = $isSedekah ? 0 : (int) $aturan->biaya_layanan;
+            $hargaSatuan = $isSedekah ? 0 : (int) $produk->harga;
+            $total = ($data['qty'] * $hargaSatuan) + $biayaLayanan;
 
             return Pesanan::create([
                 'kode'              => $this->buatKode(),
@@ -73,9 +77,10 @@ class PesananController extends Controller
                 'nilai_sedekah'     => $isSedekah ? (($produk->harga_asli ?? 0) * $data['qty']) : 0,
                 'gambar'            => $produk->gambar,
                 'qty'               => $data['qty'],
-                'harga_satuan'      => $isSedekah ? 0 : $produk->harga,
+                'harga_satuan'      => $hargaSatuan,
                 'harga_asli_satuan' => $produk->harga_asli ?? $produk->harga,
-                'biaya_layanan'     => $isSedekah ? 0 : self::BIAYA_LAYANAN,
+                'biaya_layanan'     => $biayaLayanan,
+                'total'             => $total,
                 'metode'            => $isSedekah ? 'Sedekah (Gratis)' : ($data['metode'] ?? 'QRIS'),
                 'status'            => 'menunggu',
                 'status_bayar'      => $isSedekah ? 'lunas' : 'belum',
