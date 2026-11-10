@@ -24,9 +24,20 @@ class Produk extends Model
     public const STATUS_PENGALIHAN_DIALIHKAN = 'dialihkan';
     public const STATUS_PENGALIHAN_DIBUANG   = 'dibuang';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'id_mitra', 'kategori_id', 'nama', 'deskripsi', 'tipe', 'kategori',
+        'kategori_asli_id', 'skema_harga', 'kategori_asli', 'target_kategori_pengalihan',
+        'target_kategori_id', 'bersedia_dialihkan', 'perkiraan_berat_per_paket',
+        'status_pengalihan', 'berat_aktual', 'produk_surplus_id', 'dikonfirmasi_pada',
+        'catatan_pengalihan', 'dialihkan_pada', 'gambar', 'tag', 'harga', 'harga_asli',
+        'satuan', 'stok', 'kuota', 'berat_kg', 'waktu_mulai', 'waktu_selesai',
+        'kadaluarsa', 'rating', 'aktif', 'draf',
+    ];
 
     protected $casts = [
+        'kategori_id'               => 'integer',
+        'kategori_asli_id'          => 'integer',
+        'target_kategori_id'        => 'integer',
         'aktif'                     => 'boolean',
         'draf'                      => 'boolean',
         'rating'                    => 'float',
@@ -40,6 +51,41 @@ class Produk extends Model
         'berat_aktual'              => 'float',
         'dikonfirmasi_pada'         => 'datetime',
     ];
+
+    public function kategori()
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_id');
+    }
+
+    public function kategoriAsli()
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_asli_id');
+    }
+
+    public function targetKategori()
+    {
+        return $this->belongsTo(Kategori::class, 'target_kategori_id');
+    }
+
+    public function getKategoriAttribute()
+    {
+        return $this->getRelationValue('kategori')?->nama ?? ($this->attributes['kategori'] ?? null);
+    }
+
+    public function getKategoriAsliAttribute()
+    {
+        return $this->getRelationValue('kategoriAsli')?->nama ?? ($this->attributes['kategori_asli'] ?? null);
+    }
+
+    public function getTargetKategoriPengalihanAttribute()
+    {
+        return $this->getRelationValue('targetKategori')?->nama ?? ($this->attributes['target_kategori_pengalihan'] ?? null);
+    }
+
+    public function getTipeAttribute()
+    {
+        return $this->getRelationValue('kategori')?->tipe ?? ($this->attributes['tipe'] ?? null);
+    }
 
     public function mitra()
     {
@@ -79,13 +125,18 @@ class Produk extends Model
         $maxHarga = (int) ($kategori->harga_per_kg ?? 0);
         $hargaFinal = ($hargaPerKg !== null) ? min($maxHarga, max(0, $hargaPerKg)) : $maxHarga;
 
+        $kategoriAsliNama = $this->kategoriAsli?->nama ?? $this->kategori?->nama ?? $this->kategori_asli ?? 'Konsumsi Manusia';
+        $kategoriAsliId = $this->kategori_asli_id ?? $this->kategori_id;
+
         $surplus = self::create([
             'id_mitra'                   => $this->id_mitra,
             'nama'                       => 'Surplus ' . $kategori->nama . ' - ' . $this->nama,
             'deskripsi'                  => 'Bahan surplus dialihkan dari ' . $this->nama . ' (' . $beratAktual . ' kg). ' . ($catatan ?? 'Kondisi telah diperiksa mitra.'),
             'tipe'                       => $kategori->tipe,
             'kategori'                   => $kategori->nama,
-            'kategori_asli'              => $this->kategori_asli ?? 'Konsumsi Manusia',
+            'kategori_id'                => $kategori->id,
+            'kategori_asli'              => $kategoriAsliNama,
+            'kategori_asli_id'           => $kategoriAsliId,
             'gambar'                     => $this->gambar,
             'harga'                      => (int) $hargaFinal,
             'harga_asli'                 => (int) $hargaFinal,
@@ -107,6 +158,7 @@ class Produk extends Model
             'status_pengalihan'          => self::STATUS_PENGALIHAN_DIALIHKAN,
             'berat_aktual'               => $beratAktual,
             'target_kategori_pengalihan' => $kategori->nama,
+            'target_kategori_id'         => $kategori->id,
             'produk_surplus_id'          => $surplus->id,
             'dialihkan_pada'             => now('Asia/Jakarta'),
             'dikonfirmasi_pada'          => now('Asia/Jakarta'),
@@ -114,6 +166,43 @@ class Produk extends Model
         ]);
 
         return $surplus;
+    }
+
+    /**
+     * Alihkan produk ini ke kategori tujuan secara manual.
+     */
+    public function alihkan(?string $kategoriTujuan = null, ?string $tipeTujuan = null): bool
+    {
+        if ($this->dialihkan_pada !== null) {
+            return false;
+        }
+
+        $kategoriTujuanNama = $kategoriTujuan ?? $this->target_kategori_pengalihan;
+        $katModel = null;
+        if ($kategoriTujuanNama) {
+            $katModel = Kategori::aktif()->where('nama', $kategoriTujuanNama)->first();
+        }
+        if (!$katModel) {
+            $tujuan = PengalihanKategori::cariTujuan($this->kategori);
+            $kategoriTujuanNama = $tujuan['kategori'];
+            $katModel = Kategori::aktif()->where('nama', $kategoriTujuanNama)->first();
+        }
+
+        $tipe = $tipeTujuan ?? $katModel?->tipe ?? self::TIPE_PAKAN;
+        $kategoriId = $katModel?->id;
+
+        $this->update([
+            'kategori_asli'      => $this->kategoriAsli?->nama ?? $this->kategori,
+            'kategori_asli_id'   => $this->kategori_asli_id ?? $this->kategori_id,
+            'kategori'           => $katModel?->nama ?? $kategoriTujuanNama,
+            'kategori_id'        => $kategoriId,
+            'target_kategori_id' => $kategoriId,
+            'tipe'               => $tipe,
+            'dialihkan_pada'     => now('Asia/Jakarta'),
+            'status_pengalihan'  => self::STATUS_PENGALIHAN_DIALIHKAN,
+        ]);
+
+        return true;
     }
 
     public function getGambarUrlAttribute(): ?string

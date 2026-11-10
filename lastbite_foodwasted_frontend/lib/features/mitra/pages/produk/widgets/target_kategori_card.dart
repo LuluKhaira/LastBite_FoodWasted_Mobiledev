@@ -51,7 +51,7 @@ class TargetKategoriCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('TARGET & KATEGORI', style: AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft)),
+              Text('KATEGORI UTAMA', style: AppColors.heading(fontSize: 12, color: WarnaLokal.textSoft)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(

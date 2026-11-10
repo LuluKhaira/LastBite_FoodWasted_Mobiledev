@@ -69,7 +69,7 @@ class ProdukMitraController extends Controller
         }
 
         // 2. Ambil produk berdasarkan id_mitra
-        $produks = DB::table('produks')
+        $produks = Produk::with(['kategori', 'kategoriAsli', 'targetKategori'])
             ->where('id_mitra', $mitra->id_mitra)
             ->orderBy('id', 'desc')
             ->get();
@@ -158,7 +158,8 @@ class ProdukMitraController extends Controller
             return response()->json(['success' => false, 'message' => 'Mitra tidak ditemukan'], 404);
         }
 
-        $items = Produk::where('id_mitra', $mitra->id_mitra)
+        $items = Produk::with(['kategori', 'kategoriAsli', 'targetKategori', 'mitra'])
+            ->where('id_mitra', $mitra->id_mitra)
             ->where('status_pengalihan', Produk::STATUS_PENGALIHAN_MENUNGGU)
             ->orderByDesc('id')
             ->get()

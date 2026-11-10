@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kategori;
 use App\Models\PengalihanKategori;
 use App\Models\Produk;
 use Illuminate\Http\Request;
@@ -11,7 +12,7 @@ class ProdukController extends Controller
 {
     public function index(Request $r)
     {
-        $q = Produk::with('mitra')->where('aktif', true);
+        $q = Produk::with(['mitra', 'kategori', 'kategoriAsli', 'targetKategori'])->where('aktif', true);
 
         // Produk konsumsi manusia yang sudah lewat kadaluarsa tidak ditampilkan.
         $q->where(function ($w) {
@@ -79,7 +80,7 @@ class ProdukController extends Controller
 
     public function show(Produk $produk)
     {
-        return response()->json(['data' => $produk->load('mitra')->toApi()]);
+        return response()->json(['data' => $produk->load(['mitra', 'kategori', 'kategoriAsli', 'targetKategori'])->toApi()]);
     }
 
     /**
@@ -155,11 +156,26 @@ class ProdukController extends Controller
             $gambarPath = 'produk/' . $namaFile;
         }
 
-        // Tipe produk harus salah satu: dimakan / pakan / kompos.
-        // Kalau yang terkirim 'ternak', ambil tipe dari kategorinya.
-        $tipe = $request->tipe ?? Produk::TIPE_DIMAKAN;
-        if ($tipe === 'ternak') {
-            $tipe = PengalihanKategori::tipeUntuk($request->kategori) ?? Produk::TIPE_PAKAN;
+        $kategoriModel = Kategori::aktif()->where('nama', $request->kategori)->first();
+        if (!$kategoriModel) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'kategori' => ['Kategori produk tidak ditemukan atau sedang nonaktif.'],
+            ]);
+        }
+
+        $tipe = $kategoriModel->tipe;
+
+        $targetKategoriId = null;
+        $targetKategoriNama = null;
+        if ($tipe === Produk::TIPE_DIMAKAN) {
+            if ($request->filled('target_kategori_pengalihan')) {
+                $targetKat = Kategori::aktif()->where('nama', $request->target_kategori_pengalihan)->first();
+                $targetKategoriId = $targetKat?->id ?? $kategoriModel->tujuan_id;
+                $targetKategoriNama = $targetKat?->nama ?? $kategoriModel->tujuan?->nama;
+            } else {
+                $targetKategoriId = $kategoriModel->tujuan_id;
+                $targetKategoriNama = $kategoriModel->tujuan?->nama;
+            }
         }
 
         $skemaHarga = $request->skema_harga ?? (((int)$request->harga === 0) ? 'sedekah' : 'diskon');
@@ -192,22 +208,26 @@ class ProdukController extends Controller
         }
 
         $produk = Produk::create([
-            'id_mitra' => $mitra->id_mitra,
-            'nama' => $request->nama,
-            'deskripsi' => $request->deskripsi ?? '-',
-            'tipe' => $tipe,
-            'kategori' => $request->kategori,
-            'skema_harga' => $skemaHarga,
-            'gambar' => $gambarPath,
-            'harga' => $hargaFinal,
-            'harga_asli' => $request->harga_asli,
-            'stok' => $request->stok,
-            'kuota' => $request->kuota ?? $request->stok,
-            'waktu_mulai' => $request->waktu_mulai ?? '00:00',
-            'waktu_selesai' => $request->waktu_selesai ?? '23:59',
-            'aktif' => $request->terbit ?? 1,
-            'kadaluarsa' => $request->kadaluarsa,
-            'target_kategori_pengalihan' => $request->target_kategori_pengalihan,
+            'id_mitra'                   => $mitra->id_mitra,
+            'kategori_id'                => $kategoriModel->id,
+            'nama'                       => $request->nama,
+            'deskripsi'                  => $request->deskripsi ?? '-',
+            'tipe'                       => $tipe,
+            'kategori'                   => $kategoriModel->nama,
+            'kategori_asli'              => $kategoriModel->nama,
+            'kategori_asli_id'           => $kategoriModel->id,
+            'skema_harga'                => $skemaHarga,
+            'gambar'                     => $gambarPath,
+            'harga'                      => $hargaFinal,
+            'harga_asli'                 => $request->harga_asli,
+            'stok'                       => $request->stok,
+            'kuota'                      => $request->kuota ?? $request->stok,
+            'waktu_mulai'                => $request->waktu_mulai ?? '00:00',
+            'waktu_selesai'              => $request->waktu_selesai ?? '23:59',
+            'aktif'                      => $request->terbit ?? 1,
+            'kadaluarsa'                 => $request->kadaluarsa,
+            'target_kategori_pengalihan' => $targetKategoriNama,
+            'target_kategori_id'         => $targetKategoriId,
         ]);
 
         return response()->json(['message' => 'Produk berhasil ditambahkan', 'data' => $produk], 201);
@@ -261,11 +281,43 @@ class ProdukController extends Controller
             }
         }
 
+        $kategoriId = $produk->kategori_id;
+        $kategoriNama = $produk->kategori;
+        $tipe = $produk->tipe;
+        if ($request->filled('kategori')) {
+            $kategoriModel = Kategori::aktif()->where('nama', $request->kategori)->first();
+            if (!$kategoriModel) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'kategori' => ['Kategori produk tidak ditemukan atau sedang nonaktif.'],
+                ]);
+            }
+            $kategoriId = $kategoriModel->id;
+            $kategoriNama = $kategoriModel->nama;
+            $tipe = $kategoriModel->tipe;
+        }
+
         $bersedia = $request->has('bersedia_dialihkan')
             ? $request->boolean('bersedia_dialihkan')
             : $produk->bersedia_dialihkan;
 
+        $targetKategoriId = null;
+        $targetKategoriNama = null;
+        if ($bersedia) {
+            $targetInput = $request->target_kategori_pengalihan ?? $produk->target_kategori_pengalihan;
+            if ($targetInput) {
+                $targetModel = Kategori::aktif()
+                    ->where('nama', $targetInput)
+                    ->whereIn('tipe', ['pakan', 'kompos'])
+                    ->first();
+                $targetKategoriId = $targetModel?->id ?? $produk->target_kategori_id;
+                $targetKategoriNama = $targetModel?->nama ?? $targetInput;
+            }
+        }
+
         $produk->update([
+            'kategori_id'                => $kategoriId,
+            'kategori'                   => $kategoriNama,
+            'tipe'                       => $tipe,
             'nama'                       => $request->nama,
             'deskripsi'                  => $request->deskripsi ?? $produk->deskripsi,
             'harga_asli'                 => $request->harga_asli,
@@ -273,9 +325,8 @@ class ProdukController extends Controller
             'stok'                       => $request->stok,
             'kadaluarsa'                 => $request->kadaluarsa ?? $produk->kadaluarsa,
             'bersedia_dialihkan'         => $bersedia,
-            'target_kategori_pengalihan' => $bersedia
-                ? ($request->target_kategori_pengalihan ?? $produk->target_kategori_pengalihan)
-                : null,
+            'target_kategori_pengalihan' => $targetKategoriNama,
+            'target_kategori_id'         => $targetKategoriId,
             'perkiraan_berat_per_paket'  => $bersedia
                 ? ($request->has('perkiraan_berat_per_paket') ? (float) $request->perkiraan_berat_per_paket : $produk->perkiraan_berat_per_paket)
                 : null,

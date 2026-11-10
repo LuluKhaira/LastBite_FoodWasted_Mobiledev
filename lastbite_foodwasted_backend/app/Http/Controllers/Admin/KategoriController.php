@@ -20,11 +20,20 @@ class KategoriController extends Controller
             ->orderBy('nama')
             ->get();
 
-        // Jumlah produk per kategori (tanpa relasi, produks.kategori berisi nama)
-        $jumlahProduk = DB::table('produks')
+        // Jumlah produk per kategori
+        $jumlahProdukById = DB::table('produks')
+            ->select('kategori_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('kategori_id')
+            ->pluck('total', 'kategori_id')
+            ->all();
+
+        $jumlahProdukByNama = DB::table('produks')
             ->select('kategori', DB::raw('COUNT(*) as total'))
             ->groupBy('kategori')
-            ->pluck('total', 'kategori');
+            ->pluck('total', 'kategori')
+            ->all();
+
+        $jumlahProduk = array_merge($jumlahProdukByNama, $jumlahProdukById);
 
         $opsiTujuan = Kategori::aktif()
             ->whereIn('tipe', ['pakan', 'kompos'])
@@ -85,22 +94,48 @@ class KategoriController extends Controller
             : 0;
 
         DB::transaction(function () use ($kategori, $data, $lama, $baru, $hargaPerKg) {
-            // Nama berubah: samakan semua produk yang memakai nama lama
-            if ($lama !== $baru) {
-                foreach (['kategori', 'kategori_asli', 'target_kategori_pengalihan'] as $kolom) {
-                    DB::table('produks')->where($kolom, $lama)->update([$kolom => $baru]);
-                }
-            }
-
             $kategori->update([
                 'nama'         => $baru,
                 'urutan'       => $data['urutan'] ?? $kategori->urutan,
                 'tujuan_id'    => $kategori->tipe === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
                 'harga_per_kg' => $hargaPerKg,
             ]);
+
+            // Tetap perbarui kolom teks lama dengan satu query UPDATE per kolom selama masa transisi
+            if ($lama !== $baru) {
+                DB::table('produks')->where('kategori_id', $kategori->id)->update(['kategori' => $baru]);
+                DB::table('produks')->where('kategori_asli_id', $kategori->id)->update(['kategori_asli' => $baru]);
+                DB::table('produks')->where('target_kategori_id', $kategori->id)->update(['target_kategori_pengalihan' => $baru]);
+            }
         });
 
         return back()->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function destroy($id)
+    {
+        $kategori = Kategori::findOrFail($id);
+
+        $terpakaiProduk = DB::table('produks')
+            ->where('kategori_id', $kategori->id)
+            ->orWhere('kategori_asli_id', $kategori->id)
+            ->orWhere('target_kategori_id', $kategori->id)
+            ->exists();
+
+        if ($terpakaiProduk) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih digunakan oleh produk.");
+        }
+
+        if (Kategori::where('tujuan_id', $kategori->id)->exists()) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih dijadikan tujuan pengalihan oleh kategori lain.");
+        }
+
+        try {
+            $kategori->delete();
+            return back()->with('success', "Kategori \"{$kategori->nama}\" berhasil dihapus.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih memiliki keterkaitan data.");
+        }
     }
 
     public function toggle($id)

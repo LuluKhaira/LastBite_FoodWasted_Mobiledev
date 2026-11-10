@@ -161,42 +161,69 @@ class MitraProdukController extends Controller
         }
 
         $hargaFinal = $isSedekah ? 0 : (int) $data['harga'];
-        $kategoriAsli = $request->input('kategori_asli')
-            ?? ($data['tipe'] === 'dimakan' ? 'Konsumsi Manusia' : 'Pakan / Kompos');
+        // Terjemahkan nama kategori ke kategori_id
+        $kategoriModel = Kategori::aktif()->where('nama', $data['kategori'])->first();
+        if (! $kategoriModel) {
+            throw ValidationException::withMessages([
+                'kategori' => ['Kategori produk tidak ditemukan atau sedang nonaktif.'],
+            ]);
+        }
+
+        $tipeProduk = $kategoriModel->tipe;
+        $isBersedia = ($tipeProduk === 'dimakan') && $request->boolean('bersedia_dialihkan');
+
+        $targetKategoriId = null;
+        $targetKategoriNama = null;
+        if ($isBersedia) {
+            if (!empty($data['target_kategori_pengalihan'])) {
+                $targetModel = Kategori::aktif()
+                    ->where('nama', $data['target_kategori_pengalihan'])
+                    ->whereIn('tipe', ['pakan', 'kompos'])
+                    ->first();
+                if ($targetModel) {
+                    $targetKategoriId = $targetModel->id;
+                    $targetKategoriNama = $targetModel->nama;
+                }
+            }
+            if (!$targetKategoriId) {
+                $targetKategoriId = $kategoriModel->tujuan_id;
+                $targetKategoriNama = $kategoriModel->tujuan?->nama ?? Produk::KATEGORI_EXPIRED;
+            }
+        }
+
+        $kategoriAsliNama = $kategoriModel->nama;
+        $kategoriAsliId   = $kategoriModel->id;
 
         // SIMPAN KE DATABASE
         $id = DB::table('produks')->insertGetId([
-            'id_mitra'      => $mitra->id_mitra,
-            'nama'          => trim($data['nama']),
-            'deskripsi'     => $data['deskripsi'] ?? null,
-            'tipe'          => $data['tipe'],
-            'kategori'      => $data['kategori'],
-            'kategori_asli' => $kategoriAsli,
-            'skema_harga'   => $skemaHarga,
-            'gambar'        => $gambar,
-            'harga'         => $hargaFinal,
-            'harga_asli'    => (int) $data['harga_asli'],
-            'satuan'        => '/paket',
-            'stok'          => (int) $data['stok'],
-            'kuota'         => (int) $data['kuota'],
-            'waktu_mulai'   => $data['waktu_mulai'] . ':00',
-            'waktu_selesai' => $data['waktu_selesai'] . ':00',
-            'kadaluarsa'    => $kadaluarsa?->format('Y-m-d H:i:s'),
+            'id_mitra'                   => $mitra->id_mitra,
+            'kategori_id'                => $kategoriModel->id,
+            'nama'                       => trim($data['nama']),
+            'deskripsi'                  => $data['deskripsi'] ?? null,
+            'tipe'                       => $tipeProduk,
+            'kategori'                   => $kategoriModel->nama,
+            'kategori_asli'              => $kategoriAsliNama,
+            'kategori_asli_id'           => $kategoriAsliId,
+            'skema_harga'                => $skemaHarga,
+            'gambar'                     => $gambar,
+            'harga'                      => $hargaFinal,
+            'harga_asli'                 => (int) $data['harga_asli'],
+            'satuan'                     => '/paket',
+            'stok'                       => (int) $data['stok'],
+            'kuota'                      => (int) $data['kuota'],
+            'waktu_mulai'                => $data['waktu_mulai'] . ':00',
+            'waktu_selesai'              => $data['waktu_selesai'] . ':00',
+            'kadaluarsa'                 => $kadaluarsa?->format('Y-m-d H:i:s'),
             // Konfigurasi pengalihan produk (hanya untuk produk konsumsi manusia)
-            'bersedia_dialihkan'        => $data['tipe'] === 'dimakan' ? $request->boolean('bersedia_dialihkan') : false,
-            'target_kategori_pengalihan' => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
-                ? ($data['target_kategori_pengalihan'] ?? null)
-                : null,
-            'perkiraan_berat_per_paket'  => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
-                ? (float) ($data['perkiraan_berat_per_paket'] ?? 0)
-                : null,
-            'status_pengalihan'         => ($data['tipe'] === 'dimakan' && $request->boolean('bersedia_dialihkan'))
-                ? \App\Models\Produk::STATUS_PENGALIHAN_AKAN
-                : \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
-            'aktif'         => $terbit ? 1 : 0,
-            'draf'          => ! $terbit,
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'bersedia_dialihkan'         => $isBersedia,
+            'target_kategori_pengalihan' => $targetKategoriNama,
+            'target_kategori_id'         => $targetKategoriId,
+            'perkiraan_berat_per_paket'  => $isBersedia ? (float) ($data['perkiraan_berat_per_paket'] ?? 0) : null,
+            'status_pengalihan'          => $isBersedia ? \App\Models\Produk::STATUS_PENGALIHAN_AKAN : \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
+            'aktif'                      => $terbit ? 1 : 0,
+            'draf'                       => ! $terbit,
+            'created_at'                 => now(),
+            'updated_at'                 => now(),
         ]);
 
         return response()->json([
@@ -215,7 +242,7 @@ class MitraProdukController extends Controller
             return response()->json(['success' => false, 'message' => 'Data mitra tidak ditemukan.'], 404);
         }
 
-        $p = DB::table('produks')->where('id_mitra', $mitra->id_mitra)->orderByDesc('id')->first();
+        $p = \App\Models\Produk::with('kategori')->where('id_mitra', $mitra->id_mitra)->orderByDesc('id')->first();
 
         if (! $p) {
             return response()->json(['success' => true, 'data' => null]);

@@ -48,6 +48,7 @@ Route::middleware(AdminAuth::class)->group(function () {
     Route::get('/admin/kategori', [KategoriController::class, 'index'])->name('admin.kategori');
     Route::post('/admin/kategori', [KategoriController::class, 'store'])->name('admin.kategori.simpan');
     Route::put('/admin/kategori/{id}', [KategoriController::class, 'update'])->name('admin.kategori.update');
+    Route::delete('/admin/kategori/{id}', [KategoriController::class, 'destroy'])->name('admin.kategori.hapus');
     Route::post('/admin/kategori/{id}/toggle', [KategoriController::class, 'toggle'])->name('admin.kategori.toggle');
 
     // Logout
