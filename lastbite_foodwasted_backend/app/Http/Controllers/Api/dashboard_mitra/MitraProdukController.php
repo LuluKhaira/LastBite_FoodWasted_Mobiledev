@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\dashboard_mitra;
 use App\Http\Controllers\Controller;
 use App\Models\Kategori;
 use App\Models\Mitra;
+use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -219,7 +220,7 @@ class MitraProdukController extends Controller
             'target_kategori_pengalihan' => $targetKategoriNama,
             'target_kategori_id'         => $targetKategoriId,
             'perkiraan_berat_per_paket'  => $isBersedia ? (float) ($data['perkiraan_berat_per_paket'] ?? 0) : null,
-            'status_pengalihan'          => $isBersedia ? \App\Models\Produk::STATUS_PENGALIHAN_AKAN : \App\Models\Produk::STATUS_PENGALIHAN_TIDAK,
+            'status_pengalihan'          => $isBersedia ? Produk::STATUS_PENGALIHAN_AKAN : Produk::STATUS_PENGALIHAN_TIDAK,
             'aktif'                      => $terbit ? 1 : 0,
             'draf'                       => ! $terbit,
             'created_at'                 => now(),
@@ -242,7 +243,7 @@ class MitraProdukController extends Controller
             return response()->json(['success' => false, 'message' => 'Data mitra tidak ditemukan.'], 404);
         }
 
-        $p = \App\Models\Produk::with('kategori')->where('id_mitra', $mitra->id_mitra)->orderByDesc('id')->first();
+        $p = Produk::with('kategori')->where('id_mitra', $mitra->id_mitra)->orderByDesc('id')->first();
 
         if (! $p) {
             return response()->json(['success' => true, 'data' => null]);
@@ -320,6 +321,11 @@ class MitraProdukController extends Controller
         return $nama ?: self::KATEGORI;
     }
 
+    /**
+     * Cari mitra dari nomor WhatsApp yang dikirim Flutter.
+     * Format nomor diseragamkan (08..., 628..., +628...) supaya tetap cocok
+     * dengan nomor yang tersimpan di tabel mitras.
+     */
     private function mitraDariRequest(Request $request): ?Mitra
     {
         $raw = $request->phone ?? $request->phoneNumber;
@@ -327,12 +333,22 @@ class MitraProdukController extends Controller
             return null;
         }
 
-        $nomorBersih = preg_replace('/[^0-9]/', '', $raw);
+        // Ambil angka saja, lalu buang awalan 62 atau 0 supaya semua format jadi sama
+        $angka = preg_replace('/[^0-9]/', '', $raw);
+        if (str_starts_with($angka, '62')) {
+            $angka = substr($angka, 2);
+        }
+        $inti = ltrim($angka, '0');
 
-        return Mitra::where('no_whatsapp', $raw)
-            ->orWhere('no_whatsapp', $nomorBersih)
-            ->orWhere('no_whatsapp', '0' . ltrim($nomorBersih, '0'))
-            ->orWhere('no_whatsapp', '62' . ltrim($nomorBersih, '0'))
-            ->first();
+        if ($inti === '') {
+            return null;
+        }
+
+        return Mitra::whereIn('no_whatsapp', [
+            '0' . $inti,
+            '62' . $inti,
+            '+62' . $inti,
+            $inti,
+        ])->first();
     }
 }

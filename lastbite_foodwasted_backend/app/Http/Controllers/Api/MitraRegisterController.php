@@ -44,22 +44,39 @@ class MitraRegisterController extends Controller
         $dbPhone = $this->formatToLocal($request->phone);
         $fonntePhone = $this->formatToInternational($request->phone);
 
-        $otp = sprintf("%06d", rand(0, 999999));
+        $otp = sprintf("%06d", random_int(0, 999999));
 
         Mitra::updateOrCreate(
             ['no_whatsapp' => $dbPhone],
             ['otp' => $otp, 'status_verifikasi' => 'pending']
         );
 
-        $fonnteToken = env('FONNTE_TOKEN');
         try {
-            Http::withHeaders(['Authorization' => $fonnteToken])->post('https://api.fonnte.com/send', [
-                'target' => $fonntePhone,
-                'message' => "Kode verifikasi LastBite Anda adalah: *{$otp}*.\n\nJangan berikan kode ini kepada siapa pun.",
-            ]);
+            $res = Http::withHeaders(['Authorization' => config('services.fonnte.token')])
+                ->asForm()->timeout(15)
+                ->post('https://api.fonnte.com/send', [
+                    'target'  => $fonntePhone,
+                    'message' => "Kode verifikasi LastBite Anda adalah: *{$otp}*.\n\nJangan berikan kode ini kepada siapa pun.",
+                ]);
+
+            $body = $res->json();
+
+            if (! $res->successful() || ($body['status'] ?? false) !== true) {
+                Log::warning('Fonnte gagal kirim OTP mitra', [
+                    'phone' => $fonntePhone,
+                    'http' => $res->status(),
+                    'response' => $body ?? $res->body(),
+                ]);
+                $alasan = is_array($body) ? ($body['reason'] ?? json_encode($body)) : 'HTTP ' . $res->status();
+                return response()->json([
+                    'success' => false,
+                    'message' => config('app.debug') ? "Gagal kirim WhatsApp: {$alasan}" : 'Gagal kirim WhatsApp',
+                ], 502);
+            }
 
             return response()->json(['success' => true, 'message' => 'OTP terkirim']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('Fonnte error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal kirim WhatsApp'], 500);
         }
     }
