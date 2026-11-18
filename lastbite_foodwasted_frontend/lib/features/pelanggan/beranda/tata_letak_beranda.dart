@@ -6,9 +6,12 @@ import '../../../core/tema/tema_lb.dart';
 import 'model_bahan.dart';
 import 'model_toko.dart';
 import 'widgets/header_beranda.dart';
-import 'widgets/baris_lokasi.dart';
 import 'widgets/bilah_pencarian.dart';
-import 'widgets/banner_misi.dart';
+import 'widgets/baris_alamat_pengguna.dart';
+import 'widgets/sheet_pilih_lokasi.dart';
+import 'widgets/baris_filter_cepat.dart';
+import 'widgets/carousel_promo_beranda.dart';
+import 'widgets/baris_kategori_pelanggan.dart';
 import 'widgets/toggle_tipe.dart';
 import 'widgets/judul_seksi.dart';
 import 'widgets/kartu_paket.dart';
@@ -52,10 +55,18 @@ class BerandaLayout extends StatefulWidget {
 }
 
 class _BerandaLayoutState extends State<BerandaLayout> {
-  // Animasi masuk besar hanya sekali per sesi aplikasi, supaya saat pindah
-  // mode (dimakan <-> ternak) halaman tidak "reset" dari awal.
+  // Animasi masuk besar hanya sekali per sesi aplikasi
   static bool _sudahMasuk = false;
   late final bool _animasi;
+
+  // Status alamat lokasi pengguna (default: Batam Center)
+  String _lokasiTeks = 'Batam Center • Jl. Ahmad Yani';
+
+  // Status saringan cepat & kategori pelanggan
+  String _selectedKategori = 'Semua';
+  bool _filterTerdekat = false;
+  bool _filterRating = false;
+  bool _filterDiskon = false;
 
   @override
   void initState() {
@@ -64,8 +75,107 @@ class _BerandaLayoutState extends State<BerandaLayout> {
     _sudahMasuk = true;
   }
 
+  void _resetFilter() {
+    setState(() {
+      _selectedKategori = 'Semua';
+      _filterTerdekat = false;
+      _filterRating = false;
+      _filterDiskon = false;
+    });
+    widget.onRetry?.call();
+  }
+
+  void _bukaDialogUbahLokasi(BuildContext context) async {
+    final hasil = await SheetPilihLokasi.tampilkan(
+      context,
+      lokasiSaatIni: _lokasiTeks,
+    );
+    if (hasil != null && mounted) {
+      setState(() {
+        _lokasiTeks = hasil.judulLengkap;
+      });
+    }
+  }
+
+  List<BahanItem> get _filteredItems {
+    var list = widget.items;
+
+    // Filter Kategori
+    final activeKat = _selectedKategori.toLowerCase();
+    if (activeKat != 'semua') {
+      list = list.where((it) {
+        final k = it.kategori.toLowerCase();
+        final tag = it.tag.toLowerCase();
+        final nama = it.nama.toLowerCase();
+
+        if (activeKat == 'roti & kue') {
+          return k.contains('roti') ||
+              k.contains('kue') ||
+              k.contains('pastry') ||
+              k.contains('bakery') ||
+              tag.contains('roti') ||
+              tag.contains('kue') ||
+              nama.contains('roti') ||
+              nama.contains('kue');
+        } else if (activeKat == 'makanan') {
+          return k.contains('makan') ||
+              k.contains('santap') ||
+              k.contains('siap') ||
+              k.contains('nasi') ||
+              tag.contains('makan') ||
+              nama.contains('nasi') ||
+              nama.contains('ayam') ||
+              nama.contains('mie');
+        } else if (activeKat == 'bahan dapur') {
+          return k.contains('bahan') ||
+              k.contains('dapur') ||
+              k.contains('olahan') ||
+              k.contains('sayur') ||
+              k.contains('buah') ||
+              tag.contains('bahan') ||
+              tag.contains('dapur');
+        } else if (activeKat == 'minuman') {
+          return k.contains('minum') ||
+              k.contains('kopi') ||
+              k.contains('jus') ||
+              k.contains('tea') ||
+              k.contains('teh') ||
+              tag.contains('minum') ||
+              nama.contains('kopi') ||
+              nama.contains('jus') ||
+              nama.contains('teh');
+        }
+        return k.contains(activeKat) ||
+            tag.contains(activeKat) ||
+            nama.contains(activeKat);
+      }).toList();
+    }
+
+    // Filter Terdekat (< 2 km)
+    if (_filterTerdekat) {
+      list = list.where((it) {
+        final d = it.jarakKm;
+        return d != null && d <= 2.0;
+      }).toList();
+    }
+
+    // Filter Rating 4.8+
+    if (_filterRating) {
+      list = list.where((it) => it.ratingNilai >= 4.8).toList();
+    }
+
+    // Filter Diskon > 50%
+    if (_filterDiskon) {
+      list = list.where((it) => it.diskonPersen >= 50).toList();
+    }
+
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final displayItems = _filteredItems;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
@@ -81,7 +191,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // ---------- HEADER HIJAU ----------
+            // ---------- HEADER HIJAU (Tanpa Baris Lokasi Lama) ----------
             SliverToBoxAdapter(
               child: LbMuncul(
                 aktif: _animasi,
@@ -92,12 +202,6 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     LbMuncul(
                       aktif: _animasi,
                       urutan: 2,
-                      child: const LbLocationRow(),
-                    ),
-                    const SizedBox(height: 14),
-                    LbMuncul(
-                      aktif: _animasi,
-                      urutan: 3,
                       child: LbSearchBar(
                         onChanged: widget.onSearch,
                       ),
@@ -107,43 +211,105 @@ class _BerandaLayoutState extends State<BerandaLayout> {
               ),
             ),
 
-            // ---------- BANNER & TOGGLE ----------
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            // ---------- TAMPILAN BERANDA PELANGGAN BARU ----------
+            if (!widget.isTernak)
+              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const SizedBox(height: 14),
+
+                    // Baris Informasi Lokasi: [📍 Batam Center • Jl. Ahmad Yani    Ubah Lokasi]
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 3,
+                      child: BarisAlamatPengguna(
+                        alamat: _lokasiTeks,
+                        onUbahLokasi: () => _bukaDialogUbahLokasi(context),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 1. Baris Saringan Cepat (Terdekat < 2km, Rating 4.8+, Diskon > 50%)
                     LbMuncul(
                       aktif: _animasi,
                       urutan: 4,
-                      child: const LbBanner(),
+                      child: BarisFilterCepat(
+                        filterTerdekat: _filterTerdekat,
+                        filterRating: _filterRating,
+                        filterDiskon: _filterDiskon,
+                        onToggleTerdekat: () => setState(
+                            () => _filterTerdekat = !_filterTerdekat),
+                        onToggleRating: () =>
+                            setState(() => _filterRating = !_filterRating),
+                        onToggleDiskon: () =>
+                            setState(() => _filterDiskon = !_filterDiskon),
+                      ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
+
+                    // 2. Banner Promo Slider Carousel
                     LbMuncul(
                       aktif: _animasi,
                       urutan: 5,
-                      child: LbTypeToggle(
-                        isTernak: widget.isTernak,
-                        onChanged: widget.onSwitch,
+                      child: const CarouselPromoBeranda(),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // 3. Baris Kategori Squircle (Semua, Roti & Kue, Makanan, Bahan Dapur, Minuman)
+                    LbMuncul(
+                      aktif: _animasi,
+                      urutan: 6,
+                      child: BarisKategoriPelanggan(
+                        selected: _selectedKategori,
+                        onSelected: (k) =>
+                            setState(() => _selectedKategori = k),
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 20),
+
+                    // 4. Judul Seksi: Cepat Habis di Sekitarmu ⚡ + Reset ↺
                     LbMuncul(
                       aktif: _animasi,
                       urutan: 7,
-                      child: LbSectionTitle(
-                        title: widget.sectionTitle,
-                        onLihatPeta: widget.onLihatPeta,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: LbSectionTitle(
+                          title: 'Cepat Habis di Sekitarmu ⚡',
+                          subtitle:
+                              'Penyelamatan pangan terbaik hari ini di Batam',
+                          onReset: _resetFilter,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
                   ],
                 ),
+              )
+            else
+              // Mode Ternak: tetap sediakan pengalih mode kembali ke konsumsi manusia
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LbTypeToggle(
+                        isTernak: true,
+                        onChanged: widget.onSwitch,
+                      ),
+                      const SizedBox(height: 18),
+                      LbSectionTitle(
+                        title: widget.sectionTitle,
+                        onLihatPeta: widget.onLihatPeta,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                  ),
+                ),
               ),
-            ),
 
-            // ---------- ISI DAFTAR ----------
+            // ---------- ISI DAFTAR PRODUK & TOKO ----------
             if (widget.loading)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -184,7 +350,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                   ),
                 ),
               )
-            else if (widget.items.isEmpty)
+            else if (displayItems.isEmpty)
               SliverToBoxAdapter(
                 child: LbMuncul(
                   child: Padding(
@@ -211,9 +377,15 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                             style: LbText.heading(15, weight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          'Coba ganti kata kunci pencarian.',
+                          'Coba sesuaikan saringan atau kata kunci pencarian.',
                           textAlign: TextAlign.center,
                           style: LbText.body(12.5),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: _resetFilter,
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text('Reset Saringan'),
                         ),
                       ],
                     ),
@@ -222,7 +394,7 @@ class _BerandaLayoutState extends State<BerandaLayout> {
               )
             else
               Builder(builder: (_) {
-                final tokoList = TokoGroup.kelompokkan(widget.items);
+                final tokoList = TokoGroup.kelompokkan(displayItems);
                 return SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                   sliver: SliverList.separated(
@@ -231,7 +403,6 @@ class _BerandaLayoutState extends State<BerandaLayout> {
                     itemBuilder: (context, i) {
                       final t = tokoList[i];
                       return LbMuncul(
-                        // key berubah saat data/mode berubah -> animasi diputar ulang
                         key: ValueKey('${t.nama}-${widget.isTernak}-$i'),
                         urutan: i < 6 ? i : 0,
                         jeda: const Duration(milliseconds: 70),

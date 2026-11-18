@@ -103,6 +103,28 @@ class BahanItem {
   /// Ditentukan dari kategori utama (tipe), bukan nama kategori,
   /// karena nama kategori dikelola admin dan bisa berubah.
   bool get untukTernak => tipe == 'ternak';
+
+  /// Ekstraksi jarak dalam angka (km) untuk saringan 'Terdekat (< 2 km)'
+  double? get jarakKm {
+    final match = RegExp(r'([\d,.]+)').firstMatch(jarak);
+    if (match == null) return null;
+    return double.tryParse(match.group(1)!.replaceAll(',', '.'));
+  }
+
+  /// Ekstraksi rating angka untuk saringan 'Rating 4.8+'
+  double get ratingNilai => double.tryParse(rating) ?? 0.0;
+
+  /// Persentase diskon untuk saringan 'Diskon > 50%'
+  int get diskonPersen {
+    if (gratis || isSedekah) return 100;
+    if (hargaAsli == null || hargaAsli!.isEmpty) return 0;
+    final int? h = int.tryParse(harga.replaceAll(RegExp(r'[^\d]'), ''));
+    final int? ha = int.tryParse(hargaAsli!.replaceAll(RegExp(r'[^\d]'), ''));
+    if (h != null && ha != null && ha > h && ha > 0) {
+      return (((ha - h) / ha) * 100).round();
+    }
+    return 0;
+  }
 }
 
 class LbKategori {
