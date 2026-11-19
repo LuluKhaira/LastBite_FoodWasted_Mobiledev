@@ -358,11 +358,15 @@ class ProdukController extends Controller
         foreach ($candidates as $filePath) {
             if (file_exists($filePath) && !is_dir($filePath)) {
                 $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
-                return response()->file($filePath, [
-                    'Content-Type' => $mimeType,
-                    'Access-Control-Allow-Origin' => '*',
-                    'Cache-Control' => 'public, max-age=86400',
-                ]);
+                $content = @file_get_contents($filePath);
+                if ($content !== false) {
+                    return response($content, 200, [
+                        'Content-Type' => $mimeType,
+                        'Content-Length' => strlen($content),
+                        'Access-Control-Allow-Origin' => '*',
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
             }
         }
 

@@ -20,20 +20,14 @@ class KategoriController extends Controller
             ->orderBy('nama')
             ->get();
 
-        // Jumlah produk per kategori
-        $jumlahProdukById = DB::table('produks')
+        // Jumlah produk AKTIF per kategori (key = id kategori)
+        $jumlahProduk = DB::table('produks')
+            ->where('aktif', true)
+            ->whereNotNull('kategori_id')
             ->select('kategori_id', DB::raw('COUNT(*) as total'))
             ->groupBy('kategori_id')
             ->pluck('total', 'kategori_id')
             ->all();
-
-        $jumlahProdukByNama = DB::table('produks')
-            ->select('kategori', DB::raw('COUNT(*) as total'))
-            ->groupBy('kategori')
-            ->pluck('total', 'kategori')
-            ->all();
-
-        $jumlahProduk = array_merge($jumlahProdukByNama, $jumlahProdukById);
 
         $opsiTujuan = Kategori::aktif()
             ->whereIn('tipe', ['pakan', 'kompos'])
@@ -48,21 +42,25 @@ class KategoriController extends Controller
         $data = $request->validate([
             'nama'         => ['required', 'string', 'max:100', 'unique:kategoris,nama'],
             'tipe'         => ['required', Rule::in(Kategori::TIPE)],
+            'icon'         => ['nullable', 'string', 'max:16'],
             'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
             'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
         ], [
             'nama.required'    => 'Nama kategori wajib diisi.',
             'nama.unique'      => 'Nama kategori sudah dipakai.',
             'tipe.required'    => 'Pilih tipe kategori.',
+            'icon.max'         => 'Ikon terlalu panjang, cukup satu emoji.',
             'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
             'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
         ]);
 
-        $hargaPerKg = in_array($data['tipe'], ['pakan', 'kompos']) ? (int) ($request->harga_per_kg ?? 0) : 0;
+        $isPengalihan = in_array($data['tipe'], ['pakan', 'kompos']);
+        $hargaPerKg = $isPengalihan ? (int) ($request->harga_per_kg ?? 0) : 0;
 
         Kategori::create([
             'nama'         => trim($data['nama']),
             'tipe'         => $data['tipe'],
+            'icon'         => $data['tipe'] === 'dimakan' ? (trim((string) ($data['icon'] ?? '')) ?: null) : null,
             'tujuan_id'    => $data['tipe'] === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
             'harga_per_kg' => $hargaPerKg,
             'urutan'       => ((int) Kategori::max('urutan')) + 1,
@@ -79,10 +77,12 @@ class KategoriController extends Controller
         $data = $request->validate([
             'nama'         => ['required', 'string', 'max:100', Rule::unique('kategoris', 'nama')->ignore($kategori->id)],
             'urutan'       => ['nullable', 'integer', 'min:0', 'max:999'],
+            'icon'         => ['nullable', 'string', 'max:16'],
             'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
             'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
         ], [
             'nama.unique'      => 'Nama kategori sudah dipakai.',
+            'icon.max'         => 'Ikon terlalu panjang, cukup satu emoji.',
             'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
             'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
         ]);
@@ -97,11 +97,12 @@ class KategoriController extends Controller
             $kategori->update([
                 'nama'         => $baru,
                 'urutan'       => $data['urutan'] ?? $kategori->urutan,
+                'icon'         => $kategori->tipe === 'dimakan' ? (trim((string) ($data['icon'] ?? '')) ?: null) : null,
                 'tujuan_id'    => $kategori->tipe === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
                 'harga_per_kg' => $hargaPerKg,
             ]);
 
-            // Tetap perbarui kolom teks lama dengan satu query UPDATE per kolom selama masa transisi
+            // Selama masa transisi, kolom teks lama ikut diperbarui
             if ($lama !== $baru) {
                 DB::table('produks')->where('kategori_id', $kategori->id)->update(['kategori' => $baru]);
                 DB::table('produks')->where('kategori_asli_id', $kategori->id)->update(['kategori_asli' => $baru]);
@@ -141,6 +142,16 @@ class KategoriController extends Controller
     public function toggle($id)
     {
         $kategori = Kategori::findOrFail($id);
+
+        // Kategori tujuan (pakan/kompos) tidak boleh dinonaktifkan selama masih dipakai kategori makanan aktif
+        if ($kategori->aktif && in_array($kategori->tipe, ['pakan', 'kompos'])) {
+            $dipakai = Kategori::aktif()->where('tujuan_id', $kategori->id)->pluck('nama');
+            if ($dipakai->isNotEmpty()) {
+                return back()->with('error', "Kategori \"{$kategori->nama}\" masih menjadi tujuan pengalihan dari: "
+                    . $dipakai->implode(', ') . '. Pindahkan tujuannya dulu.');
+            }
+        }
+
         $kategori->update(['aktif' => ! $kategori->aktif]);
 
         return back()->with('success', $kategori->aktif

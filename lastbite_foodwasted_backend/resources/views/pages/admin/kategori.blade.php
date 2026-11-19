@@ -5,10 +5,9 @@
 @section('content')
 @php
     $grup = [
-        'dimakan' => ['Kategori makanan', 'Dijual untuk dikonsumsi manusia. Saat kadaluarsa, produk dapat dialihkan ke kategori tujuan dengan konfirmasi mitra.'],
-        'pakan'   => ['Tujuan pengalihan: pakan', 'Kategori untuk pakan ternak dan ikan. Menampung produk surplus terverifikasi dalam satuan kg.'],
-        'kompos'  => ['Tujuan pengalihan: kompos', 'Kategori untuk bahan kompos, pupuk, dan limbah organik. Menampung produk surplus terverifikasi dalam satuan kg.'],
+        'dimakan' => ['Kategori makanan', 'Daftar kategori produk yang tampil di aplikasi.'],
     ];
+    $daftarIkon = ['🥐','🍞','🥪','🥗','🥣','🍎','🍱','🧋','🧃','☕','🍰','🍜','🍛','🍗','🍟','🥟'];
 @endphp
 <div class="space-y-6"
      x-data="{
@@ -19,61 +18,27 @@
 
     <div>
         <h1 class="text-2xl font-extrabold text-[#2F5D34]">Kategori Produk</h1>
-        <p class="text-sm text-[#4E7554] mt-1">Atur kategori yang tampil di aplikasi, tujuan pengalihan saat produk kadaluarsa, serta harga acuan per kilogram untuk produk surplus Pakan &amp; Kompos.</p>
+        <p class="text-sm text-[#4E7554] mt-1">Atur kategori produk yang tampil di aplikasi.</p>
     </div>
 
     @if (session('success'))
         <div class="rounded-xl bg-green-100 px-4 py-3 text-sm font-bold text-green-700">{{ session('success') }}</div>
     @endif
+    @if (session('error'))
+        <div class="rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700">{{ session('error') }}</div>
+    @endif
     @if ($errors->any())
         <div class="rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
     @endif
 
-    {{-- Tambah kategori --}}
-    <div class="rounded-3xl bg-white p-6 shadow-sm" x-data="{ tipe: '{{ old('tipe', 'dimakan') }}' }">
-        <h2 class="text-lg font-extrabold text-[#2F5D34] mb-4">Tambah kategori</h2>
-        <form action="{{ route('admin.kategori.simpan') }}" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            @csrf
-            <div class="md:col-span-1">
-                <label class="block text-xs font-bold text-[#4E7554] mb-1">Nama kategori</label>
-                <input type="text" name="nama" value="{{ old('nama') }}" required maxlength="100"
-                       placeholder="Nama kategori"
-                       class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-[#4E7554] mb-1">Tipe</label>
-                <select name="tipe" x-model="tipe"
-                        class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-                    <option value="dimakan">Makanan (dimakan)</option>
-                    <option value="pakan">Pakan</option>
-                    <option value="kompos">Kompos</option>
-                </select>
-            </div>
-            <div x-show="tipe === 'dimakan'">
-                <label class="block text-xs font-bold text-[#4E7554] mb-1">Dialihkan ke</label>
-                <select name="tujuan_id"
-                        class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-                    <option value="">Default (Pakan Ternak &amp; Ikan)</option>
-                    @foreach ($opsiTujuan as $t)
-                        <option value="{{ $t->id }}">{{ $t->nama }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div x-show="tipe !== 'dimakan'">
-                <label class="block text-xs font-bold text-[#4E7554] mb-1">Harga / kg (Rp)</label>
-                <input type="number" name="harga_per_kg" value="{{ old('harga_per_kg', 0) }}" min="0"
-                       placeholder="Contoh: 5000"
-                       class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-            </div>
-            <div>
-                <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F5D34] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#235139] transition">
-                    <span class="material-symbols-outlined">add</span> Tambah
-                </button>
-            </div>
-        </form>
-    </div>
+    {{-- Datalist ikon untuk modal ubah --}}
+    <datalist id="daftar-ikon">
+        @foreach ($daftarIkon as $e)
+            <option value="{{ $e }}">
+        @endforeach
+    </datalist>
 
-    {{-- Daftar per tipe --}}
+    {{-- Daftar kategori --}}
     @foreach ($grup as $tipe => [$judul, $ket])
         @php $baris = $kategoris->where('tipe', $tipe); @endphp
         <div class="rounded-3xl bg-white shadow-sm overflow-hidden">
@@ -82,17 +47,11 @@
                 <p class="text-xs text-[#4E7554] mt-1">{{ $ket }}</p>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[700px] text-left text-sm">
+                <table class="w-full min-w-[600px] text-left text-sm">
                     <thead class="bg-[#A7C957]/20 text-xs font-bold uppercase tracking-wide text-[#4E7554]">
                         <tr>
                             <th class="px-6 py-4">Nama</th>
-                            @if ($tipe === 'dimakan')
-                                <th class="px-4 py-4">Dialihkan ke</th>
-                            @else
-                                <th class="px-4 py-4">Harga / kg</th>
-                            @endif
                             <th class="px-4 py-4">Produk</th>
-                            <th class="px-4 py-4">Urutan</th>
                             <th class="px-4 py-4 text-center">Status</th>
                             <th class="px-4 py-4 text-center">Aksi</th>
                         </tr>
@@ -100,20 +59,8 @@
                     <tbody>
                         @forelse ($baris as $k)
                             <tr class="border-t border-[#A7C957]/15 hover:bg-[#F8F6F2] transition {{ $k->aktif ? '' : 'opacity-60' }}">
-                                <td class="px-6 py-4 font-bold text-[#2F5D34]">{{ $k->nama }}</td>
-                                @if ($tipe === 'dimakan')
-                                    <td class="px-4 py-4">{{ $k->tujuan?->nama ?? 'Default' }}</td>
-                                @else
-                                    <td class="px-4 py-4">
-                                        @if ($k->harga_per_kg > 0)
-                                            <span class="font-bold text-[#2F5D34]">Rp {{ number_format($k->harga_per_kg, 0, ',', '.') }} / kg</span>
-                                        @else
-                                            <span class="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Belum Diatur</span>
-                                        @endif
-                                    </td>
-                                @endif
-                                <td class="px-4 py-4">{{ $jumlahProduk[$k->nama] ?? 0 }}</td>
-                                <td class="px-4 py-4">{{ $k->urutan }}</td>
+                                <td class="px-6 py-4 font-bold text-[#2F5D34]">{{ $k->icon ? $k->icon . ' ' : '' }}{{ $k->nama }}</td>
+                                <td class="px-4 py-4">{{ $jumlahProduk[$k->id] ?? 0 }}</td>
                                 <td class="px-4 py-4 text-center">
                                     @if ($k->aktif)
                                         <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Aktif</span>
@@ -124,7 +71,7 @@
                                 <td class="px-4 py-4">
                                     <div class="flex items-center justify-center gap-2">
                                         <button type="button"
-                                                @click="openEdit(@js(['id' => $k->id, 'nama' => $k->nama, 'tipe' => $k->tipe, 'urutan' => $k->urutan, 'tujuan_id' => (string) ($k->tujuan_id ?? ''), 'harga_per_kg' => (int) ($k->harga_per_kg ?? 0), 'produk' => $jumlahProduk[$k->nama] ?? 0]))"
+                                                @click="openEdit(@js(['id' => $k->id, 'nama' => $k->nama, 'icon' => $k->icon ?? '', 'produk' => $jumlahProduk[$k->id] ?? 0]))"
                                                 class="inline-flex items-center gap-1 rounded-lg bg-[#A7C957]/30 px-3 py-1.5 text-xs font-bold text-[#2F5D34] hover:bg-[#A7C957]/50 transition">
                                             <span class="material-symbols-outlined text-[16px]">edit</span> Ubah
                                         </button>
@@ -139,7 +86,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-6 py-8 text-center text-[#4E7554]">Belum ada kategori.</td></tr>
+                            <tr><td colspan="4" class="px-6 py-8 text-center text-[#4E7554]">Belum ada kategori.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -167,27 +114,10 @@
                     </p>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Urutan tampil</label>
-                    <input type="number" name="urutan" min="0" max="999" :value="edit ? edit.urutan : 0"
+                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Ikon (emoji)</label>
+                    <input type="text" name="icon" maxlength="16" list="daftar-ikon" x-model="edit.icon"
                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
                 </div>
-                <div x-show="edit && edit.tipe === 'dimakan'">
-                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Dialihkan ke saat kadaluarsa</label>
-                    <select name="tujuan_id" x-model="edit.tujuan_id"
-                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-                        <option value="">Default (Pakan Ternak &amp; Ikan)</option>
-                        @foreach ($opsiTujuan as $t)
-                            <option value="{{ $t->id }}">{{ $t->nama }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div x-show="edit && edit.tipe !== 'dimakan'">
-                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Harga / kg (Rp)</label>
-                    <input type="number" name="harga_per_kg" min="0" x-model="edit.harga_per_kg"
-                           class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
-                    <p class="mt-1 text-xs text-[#4E7554]">Harga resmi ini akan diterapkan saat produk surplus dialihkan ke kategori ini.</p>
-                </div>
-                <p class="text-xs text-[#4E7554]">Tipe kategori tidak bisa diubah setelah dibuat, supaya produk lama tetap konsisten.</p>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" @click="closeEdit()" class="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200">Batal</button>
                     <button type="submit" class="rounded-xl bg-[#2F5D34] px-5 py-2 text-sm font-bold text-white hover:bg-[#235139]">Simpan</button>

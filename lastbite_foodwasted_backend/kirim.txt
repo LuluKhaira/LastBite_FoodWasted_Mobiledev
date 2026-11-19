@@ -1,0 +1,1392 @@
+﻿
+===== database\migrations\2026_10_28_000001_create_kategoris_table.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('kategoris', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama')->unique();
+            $table->string('tipe', 20);                       // dimakan | pakan | kompos
+            // Kategori tujuan saat produk kadaluarsa (hanya diisi untuk tipe "dimakan")
+            $table->foreignId('tujuan_id')->nullable()->constrained('kategoris')->nullOnDelete();
+            $table->unsignedSmallInteger('urutan')->default(0);
+            $table->boolean('aktif')->default(true);
+            $table->timestamps();
+        });
+
+        // Isi awal = daftar kategori yang selama ini ditulis langsung di kode
+        $now = now();
+        $awal = [
+            ['Pakan Ternak & Ikan',    'pakan'],
+            ['Bahan Kompos & Pupuk',   'kompos'],
+            ['Ampas Kelapa & Kopi',    'kompos'],
+            ['Limbah Organik',         'kompos'],
+            ['Roti & Pastry',          'dimakan'],
+            ['Roti Tawar',             'dimakan'],
+            ['Siap Santap',            'dimakan'],
+            ['Sayur & Buah',           'dimakan'],
+            ['Bahan & Olahan Dapur',   'dimakan'],
+        ];
+        foreach ($awal as $i => [$nama, $tipe]) {
+            DB::table('kategoris')->insert([
+                'nama' => $nama, 'tipe' => $tipe, 'urutan' => $i + 1, 'aktif' => true,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+
+        // Pemetaan default (sama dengan PengalihanKategori::MAP sebelumnya)
+        $tujuan = [
+            'Roti & Pastry'        => 'Pakan Ternak & Ikan',
+            'Roti Tawar'           => 'Pakan Ternak & Ikan',
+            'Siap Santap'          => 'Pakan Ternak & Ikan',
+            'Sayur & Buah'         => 'Bahan Kompos & Pupuk',
+            'Bahan & Olahan Dapur' => 'Limbah Organik',
+        ];
+        foreach ($tujuan as $asal => $tuju) {
+            DB::table('kategoris')->where('nama', $asal)->update([
+                'tujuan_id' => DB::table('kategoris')->where('nama', $tuju)->value('id'),
+            ]);
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('kategoris');
+    }
+};
+
+===== database\migrations\2026_10_29_000001_add_harga_per_kg_to_kategoris_table.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('kategoris', function (Blueprint $table) {
+            $table->unsignedInteger('harga_per_kg')->default(0)->after('urutan');
+        });
+
+        // Set harga default untuk kategori pakan/kompos yang ada agar langsung memiliki harga valid
+        $defaultHarga = [
+            'Pakan Ternak & Ikan'  => 5000,
+            'Bahan Kompos & Pupuk' => 3000,
+            'Ampas Kelapa & Kopi'  => 2500,
+            'Limbah Organik'       => 2000,
+        ];
+
+        foreach ($defaultHarga as $nama => $harga) {
+            DB::table('kategoris')->where('nama', $nama)->update(['harga_per_kg' => $harga]);
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::table('kategoris', function (Blueprint $table) {
+            $table->dropColumn('harga_per_kg');
+        });
+    }
+};
+
+
+
+===== database\migrations\2026_10_29_000002_add_pengalihan_fields_to_produks_table.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('produks', function (Blueprint $table) {
+            $table->boolean('bersedia_dialihkan')->default(false)->after('target_kategori_pengalihan');
+            $table->decimal('perkiraan_berat_per_paket', 8, 2)->nullable()->after('bersedia_dialihkan');
+            $table->string('status_pengalihan', 30)->default('tidak_dialihkan')->after('perkiraan_berat_per_paket');
+            $table->decimal('berat_aktual', 8, 2)->nullable()->after('status_pengalihan');
+            $table->foreignId('produk_surplus_id')->nullable()->after('berat_aktual')->constrained('produks')->nullOnDelete();
+            $table->timestamp('dikonfirmasi_pada')->nullable()->after('produk_surplus_id');
+            $table->text('catatan_pengalihan')->nullable()->after('dikonfirmasi_pada');
+
+            $table->index('status_pengalihan');
+            $table->index('bersedia_dialihkan');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('produks', function (Blueprint $table) {
+            $table->dropForeign(['produk_surplus_id']);
+            $table->dropIndex(['status_pengalihan']);
+            $table->dropIndex(['bersedia_dialihkan']);
+            $table->dropColumn([
+                'bersedia_dialihkan',
+                'perkiraan_berat_per_paket',
+                'status_pengalihan',
+                'berat_aktual',
+                'produk_surplus_id',
+                'dikonfirmasi_pada',
+                'catatan_pengalihan',
+            ]);
+        });
+    }
+};
+
+
+
+===== database\migrations\2026_10_27_000001_add_target_pengalihan_to_produks_table.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('produks', function (Blueprint $table) {
+            // Null = pakai mapping default dari PengalihanKategori::MAP
+            $table->string('target_kategori_pengalihan')->nullable()->after('kategori_asli');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('produks', function (Blueprint $table) {
+            $table->dropColumn('target_kategori_pengalihan');
+        });
+    }
+};
+
+===== database\migrations\2026_11_06_000006_add_kategori_fk_to_produks_table.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        // 1. Tambah kolom FK dan index ke tabel produks
+        Schema::table('produks', function (Blueprint $table) {
+            if (!Schema::hasColumn('produks', 'kategori_id')) {
+                $table->unsignedBigInteger('kategori_id')->nullable()->after('id_mitra');
+                $table->foreign('kategori_id')->references('id')->on('kategoris')->restrictOnDelete();
+                $table->index('kategori_id');
+            }
+
+            if (!Schema::hasColumn('produks', 'kategori_asli_id')) {
+                $table->unsignedBigInteger('kategori_asli_id')->nullable()->after('kategori');
+                $table->foreign('kategori_asli_id')->references('id')->on('kategoris')->restrictOnDelete();
+                $table->index('kategori_asli_id');
+            }
+
+            if (!Schema::hasColumn('produks', 'target_kategori_id')) {
+                $table->unsignedBigInteger('target_kategori_id')->nullable()->after('target_kategori_pengalihan');
+                $table->foreign('target_kategori_id')->references('id')->on('kategoris')->restrictOnDelete();
+                $table->index('target_kategori_id');
+            }
+        });
+
+        // 2. Backfill data lama
+        $manualMap = [
+            'Bahan Olahan'  => 'Bahan & Olahan Dapur',
+            'Pakan Ternak'  => 'Pakan Ternak & Ikan',
+            'Makanan Berat' => 'Siap Santap',
+        ];
+
+        $kategoris = DB::table('kategoris')->pluck('id', 'nama')->all();
+
+        $produks = DB::table('produks')->get();
+
+        foreach ($produks as $p) {
+            $updates = [];
+
+            // (a & b) kategori -> kategori_id
+            if (!empty($p->kategori)) {
+                $katNama = $manualMap[$p->kategori] ?? $p->kategori;
+                if (isset($kategoris[$katNama])) {
+                    $updates['kategori_id'] = $kategoris[$katNama];
+                    // Samakan juga teks lama jika dipetakan dari alias lama
+                    if ($p->kategori !== $katNama) {
+                        $updates['kategori'] = $katNama;
+                    }
+                }
+            }
+
+            // (c) target_kategori_pengalihan -> target_kategori_id
+            if (!empty($p->target_kategori_pengalihan)) {
+                $targetNama = $manualMap[$p->target_kategori_pengalihan] ?? $p->target_kategori_pengalihan;
+                if (isset($kategoris[$targetNama])) {
+                    $updates['target_kategori_id'] = $kategoris[$targetNama];
+                    if ($p->target_kategori_pengalihan !== $targetNama) {
+                        $updates['target_kategori_pengalihan'] = $targetNama;
+                    }
+                }
+            }
+
+            // (d) kategori_asli -> kategori_asli_id
+            if (!empty($p->kategori_asli)) {
+                if (!in_array($p->kategori_asli, ['Konsumsi Manusia', 'Pakan / Kompos'])) {
+                    $asliNama = $manualMap[$p->kategori_asli] ?? $p->kategori_asli;
+                    if (isset($kategoris[$asliNama])) {
+                        $updates['kategori_asli_id'] = $kategoris[$asliNama];
+                        if ($p->kategori_asli !== $asliNama) {
+                            $updates['kategori_asli'] = $asliNama;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($updates)) {
+                DB::table('produks')->where('id', $p->id)->update($updates);
+            }
+        }
+
+        // (e) Catat peringatan jika masih ada produks yang kategori_id-nya NULL
+        $unmapped = DB::table('produks')->whereNull('kategori_id')->get(['id', 'nama', 'kategori']);
+        foreach ($unmapped as $un) {
+            Log::warning("Produk #{$un->id} ({$un->nama}) memiliki kategori '{$un->kategori}' yang tidak dapat dipetakan ke tabel kategoris.");
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('produks', function (Blueprint $table) {
+            if (Schema::hasColumn('produks', 'target_kategori_id')) {
+                $table->dropForeign(['target_kategori_id']);
+                $table->dropIndex(['target_kategori_id']);
+                $table->dropColumn('target_kategori_id');
+            }
+
+            if (Schema::hasColumn('produks', 'kategori_asli_id')) {
+                $table->dropForeign(['kategori_asli_id']);
+                $table->dropIndex(['kategori_asli_id']);
+                $table->dropColumn('kategori_asli_id');
+            }
+
+            if (Schema::hasColumn('produks', 'kategori_id')) {
+                $table->dropForeign(['kategori_id']);
+                $table->dropIndex(['kategori_id']);
+                $table->dropColumn('kategori_id');
+            }
+        });
+    }
+};
+
+
+===== database\migrations\2026_11_06_000001_drop_tabel_tidak_terpakai.php =====
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('aturan_harga');
+    }
+
+    public function down(): void
+    {
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('aturan_harga', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedTinyInteger('max_diskon')->default(100);
+            $table->unsignedInteger('min_harga')->default(0);
+            $table->unsignedInteger('biaya_layanan')->default(2000);
+            $table->timestamps();
+        });
+    }
+};
+
+===== app\Models\Kategori.php =====
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Kategori extends Model
+{
+    public const TIPE = ['dimakan', 'pakan', 'kompos'];
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'aktif'        => 'boolean',
+        'harga_per_kg' => 'integer',
+    ];
+
+    /** Kategori tujuan pengalihan (untuk kategori bertipe dimakan). */
+    public function tujuan()
+    {
+        return $this->belongsTo(self::class, 'tujuan_id');
+    }
+
+    public function produks()
+    {
+        return $this->hasMany(Produk::class, 'kategori_id');
+    }
+
+    public function scopeAktif($query)
+    {
+        return $query->where('aktif', true);
+    }
+
+    public function scopeTujuanPengalihan($query)
+    {
+        return $query->where('aktif', true)
+            ->whereIn('tipe', ['pakan', 'kompos']);
+    }
+
+    public function hasValidHarga(): bool
+    {
+        return $this->harga_per_kg !== null && $this->harga_per_kg > 0;
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Kategori $kategori) {
+            $dipakai = \Illuminate\Support\Facades\DB::table('produks')
+                ->where('kategori_id', $kategori->id)
+                ->orWhere('kategori_asli_id', $kategori->id)
+                ->orWhere('target_kategori_id', $kategori->id)
+                ->exists();
+
+            if ($dipakai) {
+                throw new \Exception("Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih digunakan oleh produk.");
+            }
+
+            if (static::where('tujuan_id', $kategori->id)->exists()) {
+                throw new \Exception("Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih dijadikan tujuan pengalihan oleh kategori lain.");
+            }
+        });
+    }
+}
+
+
+===== app\Models\PengalihanKategori.php =====
+
+<?php
+
+namespace App\Models;
+
+class PengalihanKategori
+{
+    /**
+     * Cadangan bila tabel kategoris belum ada / kosong.
+     * Sumber utama sekarang tabel kategoris (diatur admin).
+     */
+    public const MAP = [
+        'Roti & Pastry'        => ['tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan'],
+        'Roti Tawar'           => ['tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan'],
+        'Siap Santap'          => ['tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan'],
+        'Sayur & Buah'         => ['tipe' => 'kompos', 'kategori' => 'Bahan Kompos & Pupuk'],
+        'Bahan Olahan'         => ['tipe' => 'kompos', 'kategori' => 'Limbah Organik'],
+        'Bahan & Olahan Dapur' => ['tipe' => 'kompos', 'kategori' => 'Limbah Organik'],
+    ];
+
+    /** Cari tujuan berdasarkan kategori asal (fallback ke default pakan). */
+    public static function cariTujuan(string $kategoriAsal): array
+    {
+        try {
+            $tujuan = Kategori::with('tujuan')->where('nama', $kategoriAsal)->first()?->tujuan;
+            if ($tujuan) {
+                return [
+                    'tipe'         => $tujuan->tipe,
+                    'kategori'     => $tujuan->nama,
+                    'harga_per_kg' => (int) ($tujuan->harga_per_kg ?? 0),
+                ];
+            }
+        } catch (\Throwable $e) {
+            // tabel kategoris belum dimigrasi: pakai cadangan di bawah
+        }
+
+        $fallback = self::MAP[$kategoriAsal] ?? ['tipe' => 'pakan', 'kategori' => Produk::KATEGORI_EXPIRED];
+        return array_merge($fallback, ['harga_per_kg' => 5000]);
+    }
+
+    /** Tipe (pakan/kompos) dari sebuah kategori tujuan, null bila tidak dikenal. */
+    public static function tipeUntuk(string $kategori): ?string
+    {
+        try {
+            $tipe = Kategori::where('nama', $kategori)->value('tipe');
+            if ($tipe) {
+                return $tipe;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        foreach (self::semuaTujuan() as $t) {
+            if ($t['kategori'] === $kategori) {
+                return $t['tipe'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Daftar semua kategori tujuan pakan/kompos untuk dropdown Flutter. */
+    public static function semuaTujuan(): array
+    {
+        try {
+            $rows = Kategori::aktif()
+                ->whereIn('tipe', ['pakan', 'kompos'])
+                ->orderBy('urutan')->orderBy('nama')
+                ->get(['id', 'nama', 'tipe', 'harga_per_kg']);
+
+            if ($rows->isNotEmpty()) {
+                return $rows->map(fn ($k) => [
+                    'id'           => $k->id,
+                    'tipe'         => $k->tipe,
+                    'kategori'     => $k->nama,
+                    'harga_per_kg' => (int) ($k->harga_per_kg ?? 0),
+                ])->all();
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return [
+            ['id' => 1, 'tipe' => 'pakan',  'kategori' => 'Pakan Ternak & Ikan',  'harga_per_kg' => 5000],
+            ['id' => 2, 'tipe' => 'kompos', 'kategori' => 'Bahan Kompos & Pupuk', 'harga_per_kg' => 3000],
+            ['id' => 3, 'tipe' => 'kompos', 'kategori' => 'Ampas Kelapa & Kopi',  'harga_per_kg' => 2500],
+            ['id' => 4, 'tipe' => 'kompos', 'kategori' => 'Limbah Organik',       'harga_per_kg' => 2000],
+        ];
+    }
+}
+
+
+===== app\Models\Produk.php =====
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
+
+class Produk extends Model
+{
+    /** Kategori tujuan default saat produk konsumsi manusia sudah lewat kadaluarsa. */
+    public const KATEGORI_EXPIRED = 'Pakan Ternak & Ikan';
+
+    public const TIPE_DIMAKAN = 'dimakan';
+    public const TIPE_PAKAN   = 'pakan';
+    public const TIPE_KOMPOS  = 'kompos';
+
+    public const SKEMA_DISKON  = 'diskon';
+    public const SKEMA_SEDEKAH = 'sedekah';
+
+    public const STATUS_PENGALIHAN_TIDAK    = 'tidak_dialihkan';
+    public const STATUS_PENGALIHAN_AKAN     = 'akan_dialihkan';
+    public const STATUS_PENGALIHAN_MENUNGGU  = 'menunggu';
+    public const STATUS_PENGALIHAN_SELESAI   = 'selesai';
+    public const STATUS_PENGALIHAN_DIALIHKAN = 'dialihkan';
+    public const STATUS_PENGALIHAN_DIBUANG   = 'dibuang';
+
+    protected $fillable = [
+        'id_mitra', 'kategori_id', 'nama', 'deskripsi', 'tipe', 'kategori',
+        'kategori_asli_id', 'skema_harga', 'kategori_asli', 'target_kategori_pengalihan',
+        'target_kategori_id', 'bersedia_dialihkan', 'perkiraan_berat_per_paket',
+        'status_pengalihan', 'berat_aktual', 'produk_surplus_id', 'dikonfirmasi_pada',
+        'catatan_pengalihan', 'dialihkan_pada', 'gambar', 'tag', 'harga', 'harga_asli',
+        'satuan', 'stok', 'kuota', 'berat_kg', 'waktu_mulai', 'waktu_selesai',
+        'kadaluarsa', 'rating', 'aktif', 'draf',
+    ];
+
+    protected $casts = [
+        'kategori_id'               => 'integer',
+        'kategori_asli_id'          => 'integer',
+        'target_kategori_id'        => 'integer',
+        'aktif'                     => 'boolean',
+        'draf'                      => 'boolean',
+        'rating'                    => 'float',
+        'berat_kg'                  => 'float',
+        'harga'                     => 'float',
+        'harga_asli'                => 'float',
+        'kadaluarsa'                => 'datetime',
+        'dialihkan_pada'            => 'datetime',
+        'bersedia_dialihkan'        => 'boolean',
+        'perkiraan_berat_per_paket' => 'float',
+        'berat_aktual'              => 'float',
+        'dikonfirmasi_pada'         => 'datetime',
+    ];
+
+    public function kategori()
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_id');
+    }
+
+    public function kategoriAsli()
+    {
+        return $this->belongsTo(Kategori::class, 'kategori_asli_id');
+    }
+
+    public function targetKategori()
+    {
+        return $this->belongsTo(Kategori::class, 'target_kategori_id');
+    }
+
+    public function getKategoriAttribute()
+    {
+        return $this->getRelationValue('kategori')?->nama ?? ($this->attributes['kategori'] ?? null);
+    }
+
+    public function getKategoriAsliAttribute()
+    {
+        return $this->getRelationValue('kategoriAsli')?->nama ?? ($this->attributes['kategori_asli'] ?? null);
+    }
+
+    public function getTargetKategoriPengalihanAttribute()
+    {
+        return $this->getRelationValue('targetKategori')?->nama ?? ($this->attributes['target_kategori_pengalihan'] ?? null);
+    }
+
+    public function getTipeAttribute()
+    {
+        return $this->getRelationValue('kategori')?->tipe ?? ($this->attributes['tipe'] ?? null);
+    }
+
+    public function mitra()
+    {
+        return $this->belongsTo(Mitra::class, 'id_mitra', 'id_mitra');
+    }
+
+    public function produkSurplus()
+    {
+        return $this->belongsTo(self::class, 'produk_surplus_id');
+    }
+
+    public function produkAsal()
+    {
+        return $this->hasOne(self::class, 'produk_surplus_id');
+    }
+
+    /** Produk yang menunggu konfirmasi pengalihan dari mitra. */
+    public function scopeMenungguKonfirmasi($query)
+    {
+        return $query->where('status_pengalihan', self::STATUS_PENGALIHAN_MENUNGGU);
+    }
+
+    /** Menghitung estimasi sisa berat berdasarkan stok tersisa * perkiraan berat per paket */
+    public function totalPerkiraanBeratSisa(): float
+    {
+        $stok = (int) ($this->stok ?? 0);
+        $perkiraan = (float) ($this->perkiraan_berat_per_paket ?? 0);
+        return round($stok * $perkiraan, 2);
+    }
+
+    /**
+     * Konfirmasi pengalihan produk surplus ke pakan/kompos.
+     * Menyimpan harga_per_kg yang ditentukan ke kolom harga dan harga_asli.
+     */
+    public function konfirmasiPengalihan(Kategori $kategori, float $beratAktual, ?int $hargaPerKg = null, ?string $catatan = null): self
+    {
+        $maxHarga = (int) ($kategori->harga_per_kg ?? 0);
+        $hargaFinal = ($hargaPerKg !== null) ? min($maxHarga, max(0, $hargaPerKg)) : $maxHarga;
+
+        $kategoriAsliNama = $this->kategoriAsli?->nama ?? $this->kategori?->nama ?? $this->kategori_asli ?? 'Konsumsi Manusia';
+        $kategoriAsliId = $this->kategori_asli_id ?? $this->kategori_id;
+
+        $surplus = self::create([
+            'id_mitra'                   => $this->id_mitra,
+            'nama'                       => 'Surplus ' . $kategori->nama . ' - ' . $this->nama,
+            'deskripsi'                  => 'Bahan surplus dialihkan dari ' . $this->nama . ' (' . $beratAktual . ' kg). ' . ($catatan ?? 'Kondisi telah diperiksa mitra.'),
+            'tipe'                       => $kategori->tipe,
+            'kategori'                   => $kategori->nama,
+            'kategori_id'                => $kategori->id,
+            'kategori_asli'              => $kategoriAsliNama,
+            'kategori_asli_id'           => $kategoriAsliId,
+            'gambar'                     => $this->gambar,
+            'harga'                      => (int) $hargaFinal,
+            'harga_asli'                 => (int) $hargaFinal,
+            'satuan'                     => '/kg',
+            'stok'                       => max(1, (int) floor($beratAktual)),
+            'kuota'                      => max(1, (int) floor($beratAktual)),
+            'berat_kg'                   => $beratAktual,
+            'waktu_mulai'                => '00:00:00',
+            'waktu_selesai'              => '23:59:00',
+            'aktif'                      => true,
+            'bersedia_dialihkan'         => false,
+            'status_pengalihan'          => self::STATUS_PENGALIHAN_TIDAK,
+            'created_at'                 => now(),
+            'updated_at'                 => now(),
+        ]);
+
+        $this->update([
+            'aktif'                      => false,
+            'status_pengalihan'          => self::STATUS_PENGALIHAN_DIALIHKAN,
+            'berat_aktual'               => $beratAktual,
+            'target_kategori_pengalihan' => $kategori->nama,
+            'target_kategori_id'         => $kategori->id,
+            'produk_surplus_id'          => $surplus->id,
+            'dialihkan_pada'             => now('Asia/Jakarta'),
+            'dikonfirmasi_pada'          => now('Asia/Jakarta'),
+            'catatan_pengalihan'         => $catatan,
+        ]);
+
+        return $surplus;
+    }
+
+    /**
+     * Alihkan produk ini ke kategori tujuan secara manual.
+     */
+    public function alihkan(?string $kategoriTujuan = null, ?string $tipeTujuan = null): bool
+    {
+        if ($this->dialihkan_pada !== null) {
+            return false;
+        }
+
+        $kategoriTujuanNama = $kategoriTujuan ?? $this->target_kategori_pengalihan;
+        $katModel = null;
+        if ($kategoriTujuanNama) {
+            $katModel = Kategori::aktif()->where('nama', $kategoriTujuanNama)->first();
+        }
+        if (!$katModel) {
+            $tujuan = PengalihanKategori::cariTujuan($this->kategori);
+            $kategoriTujuanNama = $tujuan['kategori'];
+            $katModel = Kategori::aktif()->where('nama', $kategoriTujuanNama)->first();
+        }
+
+        $tipe = $tipeTujuan ?? $katModel?->tipe ?? self::TIPE_PAKAN;
+        $kategoriId = $katModel?->id;
+
+        $this->update([
+            'kategori_asli'      => $this->kategoriAsli?->nama ?? $this->kategori,
+            'kategori_asli_id'   => $this->kategori_asli_id ?? $this->kategori_id,
+            'kategori'           => $katModel?->nama ?? $kategoriTujuanNama,
+            'kategori_id'        => $kategoriId,
+            'target_kategori_id' => $kategoriId,
+            'tipe'               => $tipe,
+            'dialihkan_pada'     => now('Asia/Jakarta'),
+            'status_pengalihan'  => self::STATUS_PENGALIHAN_DIALIHKAN,
+        ]);
+
+        return true;
+    }
+
+    public function getGambarUrlAttribute(): ?string
+    {
+        if (empty($this->gambar)) {
+            return null;
+        }
+
+        $gambar = trim($this->gambar);
+        if (str_starts_with($gambar, 'http://') || str_starts_with($gambar, 'https://')) {
+            return $gambar;
+        }
+
+        $path = ltrim($gambar, '/');
+
+        // Gunakan route API langsung /api/foto/{path} agar dapat diakses tanpa bergantung symlink webserver
+        try {
+            $root = request()->root();
+            if (!empty($root)) {
+                return rtrim($root, '/') . '/api/foto/' . $path;
+            }
+        } catch (\Throwable $e) {}
+
+        return url('api/foto/' . $path);
+    }
+
+    /** Bentuk JSON yang cocok dengan field BahanItem di Flutter. */
+    public function toApi(?float $lat = null, ?float $lng = null): array
+    {
+        $m = $this->mitra;
+        $jarak = null;
+
+        if ($lat !== null && $lng !== null && $m?->latitude && $m?->longitude) {
+            $jarak = round(
+                self::haversine($lat, $lng, (float) $m->latitude, (float) $m->longitude),
+                1
+            );
+        }
+
+        $gambarUrl = $this->gambar_url;
+
+        return [
+            'id'                        => $this->id,
+            'nama'                      => $this->nama,
+            'deskripsi'                 => $this->deskripsi,
+            'aktif'                     => (bool) $this->aktif,
+            'draf'                      => (bool) $this->draf,
+            'penjual'                   => $m?->nama_usaha,
+            'inisial'                   => $m?->inisial,
+            'alamat'                    => $m?->alamat,
+            'tipe'                      => $this->tipe,
+            'kategori'                  => $this->kategori,
+            'skema_harga'               => $this->skema_harga ?? self::SKEMA_DISKON,
+            'is_sedekah'                => ($this->skema_harga === self::SKEMA_SEDEKAH) || ((int) $this->harga === 0),
+            'gambar'                    => $gambarUrl,
+            'image_url'                 => $gambarUrl,
+            'tag'                       => $this->tag,
+            'harga'                     => $this->harga,
+            'harga_asli'                => $this->harga_asli,
+            'satuan'                    => $this->satuan,
+            'stok'                      => $this->stok,
+            'berat_kg'                  => $this->berat_kg,
+            'rating'                    => $this->rating,
+            'waktu'                     => $this->waktu_mulai && $this->waktu_selesai
+                ? substr($this->waktu_mulai, 0, 5) . ' - ' . substr($this->waktu_selesai, 0, 5) . ' WIB'
+                : null,
+            'jarak_km'                  => $jarak,
+            'kadaluarsa'                => $this->kadaluarsa
+                ? Carbon::parse($this->kadaluarsa, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'kategori_asli'             => $this->kategori_asli,
+            'dialihkan_pada'            => $this->dialihkan_pada
+                ? Carbon::parse($this->dialihkan_pada, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'sudah_dialihkan'           => $this->dialihkan_pada !== null || $this->status_pengalihan === self::STATUS_PENGALIHAN_DIALIHKAN,
+            'target_kategori_pengalihan' => $this->target_kategori_pengalihan,
+            'bersedia_dialihkan'        => (bool) $this->bersedia_dialihkan,
+            'perkiraan_berat_per_paket' => (float) ($this->perkiraan_berat_per_paket ?? 0),
+            'status_pengalihan'         => $this->status_pengalihan ?? self::STATUS_PENGALIHAN_TIDAK,
+            'berat_aktual'              => (float) ($this->berat_aktual ?? 0),
+            'berat_sisa_kg'             => (float) ($this->berat_aktual ?? 0),
+            'produk_surplus_id'         => $this->produk_surplus_id,
+            'dikonfirmasi_pada'         => $this->dikonfirmasi_pada
+                ? Carbon::parse($this->dikonfirmasi_pada, 'Asia/Jakarta')->toIso8601String()
+                : null,
+            'catatan_pengalihan'        => $this->catatan_pengalihan,
+            'total_perkiraan_berat'     => $this->totalPerkiraanBeratSisa(),
+        ];
+    }
+
+    public static function haversine($lat1, $lng1, $lat2, $lng2): float
+    {
+        $r = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        return 2 * $r * asin(sqrt($a));
+    }
+
+    public function getIsAnomaliAttribute(): bool
+    {
+        return $this->harga > $this->harga_asli;
+    }
+
+    public function scopeAnomali($query)
+    {
+        return $query->whereColumn('harga', '>', 'harga_asli');
+    }
+}
+
+
+===== app\Http\Controllers\Admin\KategoriController.php =====
+
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Kategori;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+
+class KategoriController extends Controller
+{
+    private const VIEW = 'pages.admin.kategori';
+
+    public function index()
+    {
+        $kategoris = Kategori::with('tujuan')
+            ->orderByRaw("FIELD(tipe, 'dimakan', 'pakan', 'kompos')")
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->get();
+
+        // Jumlah produk per kategori
+        $jumlahProdukById = DB::table('produks')
+            ->select('kategori_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('kategori_id')
+            ->pluck('total', 'kategori_id')
+            ->all();
+
+        $jumlahProdukByNama = DB::table('produks')
+            ->select('kategori', DB::raw('COUNT(*) as total'))
+            ->groupBy('kategori')
+            ->pluck('total', 'kategori')
+            ->all();
+
+        $jumlahProduk = array_merge($jumlahProdukByNama, $jumlahProdukById);
+
+        $opsiTujuan = Kategori::aktif()
+            ->whereIn('tipe', ['pakan', 'kompos'])
+            ->orderBy('urutan')->orderBy('nama')
+            ->get();
+
+        return view(self::VIEW, compact('kategoris', 'jumlahProduk', 'opsiTujuan'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'nama'         => ['required', 'string', 'max:100', 'unique:kategoris,nama'],
+            'tipe'         => ['required', Rule::in(Kategori::TIPE)],
+            'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
+        ], [
+            'nama.required'    => 'Nama kategori wajib diisi.',
+            'nama.unique'      => 'Nama kategori sudah dipakai.',
+            'tipe.required'    => 'Pilih tipe kategori.',
+            'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
+            'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
+        ]);
+
+        $hargaPerKg = in_array($data['tipe'], ['pakan', 'kompos']) ? (int) ($request->harga_per_kg ?? 0) : 0;
+
+        Kategori::create([
+            'nama'         => trim($data['nama']),
+            'tipe'         => $data['tipe'],
+            'tujuan_id'    => $data['tipe'] === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
+            'harga_per_kg' => $hargaPerKg,
+            'urutan'       => ((int) Kategori::max('urutan')) + 1,
+            'aktif'        => true,
+        ]);
+
+        return back()->with('success', 'Kategori berhasil ditambahkan.');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $kategori = Kategori::findOrFail($id);
+
+        $data = $request->validate([
+            'nama'         => ['required', 'string', 'max:100', Rule::unique('kategoris', 'nama')->ignore($kategori->id)],
+            'urutan'       => ['nullable', 'integer', 'min:0', 'max:999'],
+            'tujuan_id'    => ['nullable', 'integer', Rule::exists('kategoris', 'id')->whereIn('tipe', ['pakan', 'kompos'])],
+            'harga_per_kg' => ['nullable', 'integer', 'min:0', 'max:99999999'],
+        ], [
+            'nama.unique'      => 'Nama kategori sudah dipakai.',
+            'tujuan_id.exists' => 'Tujuan pengalihan harus kategori pakan atau kompos.',
+            'harga_per_kg.min' => 'Harga per kg minimal Rp 0.',
+        ]);
+
+        $lama = $kategori->nama;
+        $baru = trim($data['nama']);
+        $hargaPerKg = in_array($kategori->tipe, ['pakan', 'kompos'])
+            ? (int) ($request->harga_per_kg ?? $kategori->harga_per_kg ?? 0)
+            : 0;
+
+        DB::transaction(function () use ($kategori, $data, $lama, $baru, $hargaPerKg) {
+            $kategori->update([
+                'nama'         => $baru,
+                'urutan'       => $data['urutan'] ?? $kategori->urutan,
+                'tujuan_id'    => $kategori->tipe === 'dimakan' ? ($data['tujuan_id'] ?? null) : null,
+                'harga_per_kg' => $hargaPerKg,
+            ]);
+
+            // Tetap perbarui kolom teks lama dengan satu query UPDATE per kolom selama masa transisi
+            if ($lama !== $baru) {
+                DB::table('produks')->where('kategori_id', $kategori->id)->update(['kategori' => $baru]);
+                DB::table('produks')->where('kategori_asli_id', $kategori->id)->update(['kategori_asli' => $baru]);
+                DB::table('produks')->where('target_kategori_id', $kategori->id)->update(['target_kategori_pengalihan' => $baru]);
+            }
+        });
+
+        return back()->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function destroy($id)
+    {
+        $kategori = Kategori::findOrFail($id);
+
+        $terpakaiProduk = DB::table('produks')
+            ->where('kategori_id', $kategori->id)
+            ->orWhere('kategori_asli_id', $kategori->id)
+            ->orWhere('target_kategori_id', $kategori->id)
+            ->exists();
+
+        if ($terpakaiProduk) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih digunakan oleh produk.");
+        }
+
+        if (Kategori::where('tujuan_id', $kategori->id)->exists()) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih dijadikan tujuan pengalihan oleh kategori lain.");
+        }
+
+        try {
+            $kategori->delete();
+            return back()->with('success', "Kategori \"{$kategori->nama}\" berhasil dihapus.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "Kategori \"{$kategori->nama}\" tidak dapat dihapus karena masih memiliki keterkaitan data.");
+        }
+    }
+
+    public function toggle($id)
+    {
+        $kategori = Kategori::findOrFail($id);
+        $kategori->update(['aktif' => ! $kategori->aktif]);
+
+        return back()->with('success', $kategori->aktif
+            ? "Kategori {$kategori->nama} diaktifkan."
+            : "Kategori {$kategori->nama} dinonaktifkan. Produk lama tetap aman.");
+    }
+}
+
+
+===== resources\views\pages\admin\kategori.blade.php =====
+
+@extends('layout.admin')
+
+@section('title', 'Kategori Produk')
+
+@section('content')
+@php
+    $grup = [
+        'dimakan' => ['Kategori makanan', 'Dijual untuk dikonsumsi manusia. Saat kadaluarsa, produk dapat dialihkan ke kategori tujuan dengan konfirmasi mitra.'],
+        'pakan'   => ['Tujuan pengalihan: pakan', 'Kategori untuk pakan ternak dan ikan. Menampung produk surplus terverifikasi dalam satuan kg.'],
+        'kompos'  => ['Tujuan pengalihan: kompos', 'Kategori untuk bahan kompos, pupuk, dan limbah organik. Menampung produk surplus terverifikasi dalam satuan kg.'],
+    ];
+@endphp
+<div class="space-y-6"
+     x-data="{
+        edit: null,
+        openEdit(k) { this.edit = k; document.body.classList.add('overflow-hidden'); },
+        closeEdit() { this.edit = null; document.body.classList.remove('overflow-hidden'); }
+     }">
+
+    <div>
+        <h1 class="text-2xl font-extrabold text-[#2F5D34]">Kategori Produk</h1>
+        <p class="text-sm text-[#4E7554] mt-1">Atur kategori yang tampil di aplikasi, tujuan pengalihan saat produk kadaluarsa, serta harga acuan per kilogram untuk produk surplus Pakan &amp; Kompos.</p>
+    </div>
+
+    @if (session('success'))
+        <div class="rounded-xl bg-green-100 px-4 py-3 text-sm font-bold text-green-700">{{ session('success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700">{{ $errors->first() }}</div>
+    @endif
+
+    {{-- Tambah kategori --}}
+    <div class="rounded-3xl bg-white p-6 shadow-sm" x-data="{ tipe: '{{ old('tipe', 'dimakan') }}' }">
+        <h2 class="text-lg font-extrabold text-[#2F5D34] mb-4">Tambah kategori</h2>
+        <form action="{{ route('admin.kategori.simpan') }}" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            @csrf
+            <div class="md:col-span-1">
+                <label class="block text-xs font-bold text-[#4E7554] mb-1">Nama kategori</label>
+                <input type="text" name="nama" value="{{ old('nama') }}" required maxlength="100"
+                       placeholder="Nama kategori"
+                       class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-[#4E7554] mb-1">Tipe</label>
+                <select name="tipe" x-model="tipe"
+                        class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                    <option value="dimakan">Makanan (dimakan)</option>
+                    <option value="pakan">Pakan</option>
+                    <option value="kompos">Kompos</option>
+                </select>
+            </div>
+            <div x-show="tipe === 'dimakan'">
+                <label class="block text-xs font-bold text-[#4E7554] mb-1">Dialihkan ke</label>
+                <select name="tujuan_id"
+                        class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                    <option value="">Default (Pakan Ternak &amp; Ikan)</option>
+                    @foreach ($opsiTujuan as $t)
+                        <option value="{{ $t->id }}">{{ $t->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div x-show="tipe !== 'dimakan'">
+                <label class="block text-xs font-bold text-[#4E7554] mb-1">Harga / kg (Rp)</label>
+                <input type="number" name="harga_per_kg" value="{{ old('harga_per_kg', 0) }}" min="0"
+                       placeholder="Contoh: 5000"
+                       class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+            </div>
+            <div>
+                <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F5D34] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#235139] transition">
+                    <span class="material-symbols-outlined">add</span> Tambah
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- Daftar per tipe --}}
+    @foreach ($grup as $tipe => [$judul, $ket])
+        @php $baris = $kategoris->where('tipe', $tipe); @endphp
+        <div class="rounded-3xl bg-white shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-[#A7C957]/15">
+                <h2 class="text-lg font-extrabold text-[#2F5D34]">{{ $judul }}</h2>
+                <p class="text-xs text-[#4E7554] mt-1">{{ $ket }}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[700px] text-left text-sm">
+                    <thead class="bg-[#A7C957]/20 text-xs font-bold uppercase tracking-wide text-[#4E7554]">
+                        <tr>
+                            <th class="px-6 py-4">Nama</th>
+                            @if ($tipe === 'dimakan')
+                                <th class="px-4 py-4">Dialihkan ke</th>
+                            @else
+                                <th class="px-4 py-4">Harga / kg</th>
+                            @endif
+                            <th class="px-4 py-4">Produk</th>
+                            <th class="px-4 py-4">Urutan</th>
+                            <th class="px-4 py-4 text-center">Status</th>
+                            <th class="px-4 py-4 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($baris as $k)
+                            <tr class="border-t border-[#A7C957]/15 hover:bg-[#F8F6F2] transition {{ $k->aktif ? '' : 'opacity-60' }}">
+                                <td class="px-6 py-4 font-bold text-[#2F5D34]">{{ $k->nama }}</td>
+                                @if ($tipe === 'dimakan')
+                                    <td class="px-4 py-4">{{ $k->tujuan?->nama ?? 'Default' }}</td>
+                                @else
+                                    <td class="px-4 py-4">
+                                        @if ($k->harga_per_kg > 0)
+                                            <span class="font-bold text-[#2F5D34]">Rp {{ number_format($k->harga_per_kg, 0, ',', '.') }} / kg</span>
+                                        @else
+                                            <span class="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Belum Diatur</span>
+                                        @endif
+                                    </td>
+                                @endif
+                                <td class="px-4 py-4">{{ $jumlahProduk[$k->nama] ?? 0 }}</td>
+                                <td class="px-4 py-4">{{ $k->urutan }}</td>
+                                <td class="px-4 py-4 text-center">
+                                    @if ($k->aktif)
+                                        <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Aktif</span>
+                                    @else
+                                        <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">Nonaktif</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button type="button"
+                                                @click="openEdit(@js(['id' => $k->id, 'nama' => $k->nama, 'tipe' => $k->tipe, 'urutan' => $k->urutan, 'tujuan_id' => (string) ($k->tujuan_id ?? ''), 'harga_per_kg' => (int) ($k->harga_per_kg ?? 0), 'produk' => $jumlahProduk[$k->nama] ?? 0]))"
+                                                class="inline-flex items-center gap-1 rounded-lg bg-[#A7C957]/30 px-3 py-1.5 text-xs font-bold text-[#2F5D34] hover:bg-[#A7C957]/50 transition">
+                                            <span class="material-symbols-outlined text-[16px]">edit</span> Ubah
+                                        </button>
+                                        <form action="{{ route('admin.kategori.toggle', $k->id) }}" method="POST">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition {{ $k->aktif ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
+                                                {{ $k->aktif ? 'Nonaktifkan' : 'Aktifkan' }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="px-6 py-8 text-center text-[#4E7554]">Belum ada kategori.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endforeach
+
+    {{-- Modal ubah --}}
+    <div x-cloak x-show="edit" class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div @click="closeEdit()" class="absolute inset-0 bg-[#10260F]/60 backdrop-blur-sm"></div>
+        <div class="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div class="flex items-start justify-between mb-4">
+                <h3 class="text-lg font-extrabold text-[#2F5D34]">Ubah kategori</h3>
+                <button type="button" @click="closeEdit()" class="text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <form :action="'/admin/kategori/' + (edit ? edit.id : '')" method="POST" class="space-y-4">
+                @csrf
+                @method('PUT')
+                <div>
+                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Nama kategori</label>
+                    <input type="text" name="nama" required maxlength="100" :value="edit ? edit.nama : ''"
+                           class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                    <p class="mt-1 text-xs text-[#4E7554]" x-show="edit && edit.produk > 0">
+                        Mengubah nama ikut memperbarui <b x-text="edit ? edit.produk : 0"></b> produk yang memakai kategori ini.
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Urutan tampil</label>
+                    <input type="number" name="urutan" min="0" max="999" :value="edit ? edit.urutan : 0"
+                           class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                </div>
+                <div x-show="edit && edit.tipe === 'dimakan'">
+                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Dialihkan ke saat kadaluarsa</label>
+                    <select name="tujuan_id" x-model="edit.tujuan_id"
+                            class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                        <option value="">Default (Pakan Ternak &amp; Ikan)</option>
+                        @foreach ($opsiTujuan as $t)
+                            <option value="{{ $t->id }}">{{ $t->nama }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div x-show="edit && edit.tipe !== 'dimakan'">
+                    <label class="block text-xs font-bold text-[#4E7554] mb-1">Harga / kg (Rp)</label>
+                    <input type="number" name="harga_per_kg" min="0" x-model="edit.harga_per_kg"
+                           class="w-full rounded-xl border border-gray-200 bg-[#F8F6F2] px-3 py-2.5 text-sm font-semibold focus:border-[#A7C957] focus:ring-2 focus:ring-[#A7C957]/20">
+                    <p class="mt-1 text-xs text-[#4E7554]">Harga resmi ini akan diterapkan saat produk surplus dialihkan ke kategori ini.</p>
+                </div>
+                <p class="text-xs text-[#4E7554]">Tipe kategori tidak bisa diubah setelah dibuat, supaya produk lama tetap konsisten.</p>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" @click="closeEdit()" class="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200">Batal</button>
+                    <button type="submit" class="rounded-xl bg-[#2F5D34] px-5 py-2 text-sm font-bold text-white hover:bg-[#235139]">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+
+
+===== routes\web.php =====
+
+<?php
+
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DokumenController;
+use App\Http\Controllers\Admin\MitraVerifikasiController;
+use App\Http\Controllers\Admin\ManajemenController;
+use App\Http\Controllers\Admin\AturanHargaController;
+use App\Http\Controllers\Admin\KategoriController;
+use App\Http\Controllers\Api\ProdukController;
+use App\Http\Middleware\AdminAuth;
+use Illuminate\Support\Facades\Route;
+
+// Login admin
+Route::get('/', [AuthController::class, 'showLogin'])->name('admin.login');
+Route::post('/login', [AuthController::class, 'adminLogin'])
+    ->middleware('throttle:5,1')
+    ->name('admin.login.submit');
+
+// Halaman admin (wajib login)
+Route::middleware(AdminAuth::class)->group(function () {
+    // Dashboard
+    Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
+
+    // Aksi Verifikasi (dari dashboard)
+    Route::post('/admin/mitra/{id}/setujui', [MitraVerifikasiController::class, 'setujui'])->name('admin.mitra.setujui');
+    Route::post('/admin/mitra/{id}/tolak', [MitraVerifikasiController::class, 'tolak'])->name('admin.mitra.tolak');
+
+    // Dokumen
+    Route::get('/admin/mitra/{id}/dokumen/{field}', [DokumenController::class, 'show'])
+        ->whereIn('field', ['foto_ktp', 'foto_npwp', 'sertifikat_halal'])
+        ->name('admin.mitra.dokumen');
+
+    // Menu sidebar
+    Route::get('/admin/verifikasi', [ManajemenController::class, 'verifikasi'])->name('admin.verifikasi');
+    Route::get('/admin/mitra', [ManajemenController::class, 'mitra'])->name('admin.mitra');
+    Route::get('/admin/pengguna', [ManajemenController::class, 'pengguna'])->name('admin.pengguna');
+    Route::get('/admin/produk', [ManajemenController::class, 'produk'])->name('admin.produk');
+    Route::patch('/admin/produk/{produk}/toggle', [ManajemenController::class, 'toggleProduk'])->name('admin.produk.toggle');
+    Route::get('/admin/pesanan', [ManajemenController::class, 'pesanan'])->name('admin.pesanan');
+    Route::get('/admin/laporan', [ManajemenController::class, 'laporan'])->name('admin.laporan');
+
+    // Aturan harga
+    Route::get('/admin/aturan-harga', [AturanHargaController::class, 'index'])->name('admin.aturan');
+    Route::post('/admin/aturan-harga', [AturanHargaController::class, 'simpan'])->name('admin.aturan.simpan');
+
+    // Kategori produk
+    Route::get('/admin/kategori', [KategoriController::class, 'index'])->name('admin.kategori');
+    Route::post('/admin/kategori', [KategoriController::class, 'store'])->name('admin.kategori.simpan');
+    Route::put('/admin/kategori/{id}', [KategoriController::class, 'update'])->name('admin.kategori.update');
+    Route::delete('/admin/kategori/{id}', [KategoriController::class, 'destroy'])->name('admin.kategori.hapus');
+    Route::post('/admin/kategori/{id}/toggle', [KategoriController::class, 'toggle'])->name('admin.kategori.toggle');
+
+    // Logout
+    Route::post('/logout', [AuthController::class, 'adminLogout'])->name('admin.logout');
+});
+
+// Akses publik foto/gambar
+Route::get('/storage/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/foto/{path}', [ProdukController::class, 'tampilFoto'])->where('path', '.*');
+Route::get('/produk/{file}', [ProdukController::class, 'tampilFoto'])
+    ->where('file', '.*\.(jpg|jpeg|png|gif|webp|svg|bmp)');
+
+===== database\seeders\AdminSeeder.php =====
+
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Admin;
+use Illuminate\Database\Seeder;
+
+class AdminSeeder extends Seeder
+{
+    public function run(): void
+    {
+        Admin::updateOrCreate(
+            ['username' => 'admin_lastbite'],
+            ['password' => 'admin123']
+        );
+    }
+}
+
+===== database\seeders\DatabaseSeeder.php =====
+
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    use WithoutModelEvents;
+
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        // User::factory(10)->create();
+
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+    }
+}
+
+
+===== database\seeders\FaqSeeder.php =====
+
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Faq;
+use Illuminate\Database\Seeder;
+
+class FaqSeeder extends Seeder
+{
+    /**
+     * Isi awal FAQ. Silakan EDIT jawaban sesuai kebijakan Lastbite yang sebenarnya,
+     * terutama soal pembatalan, refund, dan keamanan pangan.
+     * Jalankan: php artisan db:seed --class=FaqSeeder
+     */
+    public function run(): void
+    {
+        $daftar = [
+            ['Pemesanan & Ambil', 'Bagaimana cara mengambil tas kejutan di toko mitra?',
+             'Buka tab Pesanan, tekan Nota, lalu tunjukkan kode pesanan (contoh: LB-261014-0001) kepada staf kasir toko pada rentang jam pengambilan yang tertera. Setelah makanan kamu terima, tekan tombol Sudah Diambil di kartu pesanan.',
+             'Tip ramah lingkungan: jangan lupa bawa tas belanja sendiri untuk mengurangi sampah plastik!'],
+            ['Pemesanan & Ambil', 'Mengapa isi tas kejutan tidak bisa dipilih secara spesifik?',
+             'Isi paket kejutan berasal dari sisa produk yang tidak habis terjual hari itu, sehingga komposisinya baru diketahui mitra menjelang jam pengambilan. Kamu bisa menulis catatan alergi atau permintaan khusus di halaman detail, dan mitra akan berusaha menyesuaikan dengan stok yang ada.',
+             null],
+            ['Pemesanan & Ambil', 'Apakah Lastbite menyediakan kurir antar?',
+             'Tidak. Lastbite tidak menyediakan kurir. Kamu bisa mengambil langsung ke toko, atau memesan ojek online (GoSend/GrabExpress) sendiri di luar aplikasi.',
+             null],
+            ['Pembayaran & Refund', 'Metode pembayaran apa saja yang tersedia?',
+             'Pilihan pembayaran (QRIS, e-wallet, dan virtual account bank) tampil di halaman detail paket sebelum kamu menekan Pesan & Bayar. Produk gratis tidak memerlukan pembayaran.',
+             null],
+            ['Pembayaran & Refund', 'Apakah pesanan bisa dibatalkan?',
+             'Saat ini pembatalan belum tersedia langsung di aplikasi. Jika ada kendala dengan pesananmu, hubungi tim CS lewat Chat WhatsApp dan sertakan nomor pesanan.',
+             null],
+            ['Keamanan Pangan', 'Bagaimana jika makanan yang diterima tidak layak konsumsi?',
+             'Cek kondisi makanan saat pengambilan dan sampaikan ke penjual sebelum meninggalkan lokasi. Jika sudah terlanjur dibawa pulang, jangan dikonsumsi, lalu laporkan ke tim CS beserta nomor pesanan dan foto makanannya.',
+             null],
+            ['Akun & Keamanan', 'Bagaimana cara mengubah kata sandi?',
+             'Buka tab Profil > Keamanan akun > Ubah Kata Sandi. Setelah kata sandi diubah, perangkat lain yang sedang masuk akan dikeluarkan otomatis.',
+             null],
+            ['Akun & Keamanan', 'Bagaimana cara menambah alamat atau mitra favorit?',
+             'Alamat ditambahkan di Profil > Alamat & Lokasi Ambil Favorit > Tambah Alamat Baru. Untuk mitra favorit, tekan ikon hati di halaman detail paket milik mitra tersebut.',
+             null],
+        ];
+
+        foreach ($daftar as $i => [$kategori, $tanya, $jawab, $tip]) {
+            Faq::updateOrCreate(
+                ['pertanyaan' => $tanya],
+                ['kategori' => $kategori, 'jawaban' => $jawab, 'tip' => $tip, 'urutan' => $i + 1, 'aktif' => true]
+            );
+        }
+    }
+}
+
+===== database\seeders\LastbiteSeeder.php =====
+
+<?php
+namespace Database\Seeders;
+
+use App\Models\Mitra;
+use App\Models\Produk;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class LastbiteSeeder extends Seeder
+{
+    public function run(): void
+    {
+        User::firstOrCreate(['email' => 'demo@lastbite.test'], [
+            'name' => 'Demo Pembeli', 'password' => Hash::make('password'), 'role' => 'pembeli',
+        ]);
+
+        $mitra = fn ($nama, $ini, $alamat, $lat, $lng) => Mitra::firstOrCreate(
+            ['nama_usaha' => $nama],
+            ['inisial' => $ini, 'alamat' => $alamat, 'no_whatsapp' => '081234567890',
+             'latitude' => $lat, 'longitude' => $lng, 'status_verifikasi' => 'terverifikasi']
+        );
+
+        $hb = $mitra('Holland Bakery - Batam Center', 'HB', 'Jl. Engku Putri No. 8, Batam Center', 1.1291, 104.0530);
+        $rs = $mitra('Resto Sederhana - Nagoya', 'RS', 'Nagoya, Batam', 1.1450, 104.0300);
+        $ks = $mitra('Kios Sayur Segar Pasar Mitra', 'KS', 'Pasar Mitra, Batam', 1.1180, 104.0480);
+        $kb = $mitra('Kebun Barokah - Batam Center', 'KB', 'Batam Center', 1.1260, 104.0560);
+
+        $rows = [
+            [$hb, 'Paket Kejutan Roti Manis & Pastry', 'dimakan', 'Roti & Bakery', 'Harga Spesial', 15000, 30000, '/paket', 3, 0.8, '19:00', '20:00', 4.9, 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80'],
+            [$rs, 'Paket Kejutan Nasi Box Spesial', 'dimakan', 'Makanan Siap Saji', 'Harga Dinamis', 12000, 36000, '/paket', 1, 0.6, '21:00', '22:00', 4.5, 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80'],
+            [$ks, 'Paket Kejutan Sayur & Buah Segar', 'dimakan', 'Sayur & Buah', 'Harga Spesial', 10000, 25000, '/paket', 5, 1.0, '17:00', '18:00', 4.7, 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80'],
+            [$hb, 'Sisa Roti untuk Pakan Ternak', 'ternak', 'Pakan Ternak', 'Pakan Ternak', 0, null, 'Gratis', 20, 20, '08:00', '10:00', 4.9, 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80'],
+            [$kb, 'Kompos & Sisa Organik Siap Olah (Karung 5kg)', 'ternak', 'Bahan Pupuk', 'Bahan Pupuk', 12500, null, '/karung', 10, 5, '16:00', '18:00', 4.9, 'https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?w=600&q=80'],
+        ];
+
+        foreach ($rows as [$m, $nama, $tipe, $kat, $tag, $harga, $asli, $sat, $stok, $berat, $mulai, $selesai, $rating, $img]) {
+            Produk::firstOrCreate(['nama' => $nama, 'id_mitra' => $m->id_mitra], [
+                'tipe' => $tipe, 'kategori' => $kat, 'tag' => $tag, 'harga' => $harga,
+                'harga_asli' => $asli, 'satuan' => $sat, 'stok' => $stok, 'berat_kg' => $berat,
+                'waktu_mulai' => $mulai, 'waktu_selesai' => $selesai, 'rating' => $rating, 'gambar' => $img,
+            ]);
+        }
+    }
+}
+
